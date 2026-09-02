@@ -1,0 +1,25 @@
+# Environment Variables & Secrets (Keep your CDSE API keys safe)
+.env
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Output Artifacts & Scratch
+output/
+test_output/
+.streamlit/secrets.toml
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
