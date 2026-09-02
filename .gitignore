@@ -1,5 +1,7 @@
-# Environment Variables & Secrets (Keep your CDSE API keys safe)
-.env
+# Ignored Documentation Files
+PROTOTYPE.md
+MAIN_PROJECT_SIMPLE_GUIDE.md
+MAIN_PROJECT_ARCHITECTURE.md
 
 # Python Cache & Bytecode
 __pycache__/
