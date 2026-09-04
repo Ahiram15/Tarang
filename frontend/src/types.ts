@@ -95,6 +95,7 @@ export interface ScanResponse {
   timestamp: string;
   characterization_id?: string;
   characterization?: SpillAnalysis;
+  investigation?: InvestigationPriorityReport;
 }
 
 // ==============================================================================
@@ -133,6 +134,7 @@ export interface SpillMovement {
   current: VectorFieldInfo;
   is_simulation: boolean;
   mode_label: string;
+  drift_vector_coords?: [number, number][];
 }
 
 export interface SpreadingObservation {
@@ -211,6 +213,168 @@ export interface SpillAnalysis {
   severity: SpillSeverity;
   hindcast: HindcastResult;
   forecast: ForecastResult;
+  investigation?: InvestigationPriorityReport;
   created_at: string;
   updated_at: string;
+}
+
+// ==============================================================================
+// AI MARITIME INVESTIGATION & COASTAL EARLY WARNING TYPES
+// ==============================================================================
+
+export interface OriginZoneTier {
+  tier: string;
+  label: string;
+  confidence: number;
+  radius_km: number;
+  area_km2: number;
+  polygon: any;
+  description: string;
+}
+
+export interface ProbableReleaseTimeWindow {
+  estimated_time: string;
+  window_earliest: string;
+  window_latest: string;
+  window_duration_hours: number;
+  confidence_level: number;
+  basis: string;
+}
+
+export interface ProbableOriginZones {
+  centroid: { lat: number; lon: number };
+  time_window: ProbableReleaseTimeWindow;
+  zones: {
+    high: OriginZoneTier;
+    medium: OriginZoneTier;
+    low: OriginZoneTier;
+  };
+  spatial_uncertainty_boundary: any;
+  summary: string;
+}
+
+export interface VesselWaypoint {
+  lat: number;
+  lon: number;
+  timestamp: string;
+  speed_knots: number;
+  course_deg: number;
+}
+
+export interface AISGap {
+  start_time: string;
+  end_time: string;
+  duration_hours: number;
+  last_known_pos: { lat: number; lon: number };
+  first_known_pos: { lat: number; lon: number };
+  distance_during_gap_km: number;
+  overlaps_release_window: boolean;
+  notes: string;
+}
+
+export interface SARVesselDetection {
+  detection_id: string;
+  timestamp: string;
+  lat: number;
+  lon: number;
+  estimated_length_m: number;
+  estimated_width_m: number;
+  confidence: number;
+  is_ais_matched: boolean;
+  matched_mmsi?: string | null;
+  sensor: string;
+  notes?: string;
+}
+
+export interface CandidateVessel {
+  vessel_id: string;
+  name: string;
+  mmsi?: string | null;
+  imo?: string | null;
+  callsign?: string | null;
+  flag: string;
+  vessel_type: string;
+  category: string;
+  length_m: number;
+  beam_m: number;
+  trajectory: VesselWaypoint[];
+  ais_gaps: AISGap[];
+  sar_detections: SARVesselDetection[];
+  min_distance_to_origin_km: number;
+  entered_origin_zone: boolean;
+  origin_zone_tier: string;
+  time_overlap_hours: number;
+  trajectory_intersects_origin: boolean;
+  drift_alignment_cosine: number;
+  score_breakdown: {
+    spatial: number;
+    temporal: number;
+    trajectory: number;
+    drift: number;
+    ais_gap: number;
+    vessel_type: number;
+  };
+  total_score: number;
+  investigation_rank: number;
+  explainability_reasons: string[];
+}
+
+export interface RankedVesselInvestigation {
+  candidates: CandidateVessel[];
+  total_evaluated: number;
+  category_counts: Record<string, number>;
+  top_candidate: {
+    id: string;
+    name: string;
+    score: number;
+  };
+  summary: string;
+}
+
+export interface CoastalAlert {
+  alert_id: string;
+  receptor_id: string;
+  location_name: string;
+  receptor_type: string;
+  risk_level: 'HIGH' | 'MODERATE' | 'LOW';
+  eta_hours_min: number;
+  eta_hours_max: number;
+  eta_label: string;
+  impact_probability_pct: number;
+  potential_threat: string;
+  recommended_actions: string[];
+  alert_timestamp: string;
+  status: string;
+}
+
+export interface CoastalReceptor {
+  receptor_id: string;
+  name: string;
+  receptor_type: string;
+  lat: number;
+  lon: number;
+  sensitivity_level: string;
+  distance_to_slick_km: number;
+  description: string;
+}
+
+export interface CoastalRiskAnalysis {
+  overall_risk_level: 'HIGH' | 'MODERATE' | 'LOW';
+  earliest_eta_hours: number | null;
+  earliest_impact_location: string | null;
+  active_alerts_count: number;
+  alerts: CoastalAlert[];
+  receptors: CoastalReceptor[];
+  coastal_drift_vector: any;
+  summary: string;
+}
+
+export interface InvestigationPriorityReport {
+  report_id: string;
+  spill_id: string;
+  generated_at: string;
+  origin_analysis: ProbableOriginZones;
+  vessel_investigation: RankedVesselInvestigation;
+  coastal_warning: CoastalRiskAnalysis;
+  markdown_content: string;
 }

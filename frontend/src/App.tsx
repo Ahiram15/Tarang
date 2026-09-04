@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { OceanGlobe } from './components/OceanGlobe';
 import { SatelliteVisionSuite } from './components/SatelliteVisionSuite';
 import { CharacterizationDashboard } from './components/CharacterizationDashboard';
-import { ScanResponse, SpillAnalysis } from './types';
-import { Satellite } from 'lucide-react';
+import { MaritimeInvestigationSuite } from './components/MaritimeInvestigationSuite';
+import { ScanResponse, SpillAnalysis, InvestigationPriorityReport } from './types';
+import { Satellite, Globe2, Microscope, Waves, Radar } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [view, setView] = useState<'globe' | 'satellite_lab' | 'characterization'>('globe');
+  const [view, setView] = useState<'globe' | 'satellite_lab' | 'characterization' | 'investigation'>('globe');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
   const [analysis, setAnalysis] = useState<SpillAnalysis | null>(null);
+  const [investigationReport, setInvestigationReport] = useState<InvestigationPriorityReport | null>(null);
   const [activePalette, setActivePalette] = useState<string>('False-Color RGB Composite (VV+VH+Ratio)');
 
   const targetLat = -20.438119;
@@ -40,6 +42,9 @@ export const App: React.FC = () => {
         if (data.characterization) {
           setAnalysis(data.characterization);
         }
+        if (data.investigation) {
+          setInvestigationReport(data.investigation);
+        }
         setView('satellite_lab');
       }
     } catch (e) {
@@ -59,13 +64,15 @@ export const App: React.FC = () => {
       setView('characterization');
       return;
     }
-    // Fetch full analysis from backend API if not yet in state
     try {
       const spillId = scanResult?.characterization_id || 'wakashio';
       const res = await fetch(`/api/spill/${spillId}/analysis`);
       if (res.ok) {
         const charData: SpillAnalysis = await res.json();
         setAnalysis(charData);
+        if (charData.investigation) {
+          setInvestigationReport(charData.investigation);
+        }
         setView('characterization');
       }
     } catch (err) {
@@ -73,12 +80,154 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleOpenInvestigation = async () => {
+    if (investigationReport && analysis) {
+      setView('investigation');
+      return;
+    }
+    const spillId = scanResult?.characterization_id || analysis?.spill_id || 'wakashio';
+    setIsLoading(true);
+    try {
+      // Ensure characterization is loaded
+      if (!analysis) {
+        const charRes = await fetch(`/api/spill/${spillId}/analysis`);
+        if (charRes.ok) {
+          const charData: SpillAnalysis = await charRes.json();
+          setAnalysis(charData);
+        }
+      }
+      // Fetch full investigation report
+      const invRes = await fetch(`/api/spill/${spillId}/investigation-report`);
+      if (invRes.ok) {
+        const invData: InvestigationPriorityReport = await invRes.json();
+        setInvestigationReport(invData);
+        setView('investigation');
+      }
+    } catch (err) {
+      console.error('Failed to load investigation report:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#070a13', color: '#f1f5f9', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#050811', color: '#f1f5f9', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       
+      {/* Global Top Navigation Bar (Shown when active incident is loaded) */}
+      {scanResult && (
+        <div style={{
+          height: '38px',
+          background: 'rgba(3, 7, 18, 0.95)',
+          borderBottom: '1px solid rgba(0, 242, 254, 0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 20px',
+          zIndex: 4000,
+          flexShrink: 0,
+          backdropFilter: 'blur(10px)',
+        }}>
+          {/* Left Title / Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
+            <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '0.8px' }}>TARANG 2.0</span>
+            <span style={{ color: '#64748b' }}>|</span>
+            <span style={{ color: '#94a3b8' }}>MV WAKASHIO SURVEILLANCE MISSION</span>
+          </div>
+
+          {/* Center 4-Act Stage Switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={() => setView('globe')}
+              style={{
+                background: view === 'globe' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: view === 'globe' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: view === 'globe' ? '#00f2fe' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Globe2 size={13} />
+              <span>1. Globe</span>
+            </button>
+
+            <button
+              onClick={() => setView('satellite_lab')}
+              style={{
+                background: view === 'satellite_lab' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: view === 'satellite_lab' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: view === 'satellite_lab' ? '#00f2fe' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Microscope size={13} />
+              <span>2. Satellite Lab</span>
+            </button>
+
+            <button
+              onClick={handleOpenCharacterization}
+              style={{
+                background: view === 'characterization' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: view === 'characterization' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: view === 'characterization' ? '#00f2fe' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Waves size={13} />
+              <span>3. Characterization</span>
+            </button>
+
+            <button
+              onClick={handleOpenInvestigation}
+              style={{
+                background: view === 'investigation' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                border: view === 'investigation' ? '1px solid #f59e0b' : '1px solid transparent',
+                color: view === 'investigation' ? '#f59e0b' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Radar size={13} color={view === 'investigation' ? '#f59e0b' : '#94a3b8'} />
+              <span>4. Maritime Investigation & Warning</span>
+            </button>
+          </div>
+
+          {/* Right Status Indicator */}
+          <div style={{ fontSize: '0.70rem', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
+            <span>CDSE Sentinel-1 & GFW Active</span>
+          </div>
+        </div>
+      )}
+
       {/* 1. GLOBE VIEW (Act 1: Space Surveillance) */}
       {view === 'globe' && (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%', flex: 1 }}>
           <OceanGlobe
             onSelectIncident={(lat, lon) => handleSelectIncident(lat, lon)}
             targetLat={targetLat}
@@ -105,7 +254,7 @@ export const App: React.FC = () => {
             }}>
               <Satellite size={40} color="#00f2fe" className="animate-spin" />
               <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9' }}>
-                Fetching Raw Satellite SAR & Running AI Denoising...
+                Fetching Satellite SAR & Ingesting Maritime Intelligence...
               </span>
             </div>
           )}
@@ -114,22 +263,39 @@ export const App: React.FC = () => {
 
       {/* 2. SATELLITE AI VISION LAB (Act 2: Evidence & Deep Learning Suite) */}
       {view === 'satellite_lab' && scanResult && (
-        <SatelliteVisionSuite
-          scanResult={scanResult}
-          onBackToGlobe={() => setView('globe')}
-          onPaletteChange={handlePaletteChange}
-          activePalette={activePalette}
-          onOpenCharacterization={handleOpenCharacterization}
-        />
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <SatelliteVisionSuite
+            scanResult={scanResult}
+            onBackToGlobe={() => setView('globe')}
+            onPaletteChange={handlePaletteChange}
+            activePalette={activePalette}
+            onOpenCharacterization={handleOpenCharacterization}
+          />
+        </div>
       )}
 
       {/* 3. OIL SPILL CHARACTERIZATION & DRIFT INTELLIGENCE (Act 3: Movement & Hindcast) */}
       {view === 'characterization' && analysis && (
-        <CharacterizationDashboard
-          analysis={analysis}
-          onBackToLab={() => setView('satellite_lab')}
-          onBackToGlobe={() => setView('globe')}
-        />
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <CharacterizationDashboard
+            analysis={analysis}
+            onBackToLab={() => setView('satellite_lab')}
+            onBackToGlobe={() => setView('globe')}
+            onOpenInvestigation={handleOpenInvestigation}
+          />
+        </div>
+      )}
+
+      {/* 4. MARITIME INVESTIGATION & COASTAL EARLY WARNING (Act 4: Origin Backtracking & Vessel Ranking) */}
+      {view === 'investigation' && analysis && investigationReport && (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <MaritimeInvestigationSuite
+            analysis={analysis}
+            investigationReport={investigationReport}
+            onBackToCharacterization={() => setView('characterization')}
+            onBackToGlobe={() => setView('globe')}
+          />
+        </div>
       )}
     </div>
   );
