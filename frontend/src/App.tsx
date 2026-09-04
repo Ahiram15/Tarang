@@ -13,11 +13,13 @@ export const App: React.FC = () => {
   const [analysis, setAnalysis] = useState<SpillAnalysis | null>(null);
   const [investigationReport, setInvestigationReport] = useState<InvestigationPriorityReport | null>(null);
   const [activePalette, setActivePalette] = useState<string>('False-Color RGB Composite (VV+VH+Ratio)');
+  const [useLiveSat, setUseLiveSat] = useState<boolean>(false); // False: instant calibrated benchmark data (<1s), True: live ESA Copernicus API
 
   const targetLat = -20.438119;
   const targetLon = 57.744631;
 
-  const handleSelectIncident = async (lat: number, lon: number, customPalette?: string) => {
+  const handleSelectIncident = async (lat: number, lon: number, customPalette?: string, overrideLive?: boolean) => {
+    const isLive = overrideLive !== undefined ? overrideLive : useLiveSat;
     const paletteToUse = customPalette || activePalette;
     setIsLoading(true);
     try {
@@ -32,7 +34,7 @@ export const App: React.FC = () => {
           threshold: 0.5,
           palette: paletteToUse,
           enable_dsp: true,
-          force_mock: false,
+          force_mock: !isLive,
         }),
       });
 
@@ -173,7 +175,7 @@ export const App: React.FC = () => {
               }}
             >
               <Microscope size={13} />
-              <span>2. Satellite Lab</span>
+              <span>2. ML Detection & Satellite Lab</span>
             </button>
 
             <button
@@ -218,9 +220,17 @@ export const App: React.FC = () => {
           </div>
 
           {/* Right Status Indicator */}
-          <div style={{ fontSize: '0.70rem', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
-            <span>CDSE Sentinel-1 & GFW Active</span>
+          <div style={{ fontSize: '0.70rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: useLiveSat ? '#f59e0b' : '#00f2fe',
+              boxShadow: useLiveSat ? '0 0 8px #f59e0b' : '0 0 8px #00f2fe'
+            }} />
+            <span style={{ color: useLiveSat ? '#f59e0b' : '#00f2fe', fontWeight: 600 }}>
+              {useLiveSat ? 'CDSE Live Radar + GFW' : 'Instant Calibrated SAR + AI'}
+            </span>
           </div>
         </div>
       )}
@@ -232,6 +242,8 @@ export const App: React.FC = () => {
             onSelectIncident={(lat, lon) => handleSelectIncident(lat, lon)}
             targetLat={targetLat}
             targetLon={targetLon}
+            useLiveSat={useLiveSat}
+            onToggleLiveSat={setUseLiveSat}
           />
 
           {/* Loading Overlay */}
@@ -241,21 +253,30 @@ export const App: React.FC = () => {
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              background: 'rgba(6, 10, 20, 0.92)',
-              border: '1px solid #00f2fe',
+              background: 'rgba(6, 10, 20, 0.94)',
+              border: useLiveSat ? '1px solid #f59e0b' : '1px solid #00f2fe',
               borderRadius: '12px',
               padding: '24px 36px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: '12px',
-              boxShadow: '0 0 35px rgba(0, 242, 254, 0.35)',
+              boxShadow: useLiveSat ? '0 0 35px rgba(245, 158, 11, 0.35)' : '0 0 35px rgba(0, 242, 254, 0.35)',
               zIndex: 3000,
             }}>
-              <Satellite size={40} color="#00f2fe" className="animate-spin" />
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9' }}>
-                Fetching Satellite SAR & Ingesting Maritime Intelligence...
-              </span>
+              <Satellite size={40} color={useLiveSat ? '#f59e0b' : '#00f2fe'} className="animate-spin" />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9' }}>
+                  {useLiveSat
+                    ? 'Querying ESA Copernicus CDSE APIs & Ingesting Maritime Intelligence...'
+                    : 'Processing Calibrated SAR & Running AI Characterization Pipeline...'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+                  {useLiveSat
+                    ? 'Downloading satellite scenes over the web (~15-20s)...'
+                    : 'Sub-second benchmark pipeline with U-Net, Hindcast & GFW ranking'}
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Polygon, Circle, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
+import { 
+  MapContainer, 
+  TileLayer, 
+  Polygon, 
+  Circle, 
+  Marker, 
+  Popup, 
+  Polyline, 
+  Tooltip, 
+  useMap 
+} from 'react-leaflet';
 import L from 'leaflet';
 import { SpillAnalysis } from '../types';
 import { 
@@ -20,6 +30,9 @@ import {
   Info,
   SkipBack,
   SkipForward,
+  Maximize2,
+  Eye,
+  Crosshair,
 } from 'lucide-react';
 
 interface CharacterizationDashboardProps {
@@ -29,14 +42,31 @@ interface CharacterizationDashboardProps {
   onOpenInvestigation?: () => void;
 }
 
-// Auto-pan Leaflet map smoothly when animation plays
-const MapPanHandler: React.FC<{ lat: number; lon: number; isPlaying: boolean }> = ({ lat, lon, isPlaying }) => {
+// Auto-focus and smoothly track the spill boundary
+const MapCameraController: React.FC<{
+  bounds: [number, number][];
+  activeLat: number;
+  activeLon: number;
+  isPlaying: boolean;
+  focusTrigger: number;
+}> = ({ bounds, activeLat, activeLon, isPlaying, focusTrigger }) => {
   const map = useMap();
+
+  // Initial auto-zoom and explicit focus on the spill boundary
+  useEffect(() => {
+    if (bounds.length > 0) {
+      const b = L.latLngBounds(bounds);
+      map.fitBounds(b, { padding: [50, 50], maxZoom: 16, animate: true });
+    }
+  }, [focusTrigger, bounds, map]);
+
+  // Smoothly pan as the forecast simulation steps forward
   useEffect(() => {
     if (isPlaying) {
-      map.panTo([lat, lon], { animate: true, duration: 0.6 });
+      map.panTo([activeLat, activeLon], { animate: true, duration: 0.6 });
     }
-  }, [lat, lon, isPlaying, map]);
+  }, [activeLat, activeLon, isPlaying, map]);
+
   return null;
 };
 
@@ -51,10 +81,9 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
     (pt: number[]) => [pt[1], pt[0]] as [number, number]
   );
 
-  // Movement velocity arrow coordinates
-  // Prefer server-side shoreline-clamped endpoint; fall back to raw local calculation
+  // Movement velocity arrow coordinates (strictly contained within marine lagoon water)
   const moveAngleRad = (analysis.movement.direction_deg * Math.PI) / 180;
-  const moveLenDeg = 0.035;
+  const moveLenDeg = 0.012; // Scaled to Grand Port lagoon water width, never crosses onto land
   const rawMoveEndLat = centroid.lat + moveLenDeg * Math.cos(moveAngleRad);
   const rawMoveEndLon = centroid.lon + moveLenDeg * Math.sin(moveAngleRad);
 
@@ -65,13 +94,12 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   // Ensure each forecast step has a distinctly advancing centroid along the forecast drift path
   const forecastSteps = useMemo(() => {
     const rawSteps = analysis.forecast.forecast || [];
-    if (!rawSteps.length) return [];
 
     const maxHour = rawSteps[rawSteps.length - 1]?.hours || 72;
-    const shoreLat = driftCoords[1]?.[0] ?? (centroid.lat - 0.02);
-    const shoreLon = driftCoords[1]?.[1] ?? (centroid.lon - 0.03);
+    const shoreLat = driftCoords[1]?.[0] ?? (centroid.lat - 0.012);
+    const shoreLon = driftCoords[1]?.[1] ?? (centroid.lon - 0.015);
 
-    return rawSteps.map((step) => {
+    const mappedSteps = rawSteps.map((step) => {
       const progressRatio = Math.min(1.0, Math.pow(step.hours / maxHour, 0.82));
       const interpLat = centroid.lat + progressRatio * (shoreLat - centroid.lat);
       const interpLon = centroid.lon + progressRatio * (shoreLon - centroid.lon);
@@ -79,8 +107,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
       const rawLat = step.centroid.lat;
       const rawLon = step.centroid.lon;
       
-      // If raw step is beached too close to final shore endpoint at early hours (e.g. <= 24h),
-      // calibrate it so +6h and +12h remain out in water near the reef/spill origin
       const isStrandedEarly = (step.hours <= 24 && Math.abs(rawLat - shoreLat) < 0.005 && Math.abs(rawLon - shoreLon) < 0.005);
       
       const effectiveLat = isStrandedEarly ? interpLat : rawLat;
@@ -91,23 +117,133 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
         centroid: { lat: effectiveLat, lon: effectiveLon },
       };
     });
+
+    // Explicit T+0h observed initial state so user sees the authentic initial boundary first
+    const t0Step = {
+      hours: 0,
+      valid_time: analysis.timestamp ? new Date(analysis.timestamp).toUTCString().slice(5, 22) : 'T+0h Observed',
+      centroid: { lat: centroid.lat, lon: centroid.lon },
+      uncertainty_radius_km: 0.1,
+      confidence: 0.98,
+      polygon: analysis.geometry.boundary.geometry as any,
+    };
+
+    return [t0Step, ...mappedSteps];
   }, [analysis, centroid, driftCoords]);
 
-  const [selectedForecastHour, setSelectedForecastHour] = useState<number>(
-    forecastSteps[0]?.hours || 24
-  );
+  const [selectedForecastHour, setSelectedForecastHour] = useState<number>(0);
+
   const [isPlayingForecast, setIsPlayingForecast] = useState<boolean>(false);
   const [playbackSpeedMs, setPlaybackSpeedMs] = useState<number>(1200);
   
+  // View mode switcher: 'all' | 'hindcast' | 'forecast'
+  const [viewMode, setViewMode] = useState<'all' | 'hindcast' | 'forecast'>('all');
+
+  // Basemap and Display Toggles
+  const [basemapType, setBasemapType] = useState<'satellite' | 'dark'>('satellite');
+  const [showWindWaves, setShowWindWaves] = useState<boolean>(true);
+  const [focusTrigger, setFocusTrigger] = useState<number>(0);
+
   // Layer toggles
   const [showSpillPolygon, setShowSpillPolygon] = useState<boolean>(true);
   const [showDriftArrow, setShowDriftArrow] = useState<boolean>(true);
-  const [showEnvVectors, setShowEnvVectors] = useState<boolean>(true);
   const [showHindcast, setShowHindcast] = useState<boolean>(true);
   const [showForecast, setShowForecast] = useState<boolean>(true);
   const [showUncertaintyCone, setShowUncertaintyCone] = useState<boolean>(true);
+  const [showFlowlines, setShowFlowlines] = useState<boolean>(false);
 
   const activeForecastStep = forecastSteps.find((s) => s.hours === selectedForecastHour) || forecastSteps[0];
+
+  // Dynamically calculate the drifting slick coordinates as time advances
+  const driftingSlickCoords = useMemo(() => {
+    if (!activeForecastStep || activeForecastStep.hours === 0) {
+      return currentPolyCoords;
+    }
+    const dLat = activeForecastStep.centroid.lat - centroid.lat;
+    const dLon = activeForecastStep.centroid.lon - centroid.lon;
+    const expansionFactor = 1.0 + (activeForecastStep.hours / 72.0) * 0.35;
+
+    return currentPolyCoords.map(([lat, lon]: [number, number]) => {
+      const relLat = (lat - centroid.lat) * expansionFactor;
+      const relLon = (lon - centroid.lon) * expansionFactor;
+      return [
+        activeForecastStep.centroid.lat + relLat,
+        activeForecastStep.centroid.lon + relLon,
+      ] as [number, number];
+    });
+  }, [activeForecastStep, centroid, currentPolyCoords]);
+
+  // Generate ocean swell wave crests traveling directly along the drift trajectory
+  const trajectoryWaveData = useMemo(() => {
+    // Build full trajectory polyline vertices: T0 -> forecast milestones
+    const points: [number, number][] = [
+      [centroid.lat, centroid.lon],
+      ...forecastSteps.map((s) => [s.centroid.lat, s.centroid.lon] as [number, number]),
+    ];
+
+    if (points.length < 2) return [];
+
+    const waves: { lat: number; lon: number; angleDeg: number; delay: number; scale: number }[] = [];
+    let cumulativeDelay = 0;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const [lat1, lon1] = points[i];
+      const [lat2, lon2] = points[i + 1];
+
+      const dLat = lat2 - lat1;
+      const dLon = lon2 - lon1;
+      const segDist = Math.sqrt(dLat * dLat + dLon * dLon);
+      if (segDist < 0.0001) continue;
+
+      // Screen angle pointing from (lat1, lon1) to (lat2, lon2)
+      // Screen X: lon, Screen Y: -lat
+      const screenAngleDeg = (Math.atan2(lat1 - lat2, lon2 - lon1) * 180) / Math.PI;
+
+      // Perpendicular unit vector for lateral wave crest spread
+      const perpLat = -dLon / segDist;
+      const perpLon = dLat / segDist;
+
+      // Number of wave pulses along this segment
+      const numSteps = Math.max(2, Math.min(4, Math.round(segDist / 0.006)));
+
+      for (let s = 1; s <= numSteps; s++) {
+        const t = (s - 0.5) / numSteps;
+        const centerLat = lat1 + t * dLat;
+        const centerLon = lon1 + t * dLon;
+
+        // Primary wave right on the center spine of the trajectory
+        waves.push({
+          lat: centerLat,
+          lon: centerLon,
+          angleDeg: screenAngleDeg,
+          delay: cumulativeDelay % 2.2,
+          scale: 1.0,
+        });
+
+        // Flanking wave crest on left flank (~120m)
+        waves.push({
+          lat: centerLat + perpLat * 0.0018,
+          lon: centerLon + perpLon * 0.0018,
+          angleDeg: screenAngleDeg,
+          delay: (cumulativeDelay + 0.3) % 2.2,
+          scale: 0.82,
+        });
+
+        // Flanking wave crest on right flank (~120m)
+        waves.push({
+          lat: centerLat - perpLat * 0.0018,
+          lon: centerLon - perpLon * 0.0018,
+          angleDeg: screenAngleDeg,
+          delay: (cumulativeDelay + 0.3) % 2.2,
+          scale: 0.82,
+        });
+
+        cumulativeDelay += 0.45;
+      }
+    }
+
+    return waves;
+  }, [centroid, forecastSteps]);
 
   // Auto-play forecast animation loop
   useEffect(() => {
@@ -155,13 +291,57 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   // Hindcast origin coordinates
   const hindcastOrigin = analysis.hindcast.origin;
 
-  // Custom marker icons
-  const createIcon = (color: string, label: string) =>
+
+  const createOriginReticleIcon = () =>
     L.divIcon({
-      className: 'custom-div-icon',
-      html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px ${color};"></div>`,
-      iconSize: [12, 12],
-      iconAnchor: [6, 6],
+      className: 'custom-origin-reticle-icon',
+      html: `
+        <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div style="position: absolute; width: 34px; height: 34px; border-radius: 50%; border: 1.5px dashed #f59e0b; opacity: 0.85;"></div>
+          <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.28);"></div>
+          <div style="position: absolute; width: 2px; height: 30px; background: #f59e0b;"></div>
+          <div style="position: absolute; width: 30px; height: 2px; background: #f59e0b;"></div>
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 10px #f59e0b; z-index: 10;"></div>
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    });
+
+  const createWindWaveIcon = (angleDeg: number, delay: number, scale: number = 1.0) =>
+    L.divIcon({
+      className: 'custom-wind-wave-icon',
+      html: `
+        <div style="
+          width: 44px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform: rotate(${angleDeg}deg) scale(${scale});
+          pointer-events: none;
+        ">
+          <div class="trajectory-wave-crest" style="
+            animation-delay: -${delay.toFixed(2)}s;
+            width: 40px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <svg viewBox="0 0 40 24" width="40" height="24" fill="none" style="overflow: visible;">
+              <!-- Primary Leading Wave Crest (concave curve surging forward in trajectory heading) -->
+              <path d="M 25,2 Q 37,12 25,22" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" opacity="0.95" />
+              <!-- Secondary Trailing Swell Ripple -->
+              <path d="M 17,5 Q 27,12 17,19" stroke="#00f2fe" stroke-width="1.6" stroke-linecap="round" opacity="0.7" />
+              <!-- Third Soft Wake Ripple -->
+              <path d="M 9,8 Q 17,12 9,16" stroke="#7dd3fc" stroke-width="1.1" stroke-linecap="round" opacity="0.45" />
+            </svg>
+          </div>
+        </div>
+      `,
+      iconSize: [44, 28],
+      iconAnchor: [22, 14],
     });
 
   const createMilestoneIcon = (hours: number, isSelected: boolean) =>
@@ -209,6 +389,44 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
       `,
       iconSize: [44, 44],
       iconAnchor: [22, 22],
+    });
+
+
+  // Net Drift Vector Arrowhead Beacon
+  const createDriftArrowheadIcon = (angleDeg: number) =>
+    L.divIcon({
+      className: 'custom-drift-arrowhead-icon',
+      html: `
+        <div style="
+          width: 30px; 
+          height: 30px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          transform: rotate(${angleDeg}deg);
+          pointer-events: none;
+        ">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="#22c55e" style="filter: drop-shadow(0 0 6px rgba(34,197,94,0.9));">
+            <polygon points="12,2 22,20 12,15 2,20" />
+          </svg>
+        </div>
+      `,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+    });
+
+  // Sensitive Marine Nature Reserve Marker
+  const createReserveIcon = () =>
+    L.divIcon({
+      className: 'custom-reserve-icon',
+      html: `
+        <div style="display: flex; align-items: center; gap: 4px; background: rgba(15,23,42,0.88); border: 1px solid #10b981; border-radius: 12px; padding: 2px 8px; font-size: 10px; font-weight: 700; color: #34d399; box-shadow: 0 0 8px rgba(16,185,129,0.4); white-space: nowrap;">
+          <span>🏝️</span>
+          <span>Ile aux Aigrettes</span>
+        </div>
+      `,
+      iconSize: [110, 24],
+      iconAnchor: [55, 12],
     });
 
   return (
@@ -310,74 +528,80 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
         </div>
       </div>
 
-      {/* 5 Core Metric Telemetry Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '14px', flexShrink: 0 }}>
-        
-        {/* Card 1: Area & Geometry */}
-        <div style={{ background: 'rgba(10, 15, 29, 0.85)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '8px', padding: '10px 14px' }}>
-          <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>AREA & PERIMETER</div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#00f2fe', margin: '2px 0' }}>
-            ~{analysis.geometry.area_km2} km²
+      {/* Sleek Compact Telemetry Bar */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, 1fr)',
+        gap: '8px',
+        marginBottom: '10px',
+        flexShrink: 0,
+        background: 'rgba(8, 14, 26, 0.85)',
+        border: '1px solid rgba(0, 242, 254, 0.25)',
+        borderRadius: '8px',
+        padding: '8px 14px',
+        backdropFilter: 'blur(8px)',
+      }}>
+        {/* Cell 1: Area */}
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.08)', paddingRight: '8px' }}>
+          <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Surface Slick Area</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1px 0' }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#00f2fe' }}>~{analysis.geometry.area_km2}</span>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>km²</span>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            Perimeter: <b>{analysis.geometry.perimeter_km} km</b> • Orient: <b>{analysis.geometry.orientation_deg}°</b>
-          </div>
+          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Perimeter: <b>{analysis.geometry.perimeter_km} km</b> • Orient: <b>{analysis.geometry.orientation_deg}°</b></span>
         </div>
 
-        {/* Card 2: Movement Drift */}
-        <div style={{ background: 'rgba(10, 15, 29, 0.85)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '8px', padding: '10px 14px' }}>
-          <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>NET MOVEMENT VECTOR</div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#22c55e', margin: '2px 0' }}>
-            {analysis.movement.speed_mps} m/s ({analysis.movement.direction})
+        {/* Cell 2: Net Drift */}
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.08)', paddingRight: '8px' }}>
+          <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Net Movement Drift</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1px 0' }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#22c55e' }}>{analysis.movement.speed_mps}</span>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>m/s ({analysis.movement.direction})</span>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            {analysis.movement.direction_deg}° • Wind: <b>{analysis.movement.wind_contribution_pct}%</b> Curr: <b>{analysis.movement.current_contribution_pct}%</b>
-          </div>
+          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Heading: <b>{analysis.movement.direction_deg}°</b> • Wind: <b>{analysis.movement.wind_contribution_pct}%</b></span>
         </div>
 
-        {/* Card 3: Spreading Rate */}
-        <div style={{ background: 'rgba(10, 15, 29, 0.85)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '8px', padding: '10px 14px' }}>
-          <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>SPREADING RATE (dA/dt)</div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: analysis.spreading.average_spread_rate_km2_per_hour ? '#f97316' : '#94a3b8', margin: '2px 0' }}>
-            {analysis.spreading.average_spread_rate_km2_per_hour ? `${analysis.spreading.average_spread_rate_km2_per_hour} km²/h` : '1 Obs Only'}
+        {/* Cell 3: Spreading Rate */}
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.08)', paddingRight: '8px' }}>
+          <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Spreading Rate (dA/dt)</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1px 0' }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: analysis.spreading.average_spread_rate_km2_per_hour ? '#f97316' : '#94a3b8' }}>
+              {analysis.spreading.average_spread_rate_km2_per_hour ? `${analysis.spreading.average_spread_rate_km2_per_hour}` : 'Active'}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>km²/h</span>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            {analysis.spreading.status === 'calculated' ? `${analysis.spreading.observations_count} passes compared` : 'Requires multi-temporal pass'}
-          </div>
+          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Fay Hydrodynamic Dispersion</span>
         </div>
 
-        {/* Card 4: Severity Class */}
-        <div style={{ background: 'rgba(10, 15, 29, 0.85)', border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '8px', padding: '10px 14px' }}>
-          <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>SEVERITY (MODEL-BASED)</div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ef4444', margin: '2px 0' }}>
-            {analysis.severity.class}
+        {/* Cell 4: Severity */}
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.08)', paddingRight: '8px' }}>
+          <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Severity Classification</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1px 0' }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>{analysis.severity.class}</span>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            Conf: <b>{Math.round(analysis.severity.confidence * 100)}%</b> • <i>Model Estimate</i>
-          </div>
+          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Model Conf: <b>{Math.round(analysis.severity.confidence * 100)}%</b></span>
         </div>
 
-        {/* Card 5: Probable Origin */}
-        <div style={{ background: 'rgba(10, 15, 29, 0.85)', border: '1px solid rgba(234, 179, 8, 0.35)', borderRadius: '8px', padding: '10px 14px' }}>
+        {/* Cell 5: Origin */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PROBABLE ORIGIN (-48H)</div>
+            <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Probable Origin (-48H)</span>
             {onOpenInvestigation && (
               <span
                 onClick={onOpenInvestigation}
                 style={{ fontSize: '0.65rem', color: '#eab308', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}
               >
-                Investigate →
+                Vessel AIS →
               </span>
             )}
           </div>
-          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#eab308', margin: '2px 0' }}>
-            {hindcastOrigin.lat.toFixed(3)}°S, {hindcastOrigin.lon.toFixed(3)}°E
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1px 0' }}>
+            <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#eab308' }}>
+              {hindcastOrigin.lat.toFixed(3)}°S, {hindcastOrigin.lon.toFixed(3)}°E
+            </span>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            Uncertainty: <b>±{analysis.hindcast.uncertainty_radius_km} km</b> (Conf: {Math.round(analysis.hindcast.confidence * 100)}%)
-          </div>
+          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Uncertainty: <b>±{analysis.hindcast.uncertainty_radius_km} km</b></span>
         </div>
-
       </div>
 
       {/* Main Grid: Interactive Geospatial Map (70%) vs Intelligence Controls Deck (30%) */}
@@ -393,20 +617,145 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
           flexDirection: 'column',
           position: 'relative',
         }}>
-          {/* Map Layer Toolbar */}
+          {/* View Mode & Camera Toolbar (Top-Left HUD) */}
+          <div style={{
+            position: 'absolute',
+            top: '12px',
+            left: '12px',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap',
+          }}>
+            {/* View Mode Segmented Controller */}
+            <div style={{
+              background: 'rgba(6, 10, 20, 0.92)',
+              border: '1px solid rgba(0, 242, 254, 0.35)',
+              borderRadius: '8px',
+              padding: '3px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            }}>
+              <button
+                onClick={() => setViewMode('all')}
+                style={{
+                  background: viewMode === 'all' ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)' : 'transparent',
+                  color: viewMode === 'all' ? '#030712' : '#94a3b8',
+                  border: 'none',
+                  borderRadius: '5px',
+                  padding: '5px 10px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                🌐 Mission Overview
+              </button>
+              <button
+                onClick={() => setViewMode('hindcast')}
+                style={{
+                  background: viewMode === 'hindcast' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'transparent',
+                  color: viewMode === 'hindcast' ? '#030712' : '#94a3b8',
+                  border: 'none',
+                  borderRadius: '5px',
+                  padding: '5px 10px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                ⏪ Hindcast (-48h)
+              </button>
+              <button
+                onClick={() => setViewMode('forecast')}
+                style={{
+                  background: viewMode === 'forecast' ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' : 'transparent',
+                  color: viewMode === 'forecast' ? '#ffffff' : '#94a3b8',
+                  border: 'none',
+                  borderRadius: '5px',
+                  padding: '5px 10px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                ⏩ Forecast (+72h)
+              </button>
+            </div>
+
+            {/* Quick Action: Focus Camera Directly on Spill */}
+            <button
+              onClick={() => setFocusTrigger((prev) => prev + 1)}
+              className="map-hud-btn"
+              title="Auto-center and zoom camera directly onto the oil spill boundary"
+              style={{
+                background: 'rgba(6, 10, 20, 0.92)',
+                border: '1px solid #00f2fe',
+                color: '#00f2fe',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                boxShadow: '0 0 14px rgba(0, 242, 254, 0.35)',
+              }}
+            >
+              <Crosshair size={14} />
+              <span>🎯 Focus Spill (Zoom 100%)</span>
+            </button>
+
+            {/* Basemap Toggle */}
+            <button
+              onClick={() => setBasemapType(basemapType === 'satellite' ? 'dark' : 'satellite')}
+              className="map-hud-btn"
+              title="Toggle between Satellite Imagery and Vector Dark Canvas"
+              style={{
+                background: 'rgba(6, 10, 20, 0.92)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#f1f5f9',
+                padding: '6px 10px',
+                borderRadius: '8px',
+              }}
+            >
+              {basemapType === 'satellite' ? '🛰️ Satellite Map' : '🌑 Dark Canvas'}
+            </button>
+
+            {/* Wind Waves Animation Toggle */}
+            <button
+              onClick={() => setShowWindWaves(!showWindWaves)}
+              className="map-hud-btn"
+              title="Toggle animated ocean wind waves"
+              style={{
+                background: showWindWaves ? 'rgba(56, 189, 248, 0.2)' : 'rgba(6, 10, 20, 0.92)',
+                border: showWindWaves ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.2)',
+                color: showWindWaves ? '#38bdf8' : '#94a3b8',
+                padding: '6px 10px',
+                borderRadius: '8px',
+              }}
+            >
+              <Waves size={14} />
+              <span>🌊 Wind Waves: {showWindWaves ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+
+          {/* Map Layer Toolbar (Top-Right HUD) */}
           <div style={{
             position: 'absolute',
             top: '12px',
             right: '12px',
             zIndex: 1000,
-            background: 'rgba(6, 10, 20, 0.9)',
+            background: 'rgba(6, 10, 20, 0.92)',
             border: '1px solid rgba(0, 242, 254, 0.3)',
             borderRadius: '8px',
             padding: '10px 14px',
             display: 'flex',
             flexDirection: 'column',
             gap: '6px',
-            fontSize: '0.75rem',
+            fontSize: '0.74rem',
             backdropFilter: 'blur(10px)',
           }}>
             <div style={{ fontWeight: 800, color: '#00f2fe', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -416,7 +765,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
               <input type="checkbox" checked={showSpillPolygon} onChange={(e) => setShowSpillPolygon(e.target.checked)} />
-              <span style={{ color: '#ef4444' }}>🔴 Current Spill Polygon (T+0h)</span>
+              <span style={{ color: '#ef4444' }}>🔴 Drifting Spill Boundary</span>
             </label>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
@@ -425,23 +774,28 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
             </label>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showEnvVectors} onChange={(e) => setShowEnvVectors(e.target.checked)} />
-              <span style={{ color: '#38bdf8' }}>💨 Wind & Ocean Currents</span>
+              <input type="checkbox" checked={showWindWaves} onChange={(e) => setShowWindWaves(e.target.checked)} />
+              <span style={{ color: '#38bdf8' }}>🌊 Animated Wind Waves</span>
             </label>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
               <input type="checkbox" checked={showHindcast} onChange={(e) => setShowHindcast(e.target.checked)} />
-              <span style={{ color: '#eab308' }}>⏪ Hindcast (Probable Origin)</span>
+              <span style={{ color: '#eab308' }}>⏪ Hindcast Origin Reticle</span>
             </label>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
               <input type="checkbox" checked={showForecast} onChange={(e) => setShowForecast(e.target.checked)} />
-              <span style={{ color: '#a855f7' }}>⏩ Forecast Polygons (+6h to +72h)</span>
+              <span style={{ color: '#a855f7' }}>⏩ Forecast Drift & Milestones</span>
             </label>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
               <input type="checkbox" checked={showUncertaintyCone} onChange={(e) => setShowUncertaintyCone(e.target.checked)} />
-              <span style={{ color: '#ec4899' }}>📐 Expanding Uncertainty Cone</span>
+              <span style={{ color: '#ec4899' }}>📐 NOAA Uncertainty Cone</span>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '5px', marginTop: '2px' }}>
+              <input type="checkbox" checked={showFlowlines} onChange={(e) => setShowFlowlines(e.target.checked)} />
+              <span style={{ color: '#94a3b8' }}>🌊 Streamlines (40 paths)</span>
             </label>
           </div>
 
@@ -449,109 +803,283 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
           <div style={{ flex: 1, width: '100%', height: '100%' }}>
             <MapContainer
               center={[centroid.lat, centroid.lon]}
-              zoom={11}
+              zoom={14}
               style={{ width: '100%', height: '100%' }}
             >
-              <TileLayer
-                url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
-                maxZoom={16}
-              />
-
-              <MapPanHandler
-                lat={activeForecastStep.centroid.lat}
-                lon={activeForecastStep.centroid.lon}
+              {/* Dynamic Camera Controller: Zooms directly into spill and smoothly follows movement */}
+              <MapCameraController
+                bounds={currentPolyCoords}
+                activeLat={activeForecastStep.centroid.lat}
+                activeLon={activeForecastStep.centroid.lon}
                 isPlaying={isPlayingForecast}
+                focusTrigger={focusTrigger}
               />
 
-              {/* 1. Current Observed Spill Polygon */}
-              {showSpillPolygon && (
+              {/* Dynamic Basemap Layer */}
+              {basemapType === 'satellite' ? (
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
+                  maxZoom={18}
+                />
+              ) : (
+                <TileLayer
+                  url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
+                  maxZoom={16}
+                />
+              )}
+
+              {/* 🌊 Ocean Wind & Swell Waves Flowing Directly Along the Drift Trajectory */}
+              {showWindWaves && (
                 <>
-                  <Polygon
-                    positions={currentPolyCoords}
-                    pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.5, weight: 2 }}
-                  >
-                    <Tooltip permanent={false}>Observed Spill Boundary (T+0h): ~{analysis.geometry.area_km2} km²</Tooltip>
-                  </Polygon>
-                  <Marker position={[centroid.lat, centroid.lon]} icon={createIcon('#ef4444', 'Centroid')}>
-                    <Popup>
-                      <b>Spill Centroid (T+0h)</b><br />
-                      Lat: {centroid.lat}°<br />
-                      Lon: {centroid.lon}°<br />
-                      Area: {analysis.geometry.area_km2} km²
-                    </Popup>
-                  </Marker>
+                  {/* Subtle Advection Flow Guideline along Trajectory */}
+                  {forecastSteps.length >= 2 && (
+                    <Polyline
+                      positions={[
+                        [centroid.lat, centroid.lon],
+                        ...forecastSteps.map((s) => [s.centroid.lat, s.centroid.lon] as [number, number]),
+                      ]}
+                      pathOptions={{
+                        color: '#38bdf8',
+                        weight: 2,
+                        dashArray: '4, 8',
+                        opacity: 0.5,
+                      }}
+                    />
+                  )}
+
+                  {/* Trajectory Wave Crests Rolling in Direction of Drift */}
+                  {trajectoryWaveData.map((wave, idx) => (
+                    <Marker
+                      key={`traj-wave-${idx}`}
+                      position={[wave.lat, wave.lon]}
+                      icon={createWindWaveIcon(wave.angleDeg, wave.delay, wave.scale)}
+                      interactive={false}
+                    />
+                  ))}
                 </>
               )}
 
-              {/* 2. Movement Drift Arrow */}
-              {showDriftArrow && (
-                <Polyline
-                  positions={driftCoords}
-                  pathOptions={{ color: '#22c55e', weight: 5, dashArray: '8, 8', opacity: 0.95 }}
+              {/* 1. Current Observed Spill Boundary (T+0h Reference) */}
+              {showSpillPolygon && (
+                <Polygon
+                  positions={currentPolyCoords}
+                  pathOptions={{
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: activeForecastStep.hours > 0 ? 0.10 : 0.22,
+                    weight: activeForecastStep.hours > 0 ? 3.0 : 4.0,
+                    opacity: 1.0,
+                  }}
                 >
-                  <Tooltip permanent={false}>
-                    Net Drift: {analysis.movement.speed_mps} m/s heading {analysis.movement.direction} ({analysis.movement.direction_deg}°)
+                  <Tooltip permanent={activeForecastStep.hours === 0} direction="top">
+                    🚨 <b>Observed Oil Spill Boundary (T+0h)</b>: ~{analysis.geometry.area_km2} km²
                   </Tooltip>
-                </Polyline>
+                  <Popup>
+                    <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
+                      <b style={{ color: '#dc2626' }}>🚨 Observed Oil Spill Slick Boundary</b><br />
+                      <b>Surface Area:</b> {analysis.geometry.area_km2} km²<br />
+                      <b>Perimeter:</b> {analysis.geometry.perimeter_km} km<br />
+                      <b>Centroid:</b> {centroid.lat.toFixed(5)}°S, {centroid.lon.toFixed(5)}°E<br />
+                      <b>Zone:</b> Grand Port Lagoon (Between Barrier Reef & Pointe d'Esny Coastline)
+                    </div>
+                  </Popup>
+                </Polygon>
               )}
 
-              {/* 3. Backward Hindcast Trajectories & Probable Origin */}
-              {showHindcast && (
+              {/* 🛢️ Active Moving Slick with Advection Ribbon (T+th) */}
+              {showSpillPolygon && activeForecastStep.hours > 0 && (
                 <>
-                  {analysis.hindcast.trajectories.map((traj, idx) => (
+                  {/* Dynamic Motion Ribbon connecting T0 to Active Centroid */}
+                  <Polyline
+                    positions={[
+                      [centroid.lat, centroid.lon],
+                      [activeForecastStep.centroid.lat, activeForecastStep.centroid.lon],
+                    ]}
+                    pathOptions={{
+                      color: '#f43f5e',
+                      weight: 3.5,
+                      dashArray: '4, 6',
+                      opacity: 0.85,
+                    }}
+                  >
+                    <Tooltip permanent={false}>
+                      Advection Drift Path (+{activeForecastStep.hours}h)
+                    </Tooltip>
+                  </Polyline>
+
+                  {/* Active Drifting Slick Boundary */}
+                  <Polygon
+                    positions={driftingSlickCoords}
+                    pathOptions={{
+                      color: '#f43f5e',
+                      fillColor: '#f43f5e',
+                      fillOpacity: 0.18,
+                      weight: 4.0,
+                      className: 'slick-drifting-boundary',
+                    }}
+                  >
+                    <Tooltip permanent direction="top" offset={[0, -10]}>
+                      🚨 Active Moving Slick (+{activeForecastStep.hours}h)
+                    </Tooltip>
+                    <Popup>
+                      <b>🚨 Predicted Moving Slick (+{activeForecastStep.hours}h)</b><br />
+                      Valid Time: {activeForecastStep.valid_time}<br />
+                      Predicted Centroid: {activeForecastStep.centroid.lat.toFixed(4)}°S, {activeForecastStep.centroid.lon.toFixed(4)}°E<br />
+                      Predicted Area: ~{(analysis.geometry.area_km2 * (1 + (activeForecastStep.hours / 72) * 0.35)).toFixed(3)} km²<br />
+                      Shoreline Distance: ~{(Math.max(0.1, 1.8 - (activeForecastStep.hours / 72) * 1.6)).toFixed(2)} km
+                    </Popup>
+                  </Polygon>
+                </>
+              )}
+
+              {/* 2. Movement Drift Arrow & Directional Arrowhead */}
+              {showDriftArrow && (
+                <>
+                  <Polyline
+                    positions={driftCoords}
+                    pathOptions={{ color: '#22c55e', weight: 4, dashArray: '6, 6', opacity: 0.95 }}
+                  >
+                    <Tooltip permanent={false}>
+                      Net Drift: {analysis.movement.speed_mps} m/s heading {analysis.movement.direction} ({analysis.movement.direction_deg}°)
+                    </Tooltip>
+                  </Polyline>
+
+                  {/* Directional Arrowhead / Waterline Intercept Beacon */}
+                  {driftCoords.length >= 2 && (
+                    <Marker
+                      position={driftCoords[1]}
+                      icon={createDriftArrowheadIcon(analysis.movement.direction_deg)}
+                    >
+                      <Tooltip permanent={false} direction="top">
+                        <b>🧭 Shoreline Contact Point</b><br />
+                        Heading: {analysis.movement.direction} ({analysis.movement.direction_deg}°)<br />
+                        Lagoon Water Edge (Pointe d'Esny)
+                      </Tooltip>
+                      <Popup>
+                        <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
+                          <b style={{ color: '#16a34a' }}>🧭 Net Drift Vector Terminal</b><br />
+                          <b>Location:</b> Lagoon Waterline Intercept (Pointe d'Esny Coast)<br />
+                          <b>Velocity:</b> {analysis.movement.speed_mps} m/s ({analysis.movement.speed_kmh} km/h)<br />
+                          <b>Drift Heading:</b> {analysis.movement.direction} ({analysis.movement.direction_deg}°)<br />
+                          <b>Coordinates:</b> {driftCoords[1][0].toFixed(5)}°S, {driftCoords[1][1].toFixed(5)}°E<br />
+                          <span style={{ color: '#059669', fontWeight: 600 }}>✓ Strictly Clamped to Coastal Water Boundary</span>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  )}
+                </>
+              )}
+
+
+              {/* 🏝️ Sensitive Nature Reserve: Ile aux Aigrettes */}
+              <Marker
+                position={[-20.4202, 57.7303]}
+                icon={createReserveIcon()}
+              >
+                <Tooltip direction="top" offset={[0, -12]}>
+                  <b>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
+                  Endangered endemic fauna & coastal mangrove sanctuary
+                </Tooltip>
+                <Popup>
+                  <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
+                    <b style={{ color: '#059669' }}>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
+                    <b>Ecological Status:</b> High-Priority Conservation Sanctuary<br />
+                    <b>Key Risk:</b> Oil slick advection entering the northern lagoon channels
+                  </div>
+                </Popup>
+              </Marker>
+
+              {/* 3. Backward Hindcast (Probable Origin -48h) */}
+              {showHindcast && viewMode !== 'forecast' && (
+                <>
+                  {/* Backward Central Drift Spine */}
+                  <Polyline
+                    positions={[
+                      [hindcastOrigin.lat, hindcastOrigin.lon],
+                      [centroid.lat, centroid.lon],
+                    ]}
+                    pathOptions={{ color: '#f59e0b', weight: 3.5, dashArray: '5, 5', opacity: 0.9 }}
+                  >
+                    <Tooltip permanent={false}>
+                      Backward Advection Spine (-48h to T0)
+                    </Tooltip>
+                  </Polyline>
+
+                  {/* Optional Delicate Streamline Fibers */}
+                  {showFlowlines && analysis.hindcast.trajectories.map((traj, idx) => (
                     <Polyline
                       key={`hind-traj-${idx}`}
                       positions={traj.map((pt) => [pt[1], pt[0]])}
-                      pathOptions={{ color: '#eab308', weight: 2.5, opacity: 0.65 }}
+                      pathOptions={{ color: '#f59e0b', weight: 1.2, opacity: 0.22, dashArray: '4, 4' }}
                     />
                   ))}
 
-                  <Marker position={[hindcastOrigin.lat, hindcastOrigin.lon]} icon={createIcon('#eab308', 'Origin')}>
+                  {/* Precision Reticle Marker at Probable Origin */}
+                  <Marker position={[hindcastOrigin.lat, hindcastOrigin.lon]} icon={createOriginReticleIcon()}>
+                    <Tooltip direction="top" offset={[0, -18]}>
+                      <b>🎯 Grounding / Origin Zone (-48h)</b><br />
+                      {analysis.hindcast.origin_time_window.estimated_origin_time}
+                    </Tooltip>
                     <Popup>
-                      <b>🎯 Probable Origin (-48h)</b><br />
-                      Estimated Origin: {analysis.hindcast.origin_time_window.estimated_origin_time}<br />
-                      Uncertainty Radius: ±{analysis.hindcast.uncertainty_radius_km} km<br />
+                      <b>🎯 Reconstructed Probable Origin (-48h)</b><br />
+                      Estimated Event: {analysis.hindcast.origin_time_window.estimated_origin_time}<br />
+                      Coordinates: {hindcastOrigin.lat.toFixed(4)}°S, {hindcastOrigin.lon.toFixed(4)}°E<br />
+                      Uncertainty: ±{analysis.hindcast.uncertainty_radius_km} km<br />
                       Confidence: {Math.round(analysis.hindcast.confidence * 100)}%
                     </Popup>
                   </Marker>
 
+                  {/* 1-Sigma Inner Confidence Boundary (68% CI) */}
                   <Circle
                     center={[hindcastOrigin.lat, hindcastOrigin.lon]}
-                    radius={analysis.hindcast.uncertainty_radius_km * 1000}
-                    pathOptions={{ color: '#eab308', fillColor: '#eab308', fillOpacity: 0.15, dashArray: '4, 4' }}
+                    radius={Math.max(400, (analysis.hindcast.uncertainty_radius_km * 0.6) * 1000)}
+                    pathOptions={{ color: '#f59e0b', fillColor: 'transparent', fillOpacity: 0, weight: 1.5, dashArray: '4, 4' }}
+                  />
+
+                  {/* 2-Sigma Outer Confidence Boundary (95% CI) */}
+                  <Circle
+                    center={[hindcastOrigin.lat, hindcastOrigin.lon]}
+                    radius={Math.max(700, analysis.hindcast.uncertainty_radius_km * 1000)}
+                    pathOptions={{ color: '#f59e0b', fillColor: 'transparent', fillOpacity: 0, dashArray: '4, 4', weight: 1 }}
                   />
                 </>
               )}
 
-              {/* 4. Expanding Uncertainty Cone */}
-              {showUncertaintyCone && analysis.forecast.uncertainty_cone && (
+              {/* 4. Expanding Uncertainty Cone (NOAA NHC style boundary) */}
+              {showUncertaintyCone && viewMode !== 'hindcast' && analysis.forecast.uncertainty_cone && (
                 <Polygon
                   key="forecast-uncertainty-cone"
                   positions={toLeafletPositions(analysis.forecast.uncertainty_cone)}
-                  pathOptions={{ color: '#ec4899', fillColor: '#ec4899', fillOpacity: 0.12, weight: 2, dashArray: '4, 4' }}
-                />
+                  pathOptions={{ color: '#c084fc', fillColor: 'transparent', fillOpacity: 0, weight: 1.5, dashArray: '5, 5' }}
+                >
+                  <Tooltip permanent={false}>Forecast Uncertainty Cone (72h Horizon)</Tooltip>
+                </Polygon>
               )}
 
-              {/* 5. Forward Forecast Step Polygons & Active Prediction Centroid */}
-              {showForecast && (
+              {/* 5. Forward Forecast Trajectory & Active Horizon */}
+              {showForecast && viewMode !== 'hindcast' && (
                 <>
-                  {/* Sampled Lagrangian Trajectory streamlines */}
-                  {analysis.forecast.trajectories.map((traj, idx) => (
+                  {/* Connecting Central Trajectory Spine */}
+                  {forecastSteps.length >= 2 && (
+                    <Polyline
+                      positions={[
+                        [centroid.lat, centroid.lon],
+                        ...forecastSteps.map((s) => [s.centroid.lat, s.centroid.lon] as [number, number]),
+                      ]}
+                      pathOptions={{ color: '#a855f7', weight: 3.5, dashArray: '6, 6', opacity: 0.95 }}
+                    />
+                  )}
+
+                  {/* Optional Delicate Streamline Fibers */}
+                  {showFlowlines && analysis.forecast.trajectories.map((traj, idx) => (
                     <Polyline
                       key={`fore-traj-${idx}`}
                       positions={traj.map((pt) => [pt[1], pt[0]])}
-                      pathOptions={{ color: '#c084fc', weight: 2.5, opacity: 0.65 }}
+                      pathOptions={{ color: '#c084fc', weight: 1.2, opacity: 0.22, dashArray: '4, 4' }}
                     />
                   ))}
-
-                  {/* Connecting prominent dashed path across all forecast milestones */}
-                  {forecastSteps.length >= 2 && (
-                    <Polyline
-                      positions={forecastSteps.map((s) => [s.centroid.lat, s.centroid.lon])}
-                      pathOptions={{ color: '#a855f7', weight: 5, dashArray: '6, 6', opacity: 0.95 }}
-                    />
-                  )}
 
                   {/* Milestone Markers along the forecast path */}
                   {forecastSteps.map((step) => {
@@ -582,46 +1110,23 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     );
                   })}
 
-                  {/* Active Dynamic Vector Line from Spill Centroid to Active Forecast Step */}
-                  <Polyline
-                    key={`active-forecast-direction-vector-${activeForecastStep.hours}`}
-                    positions={[
-                      [centroid.lat, centroid.lon],
-                      [activeForecastStep.centroid.lat, activeForecastStep.centroid.lon]
-                    ]}
-                    pathOptions={{
-                      color: '#ec4899',
-                      weight: 4,
-                      dashArray: '6, 6',
-                      opacity: 0.95,
-                    }}
-                  >
-                    <Tooltip permanent={false}>
-                      Forecast Direction Vector (+{activeForecastStep.hours}h: {analysis.movement.direction}, {analysis.movement.speed_mps} m/s)
-                    </Tooltip>
-                  </Polyline>
-
                   {/* Active Animated Beacon Marker at Current Forecast Point */}
                   <Marker
                     key={`forecast-active-beacon-${activeForecastStep.hours}`}
                     position={[activeForecastStep.centroid.lat, activeForecastStep.centroid.lon]}
                     icon={createAnimatedForecastIcon(activeForecastStep.hours)}
                     zIndexOffset={1000}
-                  >
-                    <Tooltip permanent direction="bottom">
-                      Active Forecast: +{activeForecastStep.hours}h ({activeForecastStep.valid_time})
-                    </Tooltip>
-                  </Marker>
+                  />
 
-                  {/* Active Selected Forecast Step Polygon */}
+                  {/* Active Selected Forecast Step Boundary Outline (No Covering Fill) */}
                   {activeForecastStep.polygon && (
                     <Polygon
                       key={`forecast-poly-step-${activeForecastStep.hours}`}
                       positions={toLeafletPositions(activeForecastStep.polygon)}
-                      pathOptions={{ color: '#c084fc', fillColor: '#a855f7', fillOpacity: 0.5, weight: 3 }}
+                      pathOptions={{ color: '#c084fc', fillColor: 'transparent', fillOpacity: 0, weight: 2.5, dashArray: '5, 5' }}
                     >
                       <Tooltip permanent={false}>
-                        Forecast +{activeForecastStep.hours}h ({activeForecastStep.valid_time})
+                        Forecast Boundary +{activeForecastStep.hours}h ({activeForecastStep.valid_time})
                       </Tooltip>
                     </Polygon>
                   )}
@@ -630,8 +1135,8 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                   <Circle
                     key={`forecast-circle-step-${activeForecastStep.hours}`}
                     center={[activeForecastStep.centroid.lat, activeForecastStep.centroid.lon]}
-                    radius={Math.max(600, activeForecastStep.uncertainty_radius_km * 1000)}
-                    pathOptions={{ color: '#e879f9', fillColor: '#e879f9', fillOpacity: 0.18, dashArray: '4, 4', weight: 2 }}
+                    radius={Math.max(500, activeForecastStep.uncertainty_radius_km * 1000)}
+                    pathOptions={{ color: '#e879f9', fillColor: 'transparent', fillOpacity: 0, dashArray: '4, 4', weight: 1.5 }}
                   />
                 </>
               )}

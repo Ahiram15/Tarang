@@ -6,12 +6,16 @@ interface OceanGlobeProps {
   onSelectIncident: (lat: number, lon: number) => void;
   targetLat?: number;
   targetLon?: number;
+  useLiveSat?: boolean;
+  onToggleLiveSat?: (val: boolean) => void;
 }
 
 export const OceanGlobe: React.FC<OceanGlobeProps> = ({
   onSelectIncident,
   targetLat = -20.438119,
   targetLon = 57.744631,
+  useLiveSat = false,
+  onToggleLiveSat,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -376,6 +380,69 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           Coral reef grounding & oil slick flagged (~28.5 km²). AOI Bounding Box: <b>[-20.38, 57.68 to -20.50, 57.82]</b>.
         </p>
 
+        {/* Data Pipeline Mode Switcher */}
+        <div style={{
+          background: 'rgba(15, 23, 42, 0.7)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '8px',
+          padding: '8px 10px',
+          marginBottom: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Data Source Mode:</span>
+            <span style={{ fontSize: '0.68rem', color: useLiveSat ? '#f59e0b' : '#00f2fe', fontWeight: 700 }}>
+              {useLiveSat ? '🛰️ ESA LIVE' : '⚡ INSTANT BENCHMARK'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleLiveSat?.(false);
+              }}
+              style={{
+                padding: '6px 8px',
+                fontSize: '0.72rem',
+                fontWeight: !useLiveSat ? 800 : 500,
+                color: !useLiveSat ? '#00f2fe' : '#64748b',
+                background: !useLiveSat ? 'rgba(0, 242, 254, 0.18)' : 'rgba(255,255,255,0.03)',
+                border: !useLiveSat ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              ⚡ Fast Instant (~1s)
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleLiveSat?.(true);
+              }}
+              style={{
+                padding: '6px 8px',
+                fontSize: '0.72rem',
+                fontWeight: useLiveSat ? 800 : 500,
+                color: useLiveSat ? '#f59e0b' : '#64748b',
+                background: useLiveSat ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255,255,255,0.03)',
+                border: useLiveSat ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              🛰️ Live ESA API (~15s)
+            </button>
+          </div>
+        </div>
+
         {/* Action Button */}
         <button
           onClick={() => onSelectIncident(targetLat, targetLon)}
@@ -398,7 +465,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
             transition: 'all 0.2s',
           }}
         >
-          <span>🔍 Inspect Satellite Feeds (-20.4381°S, 57.7446°E)</span>
+          <span>🧠 Run AI Detection & Satellite Lab (-20.4381°S, 57.7446°E) →</span>
         </button>
 
         {/* Corridor Legend with Colors */}

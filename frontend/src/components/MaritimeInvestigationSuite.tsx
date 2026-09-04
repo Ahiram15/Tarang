@@ -702,34 +702,34 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
               {/* 1. Multi-Tier Probable Origin Zones */}
               {showOriginZones && (
                 <>
-                  {/* High Probability Zone (1σ Core) */}
+                  {/* High Probability Zone (1σ Core Boundary) */}
                   {originAnalysis.zones.high?.polygon && (
                     <Polygon
                       key="origin-zone-high"
                       positions={toLeafletPositions(originAnalysis.zones.high.polygon)}
-                      pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2 }}
+                      pathOptions={{ color: '#ef4444', fillColor: 'transparent', fillOpacity: 0, weight: 2 }}
                     >
-                      <Tooltip permanent={false}>High Probability Zone (1σ Core): ±{originAnalysis.zones.high.radius_km} km</Tooltip>
+                      <Tooltip permanent={false}>High Probability Zone (1σ Core Boundary): ±{originAnalysis.zones.high.radius_km} km</Tooltip>
                     </Polygon>
                   )}
 
-                  {/* Medium Probability Zone (2σ Region) */}
+                  {/* Medium Probability Zone (2σ Region Boundary) */}
                   {originAnalysis.zones.medium?.polygon && (
                     <Polygon
                       key="origin-zone-med"
                       positions={toLeafletPositions(originAnalysis.zones.medium.polygon)}
-                      pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.12, weight: 1.5, dashArray: '4, 4' }}
+                      pathOptions={{ color: '#f59e0b', fillColor: 'transparent', fillOpacity: 0, weight: 1.5, dashArray: '4, 4' }}
                     >
-                      <Tooltip permanent={false}>Medium Probability Zone (2σ Region): ±{originAnalysis.zones.medium.radius_km} km</Tooltip>
+                      <Tooltip permanent={false}>Medium Probability Zone (2σ Region Boundary): ±{originAnalysis.zones.medium.radius_km} km</Tooltip>
                     </Polygon>
                   )}
 
-                  {/* Low Probability Zone (3σ Boundary) */}
+                  {/* Low Probability Zone (3σ Boundary Outline) */}
                   {originAnalysis.zones.low?.polygon && (
                     <Polygon
                       key="origin-zone-low"
                       positions={toLeafletPositions(originAnalysis.zones.low.polygon)}
-                      pathOptions={{ color: '#94a3b8', fillColor: '#94a3b8', fillOpacity: 0.05, weight: 1, dashArray: '6, 6' }}
+                      pathOptions={{ color: '#94a3b8', fillColor: 'transparent', fillOpacity: 0, weight: 1, dashArray: '6, 6' }}
                     >
                       <Tooltip permanent={false}>Outer Spatial Uncertainty Boundary (3σ): ±{originAnalysis.zones.low.radius_km} km</Tooltip>
                     </Polygon>

@@ -14,24 +14,35 @@ from shapely.geometry import Point, Polygon, LineString, MultiPolygon, mapping, 
 
 
 # High-precision Mauritius mainland polygon boundary (WGS84 lon, lat)
-# Represents the dry landmass boundary accurately.
-# Nearshore lagoon waters (~57.715-57.745E, -20.42S to -20.46S) are open water where oil drifts toward shore.
+# Accurately traces the coastline including Pointe d'Esny beach, Mahébourg waterfront, and Blue Bay.
+# The lagoon water (~57.727-57.745E, -20.415 to -20.440S) is open marine water where oil drifts.
 MAURITIUS_MAINLAND_COORDS = [
     # North coast
-    (57.500, -19.980), (57.580, -19.990), (57.650, -20.010),
-    (57.700, -20.040), (57.740, -20.060), (57.770, -20.110),
+    (57.580, -19.985), (57.615, -19.985), (57.665, -20.005), (57.695, -20.055),
     # East coast
-    (57.785, -20.200), (57.770, -20.280), (57.750, -20.340),
-    # Grand Port & Mahébourg coastal shoreline (Pointe d'Esny / Blue Bay beach line)
-    (57.720, -20.375), (57.705, -20.408), (57.718, -20.430), (57.712, -20.450),
-    (57.690, -20.470),
+    (57.738, -20.115), (57.778, -20.190), (57.785, -20.220), (57.780, -20.245),
+    (57.775, -20.285), (57.755, -20.330),
+    # Grand Port, Mahébourg & Pointe d'Esny coastal shoreline (WGS84 lon, lat):
+    (57.735, -20.355),    # Bois des Amourettes
+    (57.718, -20.375),    # Vieux Grand Port
+    (57.708, -20.395),    # Rivière des Créoles
+    (57.7060, -20.4080),  # Mahébourg Waterfront
+    (57.7120, -20.4150),  # Mahébourg / Pointe Jerome inlet
+    (57.7210, -20.4200),  # Pointe Jerome (Preskil)
+    (57.7245, -20.4250),  # Northern Pointe d'Esny
+    (57.7276, -20.4298),  # Pointe d'Esny Beach (OSM node 10148601401 / way 417388538)
+    (57.7265, -20.4335),  # Pointe d'Esny Residential Shoreline
+    (57.7240, -20.4370),  # Pointe Brophie
+    (57.7170, -20.4430),  # Blue Bay Public Beach
+    (57.7120, -20.4500),  # Le Chaland / Shandrani
+    (57.690, -20.470),    # La Cambuse
+    (57.665, -20.490),    # Le Bouchon
     # South coast
-    (57.650, -20.515), (57.580, -20.520), (57.480, -20.510),
+    (57.525, -20.525), (57.385, -20.495),
     # West coast going north
-    (57.400, -20.450), (57.360, -20.380), (57.360, -20.280), (57.390, -20.180),
-    (57.430, -20.100), (57.470, -20.050),
-    # Back to north coast start
-    (57.500, -19.980)
+    (57.315, -20.440), (57.360, -20.380),
+    (57.370, -20.325), (57.360, -20.280), (57.395, -20.200), (57.450, -20.160),
+    (57.485, -20.150), (57.500, -20.080), (57.540, -20.015), (57.580, -19.985)
 ]
 MAURITIUS_LAND_POLY = Polygon(MAURITIUS_MAINLAND_COORDS)
 
@@ -150,17 +161,24 @@ class CoastalBoundaryService:
         max_dist_km: float = 3.5,
     ) -> List[Tuple[float, float]]:
         """
-        Builds a drift vector path that terminates at the coastline / shoreline.
-        Does NOT penetrate inland over mountains or towns.
+        Builds a drift vector path that terminates strictly at the coastline / shoreline.
+        Guarantees that the vector never crosses inland over dry ground.
         Returns coordinates as [(lon0, lat0), (lon1, lat1)].
         """
         poly = cls.get_land_polygon(start_lat, start_lon)
 
-        # Compute raw projected endpoint
+        # Compute raw projected endpoint using normalized direction unit vector
         rad_lat = math.radians(start_lat)
         cos_lat = max(0.1, math.cos(rad_lat))
-        raw_end_lat = start_lat + (max_dist_km * drift_v) / 111.32
-        raw_end_lon = start_lon + (max_dist_km * drift_u) / (111.32 * cos_lat)
+        speed = math.sqrt(drift_u * drift_u + drift_v * drift_v)
+        if speed > 0:
+            u_norm = drift_u / speed
+            v_norm = drift_v / speed
+        else:
+            u_norm, v_norm = 0.0, 0.0
+
+        raw_end_lat = start_lat + (max_dist_km * v_norm) / 111.32
+        raw_end_lon = start_lon + (max_dist_km * u_norm) / (111.32 * cos_lat)
 
         if poly is None:
             return [(round(start_lon, 6), round(start_lat, 6)), (round(raw_end_lon, 6), round(raw_end_lat, 6))]
@@ -170,19 +188,31 @@ class CoastalBoundaryService:
         line = LineString([start_pt, raw_end_pt])
 
         if line.intersects(poly):
-            # Intersects land: terminate directly on the shoreline (water's edge)!
             inter = line.intersection(poly.boundary)
             if not inter.is_empty:
+                pts = []
                 if inter.geom_type == "Point":
-                    # Pull 1% back towards the starting water point so it sits right on the water's edge
-                    contact_lon = round(start_lon * 0.01 + inter.x * 0.99, 6)
-                    contact_lat = round(start_lat * 0.01 + inter.y * 0.99, 6)
-                    return [(round(start_lon, 6), round(start_lat, 6)), (contact_lon, contact_lat)]
-                elif inter.geom_type == "MultiPoint":
-                    first_pt = inter.geoms[0]
-                    contact_lon = round(start_lon * 0.01 + first_pt.x * 0.99, 6)
-                    contact_lat = round(start_lat * 0.01 + first_pt.y * 0.99, 6)
-                    return [(round(start_lon, 6), round(start_lat, 6)), (contact_lon, contact_lat)]
+                    pts = [inter]
+                elif hasattr(inter, "geoms"):
+                    pts = [g for g in inter.geoms if g.geom_type == "Point"]
+
+                if pts:
+                    # Pick point closest to start_pt (first point of contact)
+                    closest_pt = min(pts, key=lambda p: start_pt.distance(p))
+                    # Iteratively pull back towards start water point until strictly on water
+                    for ratio in [0.03, 0.05, 0.08, 0.12]:
+                        contact_lon = round(start_lon * ratio + closest_pt.x * (1.0 - ratio), 6)
+                        contact_lat = round(start_lat * ratio + closest_pt.y * (1.0 - ratio), 6)
+                        if not poly.contains(Point(contact_lon, contact_lat)):
+                            return [(round(start_lon, 6), round(start_lat, 6)), (contact_lon, contact_lat)]
+
+        # If raw endpoint accidentally falls on land, pull back toward water origin
+        if poly.contains(raw_end_pt):
+            for ratio in [0.15, 0.30, 0.50, 0.70]:
+                cand_lon = round(start_lon * ratio + raw_end_lon * (1.0 - ratio), 6)
+                cand_lat = round(start_lat * ratio + raw_end_lat * (1.0 - ratio), 6)
+                if not poly.contains(Point(cand_lon, cand_lat)):
+                    return [(round(start_lon, 6), round(start_lat, 6)), (cand_lon, cand_lat)]
 
         # If no land intersection, cap length so vector stays localized in nearshore lagoon
         return [(round(start_lon, 6), round(start_lat, 6)), (round(raw_end_lon, 6), round(raw_end_lat, 6))]

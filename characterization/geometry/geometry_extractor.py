@@ -53,8 +53,8 @@ class GeometryExtractor:
 
         h, w = binary_mask.shape[:2]
 
-        # Approximate polygon boundary
-        approx_poly = cv2.approxPolyDP(main_contour, epsilon=1.5, closed=True)
+        # Approximate polygon boundary with smooth, high-fidelity contour resolution
+        approx_poly = cv2.approxPolyDP(main_contour, epsilon=0.8, closed=True)
         if len(approx_poly) < 3:
             return None
 

@@ -790,3 +790,72 @@ body {
   background: transparent !important;
   border: none !important;
 }
+
+/* 🌊 Animated Trajectory Ocean Wind Waves */
+.custom-wind-wave-icon {
+  background: transparent !important;
+  border: none !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+@keyframes trajectoryWaveSurge {
+  0% {
+    transform: translateX(-14px) scale(0.85);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.95;
+  }
+  65% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(18px) scale(1.12);
+    opacity: 0;
+  }
+}
+
+.trajectory-wave-crest {
+  animation: trajectoryWaveSurge 2.2s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.85)) drop-shadow(0 0 10px rgba(0, 242, 254, 0.5));
+  pointer-events: none;
+  transform-origin: center center;
+}
+
+/* 🛢️ Dynamic Drifting Oil Slick Shimmer */
+@keyframes slickDriftGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.85)) drop-shadow(0 0 12px rgba(239, 68, 68, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(239, 68, 68, 1)) drop-shadow(0 0 24px rgba(244, 63, 94, 0.65));
+  }
+}
+
+.slick-drifting-boundary {
+  animation: slickDriftGlow 2.5s infinite ease-in-out;
+}
+
+/* Map Action Buttons */
+.map-hud-btn {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.map-hud-btn:hover {
+  background: rgba(0, 242, 254, 0.2);
+  border-color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+}

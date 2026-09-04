@@ -117,13 +117,13 @@ class SpillAnalysis:
         c_lat = centroid["lat"] if isinstance(centroid, dict) else centroid.lat
         c_lon = centroid["lon"] if isinstance(centroid, dict) else centroid.lon
 
-        # Visual arrow length: projected up to 25 km or until shoreline contact
+        # Visual arrow length: projected across the marine lagoon (~3.2 km) until shoreline contact
         clamped_pts = CoastalBoundaryService.clip_drift_vector(
             start_lat=c_lat,
             start_lon=c_lon,
             drift_u=self.movement.u_oil_mps,
             drift_v=self.movement.v_oil_mps,
-            max_dist_km=25.0,
+            max_dist_km=3.2,
         )
         # clamped_pts is [(lon0, lat0), (lon1, lat1)] — convert to [[lat, lon], ...] for Leaflet
         return [[pt[1], pt[0]] for pt in clamped_pts]

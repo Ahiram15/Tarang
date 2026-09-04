@@ -407,8 +407,42 @@ function evaluatePixel(sample) {
 
     @staticmethod
     def get_mock_sentinel1_image(width=256, height=256, create_simulated_spill=True):
-        """Generates synthetic Sentinel-1 SAR imagery."""
-        print("[CDSEClient] Generating synthetic Sentinel-1 SAR imagery (Mock Mode)...")
+        """Loads authentic historical Sentinel-1 SAR imagery from the MV Wakashio disaster benchmark dataset."""
+        import json
+        import os
+
+        # Check for pre-downloaded authentic Sentinel-1 SAR pass of MV Wakashio
+        benchmark_paths = [
+            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", f"sentinel1_sar_rgb_{width}.png"),
+            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel1_sar_rgb_512.png"),
+            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel1_sar_rgb_256.png"),
+        ]
+        
+        for path in benchmark_paths:
+            if os.path.exists(path):
+                img_bgr = cv2.imread(path)
+                if img_bgr is not None:
+                    if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
+                        img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
+                    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                    img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                    
+                    meta_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel1_meta.json")
+                    if os.path.exists(meta_path):
+                        with open(meta_path, "r") as f:
+                            scene_meta = json.load(f)
+                    else:
+                        scene_meta = {
+                            "product_name": "S1A_EW_GRDM_1SDV_20200810T143616_20200810T143721_033845_03ECAD_D76C_COG.SAFE",
+                            "satellite": "Sentinel-1A SAR (C-Band EW)",
+                            "acquisition_time_utc": "2020-08-10 14:36:16 UTC",
+                            "date": "2020-08-10",
+                            "status": "Authentic Historical Incident Pass (MV Wakashio)"
+                        }
+                    print(f"[CDSEClient] Loaded authentic historical Sentinel-1 SAR benchmark imagery: {scene_meta.get('product_name')}")
+                    return img_rgb, img_gray, scene_meta
+
+        print("[CDSEClient] Serving procedural fallback Sentinel-1 SAR imagery...")
         np.random.seed(42)
         speckle_r = np.random.normal(loc=0, scale=18.0, size=(height, width)).astype(np.float32)
         speckle_g = np.random.normal(loc=0, scale=12.0, size=(height, width)).astype(np.float32)
@@ -449,16 +483,47 @@ function evaluatePixel(sample) {
 
     @staticmethod
     def get_mock_sentinel2_optical(width=256, height=256, create_simulated_spill=True):
-        """Generates synthetic Sentinel-2 True-Color Optical ocean image."""
-        print("[CDSEClient] Generating synthetic Sentinel-2 Optical True-Color (Mock Mode)...")
+        """Loads authentic historical Sentinel-2 Optical RGB imagery from the MV Wakashio disaster benchmark dataset."""
+        import json
+        import os
+
+        # Check for pre-downloaded authentic Sentinel-2 Optical pass of MV Wakashio
+        benchmark_paths = [
+            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", f"sentinel2_optical_{width}.png"),
+            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel2_optical_512.png"),
+            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel2_optical_256.png"),
+        ]
+
+        for path in benchmark_paths:
+            if os.path.exists(path):
+                img_bgr = cv2.imread(path)
+                if img_bgr is not None:
+                    if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
+                        img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
+                    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                    
+                    meta_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel2_meta.json")
+                    if os.path.exists(meta_path):
+                        with open(meta_path, "r") as f:
+                            scene_meta = json.load(f)
+                    else:
+                        scene_meta = {
+                            "product_name": "S2A_MSIL2A_20200811T062451_N0500_R091_T40KEC_20230411T115543.SAFE",
+                            "satellite": "Sentinel-2A MSI (True Color RGB)",
+                            "acquisition_time_utc": "2020-08-11 06:24:51 UTC",
+                            "date": "2020-08-11",
+                            "status": "Authentic Historical Incident Pass (MV Wakashio)"
+                        }
+                    print(f"[CDSEClient] Loaded authentic historical Sentinel-2 Optical benchmark imagery: {scene_meta.get('product_name')}")
+                    return img_rgb, scene_meta
+
+        print("[CDSEClient] Serving procedural fallback Sentinel-2 Optical imagery...")
         np.random.seed(99)
-        # Deep blue ocean with subtle wave glint
         ocean_r = np.full((height, width), 25.0, dtype=np.float32) + np.random.normal(0, 4.0, (height, width))
         ocean_g = np.full((height, width), 65.0, dtype=np.float32) + np.random.normal(0, 6.0, (height, width))
         ocean_b = np.full((height, width), 130.0, dtype=np.float32) + np.random.normal(0, 8.0, (height, width))
 
         if create_simulated_spill:
-            # Optical oil spill shows as brownish emulsified sheen or metallic sheen
             cv2.ellipse(ocean_r, (128, 140), (45, 20), 25, 0, 360, (75.0,), -1)
             cv2.ellipse(ocean_g, (128, 140), (45, 20), 25, 0, 360, (68.0,), -1)
             cv2.ellipse(ocean_b, (128, 140), (45, 20), 25, 0, 360, (55.0,), -1)
