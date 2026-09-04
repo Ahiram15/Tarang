@@ -15,7 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({ status, loading }) => {
           <Satellite size={24} color="#00f2fe" />
         </div>
         <div>
-          <h1 className="brand-title">TARANG • Oil Spill Early Warning System</h1>
+          <h1 className="brand-title">Spill Trace • Oil Spill Early Warning System</h1>
           <p className="brand-subtitle">
             Autonomous Sentinel-1 SAR & Sentinel-2 Optical Deep Learning Marine Surveillance
           </p>

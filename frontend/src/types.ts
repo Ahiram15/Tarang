@@ -378,3 +378,32 @@ export interface InvestigationPriorityReport {
   coastal_warning: CoastalRiskAnalysis;
   markdown_content: string;
 }
+
+export interface EmailDispatchRequest {
+  recipients: string[];
+  subject: string;
+  message: string;
+  include_pdf: boolean;
+  agency_notes?: string;
+  urgency_level?: 'CRITICAL' | 'HIGH' | 'TACTICAL';
+}
+
+export interface EmailDispatchResponse {
+  status: string;
+  tracking_id: string;
+  timestamp: string;
+  recipients: string[];
+  subject: string;
+  pdf_attached: boolean;
+  mode: 'smtp' | 'simulated';
+  urgency_level: string;
+  smtp_error?: string | null;
+  message: string;
+  delivery_details?: {
+    agencies_notified: string[];
+    pdf_filename?: string | null;
+    pdf_size_bytes?: number;
+    spill_id: string;
+  };
+}
+

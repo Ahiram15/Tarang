@@ -6,7 +6,9 @@ import {
   InvestigationPriorityReport, 
   CandidateVessel, 
   CoastalAlert, 
-  CoastalReceptor 
+  CoastalReceptor,
+  EmailDispatchRequest,
+  EmailDispatchResponse
 } from '../types';
 import { 
   ArrowLeft, 
@@ -31,8 +33,67 @@ import {
   Waves,
   Eye,
   Crosshair,
-  Loader2
+  Loader2,
+  Mail,
+  Send,
+  Copy,
+  Check,
+  Users,
+  X,
+  AlertCircle
 } from 'lucide-react';
+
+interface CoastalAgencyContact {
+  id: string;
+  name: string;
+  agency: string;
+  email: string;
+  role: string;
+  phone: string;
+}
+
+export const COASTAL_OFFICERS_DIRECTORY: CoastalAgencyContact[] = [
+  {
+    id: 'ncg_ops',
+    name: 'National Coast Guard Ops Command',
+    agency: 'Mauritius Police & Coast Guard HQ',
+    email: 'ncg.ops@coastguard.gov.mu',
+    role: 'Lead Tactical Vessel Interception & Sea Patrol',
+    phone: '+230 208 1212',
+  },
+  {
+    id: 'port_captain',
+    name: 'Port State Control & Port Captain',
+    agency: 'Mauritius Ports Authority (MPA)',
+    email: 'portcaptain@portsauthority.mu',
+    role: 'Harbour Navigation & Vessel Detention Orders',
+    phone: '+230 206 5400',
+  },
+  {
+    id: 'blue_economy',
+    name: 'Ministry of Blue Economy & Fisheries',
+    agency: 'Fisheries Protection & Marine Resources',
+    email: 'spill-response@blueeconomy.gov.mu',
+    role: 'Fisheries Exclusion Zone & Marine Reserve Defense',
+    phone: '+230 211 2470',
+  },
+  {
+    id: 'mpa_warden',
+    name: 'Blue Bay Marine Park Ranger Station',
+    agency: 'National Parks & Conservation Service (NPCS)',
+    email: 'bluebay.warden@wildlife.mu',
+    role: 'Lagoon Containment Booms & Coral Reef Protection',
+    phone: '+230 631 8974',
+  },
+  {
+    id: 'dept_env',
+    name: 'Dept of Environment Emergency Desk',
+    agency: 'Ministry of Environment & Climate Emergency',
+    email: 'env.emergency@govmu.org',
+    role: 'National Oil Spill Contingency Plan (NOSCP) Lead',
+    phone: '+230 203 6200',
+  },
+];
 
 interface MaritimeInvestigationSuiteProps {
   analysis: SpillAnalysis;
@@ -394,6 +455,199 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
     document.body.removeChild(element);
   };
 
+  // Email Coastal Officers Modal states
+  const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
+  const [selectedAgencyIds, setSelectedAgencyIds] = useState<string[]>([
+    'ncg_ops',
+    'port_captain',
+    'blue_economy',
+  ]);
+  const [customEmails, setCustomEmails] = useState<string[]>([]);
+  const [customEmailInput, setCustomEmailInput] = useState<string>('');
+  const [urgencyLevel, setUrgencyLevel] = useState<'CRITICAL' | 'HIGH' | 'TACTICAL'>('CRITICAL');
+  const [emailSubject, setEmailSubject] = useState<string>('');
+  const [emailMessage, setEmailMessage] = useState<string>('');
+  const [attachPdf, setAttachPdf] = useState<boolean>(true);
+  const [isDispatching, setIsDispatching] = useState<boolean>(false);
+  const [dispatchResult, setDispatchResult] = useState<EmailDispatchResponse | null>(null);
+  const [dispatchError, setDispatchError] = useState<string | null>(null);
+  const [copiedToast, setCopiedToast] = useState<boolean>(false);
+
+  const getAllRecipients = () => {
+    const agencyEmails = COASTAL_OFFICERS_DIRECTORY
+      .filter((a) => selectedAgencyIds.includes(a.id))
+      .map((a) => a.email);
+    return Array.from(new Set([...agencyEmails, ...customEmails]));
+  };
+
+  const initEmailDraft = (urgency: 'CRITICAL' | 'HIGH' | 'TACTICAL' = urgencyLevel) => {
+    const spillCode = analysis.spill_id.toUpperCase();
+    const riskLevel = coastalWarning.overall_risk_level;
+    const defaultSubj = `[${urgency} ADVISORY] Oil Spill Alert: ${spillCode} - Coastal Landfall Warning (${riskLevel} Risk)`;
+
+    const earliestAlert = coastalWarning.alerts[0];
+    const topVessel = vesselInv.candidates[0];
+    const earliestEta = earliestAlert
+      ? `${earliestAlert.eta_label} (${earliestAlert.location_name})`
+      : 'Under 6 Hours';
+
+    const defaultBody = `======================================================================
+URGENT COASTAL EARLY WARNING & MARITIME ADVISORY DISPATCH
+======================================================================
+ATTENTION: Coastal Officers, Port State Control, and Marine Incident Command
+ISSUING SYSTEM: Global Multi-Satellite Oil Spill Early Warning System (SAR / CDSE)
+INCIDENT IDENTIFIER: ${spillCode}
+DATE OF TRANSMISSION: ${new Date().toUTCString()}
+CLASSIFICATION LEVEL: ${urgency} PRIORITY / COASTAL EMERGENCY
+
+1. INCIDENT OBSERVATION & SLICK CHARACTERIZATION:
+   • Mission / Incident ID: ${analysis.spill_id}
+   • Satellite Scene Acquisition: ${analysis.timestamp}
+   • Slick Centroid Coordinates: ${analysis.geometry.centroid.lat.toFixed(6)}° N, ${analysis.geometry.centroid.lon.toFixed(6)}° E
+   • Total Detected Surface Area: ${analysis.geometry.area_km2.toFixed(2)} km² (~${(analysis.geometry.area_km2 * 100).toFixed(0)} hectares)
+   • Spill Severity Category: ${analysis.severity.class}
+   • Current Drift Velocity: ${analysis.movement.speed_knots.toFixed(2)} knots (${analysis.movement.speed_kmh.toFixed(2)} km/h)
+   • Drift Heading: ${analysis.movement.direction} (${analysis.movement.direction_deg.toFixed(1)}°)
+
+2. COASTAL IMPACT ASSESSMENT & RECEPTORS AT RISK:
+   • Overall Coastal Threat Level: ${riskLevel}
+   • Earliest Projected Landfall: ${earliestEta}
+${coastalWarning.alerts
+  .map(
+    (a) =>
+      `   - Receptor: ${a.location_name} [${a.risk_level} RISK]\n     ETA Window: ${a.eta_label} | Impact Probability: ${a.impact_probability_pct}%\n     Threat Assessment: ${a.potential_threat}\n     Tactical Containment Action: ${a.recommended_actions[0] || 'Deploy defensive booms'}`
+  )
+  .join('\n\n')}
+
+3. SUSPECT VESSEL INVESTIGATION INTELLIGENCE:
+   • Primary Candidate (Rank #1): ${topVessel ? topVessel.name : 'Unknown Target'}
+   • Total Multi-Factor Evidence Score: ${topVessel ? topVessel.total_score.toFixed(1) : 'N/A'}/100
+   • MMSI: ${topVessel?.mmsi || 'N/A'} | Flag: ${topVessel?.flag || 'Unknown'} | Type: ${topVessel?.vessel_type || 'Bulk Carrier'}
+   • AIS Anomaly Status: ${
+     topVessel?.ais_gaps && topVessel.ais_gaps.length > 0
+       ? `WARNING: ${topVessel.ais_gaps.length} intentional/unexplained AIS gap(s) recorded in probable origin zone`
+       : 'Normal AIS transmission'
+   }
+${
+  topVessel?.explainability_reasons
+    ? `   • Corroborating Forensic Evidence:\n${topVessel.explainability_reasons
+        .slice(0, 3)
+        .map((r) => `     - ${r}`)
+        .join('\n')}`
+    : ''
+}
+
+4. IMMEDIATE COMMAND ACTIONS REQUESTED:
+   [ ] 1. Deploy floating containment booms around Blue Bay Marine Park and sensitive lagoons.
+   [ ] 2. Issue VHF hazard broadcast to all commercial and artisanal vessels in sector.
+   [ ] 3. Dispatch National Coast Guard patrol cutter for on-scene verification & intercept.
+   [ ] 4. Direct Port Captaincy to issue formal inspection and detention query for suspect vessel.
+
+Attached: Official PDF Investigation Priority Report (${investigationReport.report_id}.pdf)
+
+======================================================================
+Generated automatically by Spill Trace Early Warning Command
+Reference ID: ${investigationReport.report_id}
+======================================================================`;
+
+    setEmailSubject(defaultSubj);
+    setEmailMessage(defaultBody);
+  };
+
+  const handleOpenEmailModal = () => {
+    initEmailDraft(urgencyLevel);
+    setDispatchResult(null);
+    setDispatchError(null);
+    setShowEmailModal(true);
+  };
+
+  const handleToggleAgency = (agencyId: string) => {
+    setSelectedAgencyIds((prev) =>
+      prev.includes(agencyId) ? prev.filter((id) => id !== agencyId) : [...prev, agencyId]
+    );
+  };
+
+  const handleAddCustomEmail = () => {
+    const trimmed = customEmailInput.trim().toLowerCase();
+    if (!trimmed) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      alert('Please enter a valid email address (e.g. officer@maritime.org)');
+      return;
+    }
+    if (!customEmails.includes(trimmed)) {
+      setCustomEmails([...customEmails, trimmed]);
+    }
+    setCustomEmailInput('');
+  };
+
+  const handleRemoveCustomEmail = (emailToRemove: string) => {
+    setCustomEmails((prev) => prev.filter((e) => e !== emailToRemove));
+  };
+
+  const handleUrgencyChange = (newUrgency: 'CRITICAL' | 'HIGH' | 'TACTICAL') => {
+    setUrgencyLevel(newUrgency);
+    const spillCode = analysis.spill_id.toUpperCase();
+    const riskLevel = coastalWarning.overall_risk_level;
+    setEmailSubject(`[${newUrgency} ADVISORY] Oil Spill Alert: ${spillCode} - Coastal Landfall Warning (${riskLevel} Risk)`);
+  };
+
+  const handleOpenMailto = () => {
+    const recipients = getAllRecipients();
+    if (recipients.length === 0) {
+      alert('Please select or specify at least one coastal officer recipient address.');
+      return;
+    }
+    const to = recipients.join(',');
+    const encodedSubject = encodeURIComponent(emailSubject);
+    const encodedBody = encodeURIComponent(emailMessage);
+    window.open(`mailto:${to}?subject=${encodedSubject}&body=${encodedBody}`, '_blank');
+  };
+
+  const handleDispatchEmail = async () => {
+    const recipients = getAllRecipients();
+    if (recipients.length === 0) {
+      alert('Please select or specify at least one coastal officer recipient address.');
+      return;
+    }
+    try {
+      setIsDispatching(true);
+      setDispatchError(null);
+      const res = await fetch(`/api/spill/${analysis.spill_id}/dispatch-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipients,
+          subject: emailSubject,
+          message: emailMessage,
+          include_pdf: attachPdf,
+          urgency_level: urgencyLevel,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.detail || `Transmission failed (${res.status} ${res.statusText})`);
+      }
+      const data: EmailDispatchResponse = await res.json();
+      setDispatchResult(data);
+    } catch (err: any) {
+      console.error('Email dispatch error:', err);
+      setDispatchError(err.message || 'Transmission error. Please verify backend connection.');
+    } finally {
+      setIsDispatching(false);
+    }
+  };
+
+  const handleCopyDraft = async () => {
+    try {
+      await navigator.clipboard.writeText(emailMessage);
+      setCopiedToast(true);
+      setTimeout(() => setCopiedToast(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  };
+
   return (
     <div style={{
       width: '100%',
@@ -455,6 +709,40 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
 
         {/* Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            id="btn-email-coastal-officers"
+            onClick={handleOpenEmailModal}
+            style={{
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(245, 158, 11, 0.25) 100%)',
+              border: '1px solid #ef4444',
+              color: '#fca5a5',
+              borderRadius: '8px',
+              padding: '6px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Mail size={15} color="#ef4444" />
+            <span style={{ color: '#ffffff' }}>Email Coastal Officers</span>
+            <span style={{
+              background: '#ef4444',
+              color: '#ffffff',
+              fontSize: '0.62rem',
+              fontWeight: 900,
+              padding: '1px 5px',
+              borderRadius: '6px',
+              letterSpacing: '0.4px',
+            }}>
+              ALERT
+            </span>
+          </button>
+
           <button
             onClick={() => setShowReportModal(true)}
             style={{
@@ -1216,9 +1504,31 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
                 marginBottom: '12px',
                 fontSize: '0.74rem',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: coastalWarning.overall_risk_level === 'HIGH' ? '#ef4444' : '#eab308', marginBottom: '4px' }}>
-                  <ShieldAlert size={16} />
-                  <span>EMERGENCY COASTAL DRIFT ADVISORY</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: coastalWarning.overall_risk_level === 'HIGH' ? '#ef4444' : '#eab308' }}>
+                    <ShieldAlert size={16} />
+                    <span>EMERGENCY COASTAL DRIFT ADVISORY</span>
+                  </div>
+                  <button
+                    onClick={handleOpenEmailModal}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      border: 'none',
+                      color: '#ffffff',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '0.70rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      boxShadow: '0 0 10px rgba(239, 68, 68, 0.4)',
+                    }}
+                  >
+                    <Mail size={12} />
+                    <span>Email Coastal Officers</span>
+                  </button>
                 </div>
                 <div style={{ color: '#e2e8f0' }}>
                   {coastalWarning.summary}
@@ -1409,6 +1719,28 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
                 <span>{isExportingPdf ? 'Generating PDF...' : 'Export Official PDF'}</span>
               </button>
               <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  handleOpenEmailModal();
+                }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid #ef4444',
+                  color: '#fca5a5',
+                  borderRadius: '6px',
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Mail size={14} color="#ef4444" />
+                <span>Email Coastal Officers</span>
+              </button>
+              <button
                 onClick={handleDownloadReport}
                 style={{
                   background: 'rgba(255,255,255,0.08)',
@@ -1443,6 +1775,688 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Email Coastal Officers & Maritime Authorities Dispatch Center */}
+      {showEmailModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.88)',
+          backdropFilter: 'blur(10px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          boxSizing: 'border-box',
+        }}>
+          <div style={{
+            background: '#070c18',
+            border: '1px solid rgba(239, 68, 68, 0.5)',
+            borderRadius: '14px',
+            width: '880px',
+            maxWidth: '96vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 0 50px rgba(239, 68, 68, 0.25)',
+            overflow: 'hidden',
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '14px 20px',
+              borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'rgba(15, 23, 42, 0.9)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Mail size={18} color="#ef4444" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.98rem', color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>Emergency Coastal Advisory Dispatch Gateway</span>
+                    <span style={{
+                      background: 'rgba(239, 68, 68, 0.2)',
+                      border: '1px solid #ef4444',
+                      color: '#f87171',
+                      fontSize: '0.62rem',
+                      fontWeight: 900,
+                      padding: '1px 6px',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                    }}>
+                      Official Channel
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '1px' }}>
+                    Sector Incident: {analysis.spill_id.toUpperCase()} • Direct transmission to Maritime Authorities & Coastal Command
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#94a3b8',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{
+              flex: 1,
+              padding: '20px',
+              overflowY: 'auto',
+              background: '#040711',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}>
+              {/* SUCCESS CONFIRMATION RECEIPT (when dispatchResult != null) */}
+              {dispatchResult ? (
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.08)',
+                  border: '1px solid #22c55e',
+                  borderRadius: '10px',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <CheckCircle2 size={32} color="#22c55e" />
+                    <div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#22c55e' }}>
+                        Advisory Dispatched & Recorded Successfully
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '2px' }}>
+                        {dispatchResult.message}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transmission Telemetry Card */}
+                  <div style={{
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    padding: '14px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px',
+                    fontSize: '0.74rem',
+                  }}>
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>TRACKING REFERENCE ID</div>
+                      <div style={{ color: '#00f2fe', fontFamily: 'monospace', fontWeight: 800, fontSize: '0.85rem', marginTop: '2px' }}>
+                        {dispatchResult.tracking_id}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>TRANSMISSION TIMESTAMP</div>
+                      <div style={{ color: '#f1f5f9', fontWeight: 700, marginTop: '2px' }}>
+                        {dispatchResult.timestamp}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>GATEWAY DISPATCH MODE</div>
+                      <div style={{ color: dispatchResult.mode === 'smtp' ? '#22c55e' : '#eab308', fontWeight: 700, marginTop: '2px' }}>
+                        {dispatchResult.mode === 'smtp' ? '✓ Live Authenticated SMTP Gateway' : '⚡ Simulated SAR Emergency Broadcast Network'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>OFFICIAL PDF ATTACHMENT</div>
+                      <div style={{ color: dispatchResult.pdf_attached ? '#38bdf8' : '#94a3b8', fontWeight: 700, marginTop: '2px' }}>
+                        {dispatchResult.pdf_attached
+                          ? `✓ Attached (${investigationReport.report_id}.pdf)`
+                          : 'None'}
+                      </div>
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <div style={{ color: '#64748b', fontSize: '0.68rem', fontWeight: 700, marginBottom: '6px' }}>
+                        CONFIRMED NOTIFIED RECIPIENT AGENCIES ({dispatchResult.recipients.length})
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {dispatchResult.recipients.map((rec, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              background: 'rgba(34, 197, 94, 0.15)',
+                              border: '1px solid rgba(34, 197, 94, 0.4)',
+                              color: '#86efac',
+                              fontSize: '0.70rem',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontFamily: 'monospace',
+                            }}
+                          >
+                            <Check size={11} color="#22c55e" />
+                            <span>{rec}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                    <button
+                      onClick={handleOpenMailto}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: '#f1f5f9',
+                        borderRadius: '6px',
+                        padding: '6px 14px',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <ExternalLink size={13} />
+                      <span>Open in Email App (Backup)</span>
+                    </button>
+
+                    <button
+                      onClick={() => setDispatchResult(null)}
+                      style={{
+                        background: 'rgba(0, 242, 254, 0.15)',
+                        border: '1px solid #00f2fe',
+                        color: '#00f2fe',
+                        borderRadius: '6px',
+                        padding: '6px 14px',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Prepare Another Advisory
+                    </button>
+
+                    <button
+                      onClick={() => setShowEmailModal(false)}
+                      style={{
+                        background: '#22c55e',
+                        border: 'none',
+                        color: '#030712',
+                        borderRadius: '6px',
+                        padding: '6px 18px',
+                        fontSize: '0.76rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Done / Close
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* DISPATCH CONFIGURATION & DRAFTING VIEW */
+                <>
+                  {/* Error Notification */}
+                  {dispatchError && (
+                    <div style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid #ef4444',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      fontSize: '0.75rem',
+                      color: '#fca5a5',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}>
+                      <AlertCircle size={16} color="#ef4444" />
+                      <span>{dispatchError}</span>
+                    </div>
+                  )}
+
+                  {/* Section 1: Target Coastal Officers Directory */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Users size={14} color="#00f2fe" />
+                        <span>SELECT COASTAL OFFICERS & AGENCIES TO NOTIFY:</span>
+                      </div>
+                      <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                        {getAllRecipients().length} recipient(s) selected
+                      </span>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                      gap: '8px',
+                      marginBottom: '10px',
+                    }}>
+                      {COASTAL_OFFICERS_DIRECTORY.map((contact) => {
+                        const isSelected = selectedAgencyIds.includes(contact.id);
+                        return (
+                          <div
+                            key={contact.id}
+                            onClick={() => handleToggleAgency(contact.id)}
+                            style={{
+                              background: isSelected ? 'rgba(0, 242, 254, 0.12)' : 'rgba(15, 23, 42, 0.6)',
+                              border: isSelected ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.08)',
+                              borderRadius: '8px',
+                              padding: '8px 10px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '8px',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}} // Handled by parent div
+                              style={{ marginTop: '3px', cursor: 'pointer', accentColor: '#00f2fe' }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.74rem', fontWeight: 800, color: isSelected ? '#00f2fe' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {contact.name}
+                              </div>
+                              <div style={{ fontSize: '0.65rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {contact.agency}
+                              </div>
+                              <div style={{ fontSize: '0.65rem', color: '#64748b', fontFamily: 'monospace', marginTop: '2px' }}>
+                                {contact.email}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Email Input */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="email"
+                        value={customEmailInput}
+                        onChange={(e) => setCustomEmailInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomEmail();
+                          }
+                        }}
+                        placeholder="Add custom coastal officer email (e.g. duty.officer@coastguard.gov)..."
+                        style={{
+                          flex: 1,
+                          background: 'rgba(15, 23, 42, 0.8)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          color: '#f1f5f9',
+                          fontSize: '0.74rem',
+                          outline: 'none',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomEmail}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: '#f1f5f9',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        + Add Recipient
+                      </button>
+                    </div>
+
+                    {/* Custom Recipient Chips */}
+                    {customEmails.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        {customEmails.map((email) => (
+                          <div
+                            key={email}
+                            style={{
+                              background: 'rgba(56, 189, 248, 0.15)',
+                              border: '1px solid #38bdf8',
+                              color: '#38bdf8',
+                              fontSize: '0.68rem',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              fontFamily: 'monospace',
+                            }}
+                          >
+                            <span>{email}</span>
+                            <button
+                              onClick={() => handleRemoveCustomEmail(email)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#38bdf8',
+                                cursor: 'pointer',
+                                padding: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section 2: Urgency Classification & Subject */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f1f5f9' }}>
+                        URGENCY CLASSIFICATION:
+                      </label>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleUrgencyChange('CRITICAL')}
+                          style={{
+                            background: urgencyLevel === 'CRITICAL' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.05)',
+                            border: urgencyLevel === 'CRITICAL' ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                            color: urgencyLevel === 'CRITICAL' ? '#ef4444' : '#94a3b8',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          CRITICAL (Landfall &lt; 6h)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUrgencyChange('HIGH')}
+                          style={{
+                            background: urgencyLevel === 'HIGH' ? 'rgba(234, 179, 8, 0.25)' : 'rgba(255,255,255,0.05)',
+                            border: urgencyLevel === 'HIGH' ? '1px solid #eab308' : '1px solid rgba(255,255,255,0.1)',
+                            color: urgencyLevel === 'HIGH' ? '#eab308' : '#94a3b8',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          HIGH ADVISORY
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUrgencyChange('TACTICAL')}
+                          style={{
+                            background: urgencyLevel === 'TACTICAL' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.05)',
+                            border: urgencyLevel === 'TACTICAL' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                            color: urgencyLevel === 'TACTICAL' ? '#38bdf8' : '#94a3b8',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          TACTICAL BULLETIN
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8' }}>
+                          SUBJECT LINE:
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => initEmailDraft(urgencyLevel)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#00f2fe',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        >
+                          Reset to Default
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(15, 23, 42, 0.8)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '6px',
+                          padding: '7px 10px',
+                          color: '#f1f5f9',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Section 3: Official Briefing Message Body */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8' }}>
+                        OFFICIAL BRIEFING MESSAGE (EDITABLE):
+                      </label>
+                      <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                        Pre-populated with Sentinel-1 SAR, Hindcast & GFW Intelligence
+                      </span>
+                    </div>
+                    <textarea
+                      value={emailMessage}
+                      onChange={(e) => setEmailMessage(e.target.value)}
+                      rows={10}
+                      style={{
+                        width: '100%',
+                        background: '#02040a',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '6px',
+                        padding: '10px 12px',
+                        color: '#cbd5e1',
+                        fontSize: '0.72rem',
+                        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                        lineHeight: 1.5,
+                        outline: 'none',
+                        resize: 'vertical',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+
+                  {/* Section 4: Attachments */}
+                  <div style={{
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.74rem', color: '#f1f5f9' }}>
+                      <input
+                        type="checkbox"
+                        checked={attachPdf}
+                        onChange={(e) => setAttachPdf(e.target.checked)}
+                        style={{ accentColor: '#00f2fe' }}
+                      />
+                      <span style={{ fontWeight: 700 }}>
+                        Attach Official Investigation Priority Report PDF
+                      </span>
+                    </label>
+                    <span style={{
+                      background: 'rgba(56, 189, 248, 0.15)',
+                      color: '#38bdf8',
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                    }}>
+                      {investigationReport.report_id}.pdf (~140 KB)
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            {!dispatchResult && (
+              <div style={{
+                padding: '12px 20px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(15, 23, 42, 0.9)',
+              }}>
+                {/* Left Utility Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={handleCopyDraft}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      color: '#e2e8f0',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                  >
+                    {copiedToast ? <Check size={13} color="#22c55e" /> : <Copy size={13} />}
+                    <span>{copiedToast ? 'Copied to Clipboard!' : 'Copy Briefing'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenMailto}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      color: '#e2e8f0',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                  >
+                    <ExternalLink size={13} />
+                    <span>Open in Email App (mailto)</span>
+                  </button>
+                </div>
+
+                {/* Right CTA Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailModal(false)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: 'none',
+                      color: '#94a3b8',
+                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDispatchEmail}
+                    disabled={isDispatching || getAllRecipients().length === 0}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      border: 'none',
+                      color: '#ffffff',
+                      borderRadius: '6px',
+                      padding: '6px 18px',
+                      fontSize: '0.76rem',
+                      fontWeight: 800,
+                      cursor: isDispatching || getAllRecipients().length === 0 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 0 15px rgba(239, 68, 68, 0.4)',
+                      opacity: isDispatching || getAllRecipients().length === 0 ? 0.6 : 1,
+                    }}
+                  >
+                    {isDispatching ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    <span>{isDispatching ? 'Transmitting...' : `Transmit to ${getAllRecipients().length} Officer(s)`}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

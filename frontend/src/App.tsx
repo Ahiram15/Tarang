@@ -131,7 +131,7 @@ export const App: React.FC = () => {
         }}>
           {/* Left Title / Badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
-            <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '0.8px' }}>TARANG 2.0</span>
+            <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '0.8px' }}>SPILL TRACE</span>
             <span style={{ color: '#64748b' }}>|</span>
             <span style={{ color: '#94a3b8' }}>MV WAKASHIO SURVEILLANCE MISSION</span>
           </div>

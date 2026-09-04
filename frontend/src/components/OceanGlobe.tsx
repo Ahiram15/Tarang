@@ -366,6 +366,14 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         maxWidth: '390px',
         zIndex: 100,
       }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(0, 242, 254, 0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontWeight: 900, color: '#00f2fe', fontSize: '0.95rem', letterSpacing: '1px' }}>SPILL TRACE</span>
+            <span style={{ color: '#64748b', fontSize: '0.70rem' }}>|</span>
+            <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 600 }}>EARLY WARNING SYSTEM</span>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 10px #ef4444' }} />
           <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#ef4444', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
