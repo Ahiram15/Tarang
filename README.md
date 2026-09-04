@@ -21,10 +21,21 @@ The system combines:
    * **Model-Based Severity Classification**: Categorizes slick severity (`Very Thin` $\to$ `Very Thick`) with confidence scores.
    * **Lagrangian Particle Hindcasting**: Backward particle advection and turbulent diffusion to identify the **Probable Origin** centroid and origin time window.
    * **Predictive Forecasting**: Forward particle dispersion at $+6\text{h}$, $+12\text{h}$, $+24\text{h}$, $+48\text{h}$, and $+72\text{h}$ with expanding uncertainty cones.
-4. **Interactive 3D & 2D Geospatial Dashboard**:
+4. **AI-Enabled Maritime Vessel Investigation & Coastal Early Warning Engine (`characterization/investigation/`)**:
+    * **Multi-Tier Probable Origin Region**: High (1σ Core), Medium (2σ Region), and Low (3σ Outer Boundary) spatial uncertainty contour polygons with estimated release time window.
+    * **Global Fishing Watch (GFW) & SAR Integration**: Correlates AIS vessel presence (`public-global-presence:latest`) with Sentinel-1 SAR satellite vessel detections (`public-global-sar-presence:latest`).
+    * **Candidate Categorization**:
+      - **Category A**: AIS-visible vessel candidates.
+      - **Category B**: SAR-detected AIS-correlated candidates.
+      - **Category C**: AIS-unmatched SAR detection candidates (radar echoes with no broadcast AIS; analyzed transparently without false criminality).
+    * **Explainable Multi-Factor Vessel Ranking**: Scores candidates (0–100) across Spatial Proximity (25%), Temporal Window Overlap (25%), Trajectory Lingering (20%), Oceanographic Drift Consistency (15%), AIS Transmission Blackout Coincidence (10%), and Vessel Risk Class (5%) with evidentiary justification bullet points.
+    * **Coastal Drift Forecasting & Early Warning Alerts**: Intersects forward drift trajectory with vulnerable coastal receptors (Marine Protected Areas, Commercial Ports, Artisanal Fishing Grounds, Tourism Beaches) to output actionable Early Warning Alerts (HIGH / MODERATE / LOW risk) with ETA countdowns and tactical containment measures.
+    * **Exportable Investigation Priority Reports**: Automated synthesis of formal Markdown and JSON briefing documents for maritime law enforcement.
+5. **Interactive 3D & 2D Geospatial Dashboard**:
    * **Three.js 3D Ocean Globe**: Real NASA Blue Marble Earth textures, shipping lanes, and single-beacon anomaly tracking.
    * **Satellite Evidence Lab**: 4-Card multi-satellite inspection deck and interactive before/after split slider.
    * **Characterization Dashboard**: Interactive Leaflet geospatial map with toggleable layer switches and forecast timeline scrubbing.
+   * **Maritime Investigation Suite**: Tactical Leaflet operations center with origin zones, candidate vessel paths, AIS gap segments, SAR echo markers, coastal asset risk badges, and explainable AI evidence drawers.
 
 ---
 
@@ -135,6 +146,10 @@ Oil_spill(sos)/
 | `POST` | `/api/spill/{id}/hindcast` | Backtracks Lagrangian particles to identify **Probable Origin**, origin time window, and uncertainty radius. |
 | `POST` | `/api/spill/{id}/forecast` | Propagates particles forward to generate future polygons ($+6\text{h}$ to $+72\text{h}$) and uncertainty cones. |
 | `GET` | `/api/spill/{id}/analysis` | Returns the complete unified characterization and predictive drift dataset. |
+| `GET` | `/api/spill/{id}/origin` | Returns multi-tier Probable Origin Regions (High 1σ, Medium 2σ, Low 3σ zones) and release time window. |
+| `GET` | `/api/spill/{id}/vessels` | Returns ranked vessel candidates (Category A, B, C) with multi-factor scores and explainable reasons. |
+| `GET` | `/api/spill/{id}/coastal-risk` | Returns coastal drift impact forecast, vulnerable receptors (MPAs, ports, fisheries, beaches), and active early warning alerts. |
+| `GET` | `/api/spill/{id}/investigation-report` | Returns the full consolidated investigation priority report (structured data + Markdown briefing). |
 
 ---
 
@@ -176,10 +191,10 @@ Open **`http://localhost:3000`** (or **`http://localhost:5173`**) in your browse
 
 Run the full pytest suite:
 ```bash
-python -m pytest tests/test_characterization.py -v
+python -m pytest -v
 ```
 
-All 7 unit and end-to-end integration tests verify:
+All 13 unit and end-to-end integration tests verify:
 * ✅ Polygon geometry extraction & GeoJSON compliance
 * ✅ Environmental velocity and cardinal heading conversion
 * ✅ Movement drift calculations
@@ -187,6 +202,12 @@ All 7 unit and end-to-end integration tests verify:
 * ✅ Model-based severity estimation
 * ✅ Lagrangian backward hindcast & forward forecast particle integration
 * ✅ End-to-end characterization pipeline
+* ✅ Probable origin zones generation (1σ Core, 2σ Region, 3σ Boundary) & Release Time Window
+* ✅ Global Fishing Watch (GFW) & Sentinel-1 SAR intelligence provider (Categories A, B, and C)
+* ✅ Multi-factor explainable vessel ranking algorithm (0–100 score breakdown & transparent justifications)
+* ✅ Coastal drift impact simulation & Early Warning Alert generation (MPAs, ports, fisheries, beaches)
+* ✅ End-to-end investigation orchestrator & report synthesis
+* ✅ REST API investigation endpoints
 
 ---
 

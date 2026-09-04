@@ -9,18 +9,20 @@ import numpy as np
 import cv2
 from PIL import Image
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from cdse_client import CDSEClient
 from preprocess import preprocess_sar_image
 from characterization.engine import CharacterizationEngine, TemporalObservation
+from characterization.investigation import InvestigationOrchestrator
 
 load_dotenv()
 
-# Initialize global characterization engine
+# Initialize global characterization & investigation engines
 char_engine = CharacterizationEngine()
+investigation_orchestrator = InvestigationOrchestrator()
 
 app = FastAPI(
     title="Global Multi-Satellite Oil Spill Early Warning System API",
@@ -401,6 +403,13 @@ def run_satellite_scan(req: ScanRequest):
         )
         scan_response["characterization_id"] = spill_id
         scan_response["characterization"] = char_analysis.to_dict()
+
+        # Automatically execute AI maritime investigation & coastal alert engine
+        try:
+            inv_report = get_or_create_investigation(spill_id)
+            scan_response["investigation"] = inv_report.to_dict()
+        except Exception as inv_err:
+            print(f"[API] Investigation engine warning: {inv_err}")
     except Exception as char_err:
         print(f"[API] Characterization engine warning: {char_err}")
 
@@ -455,6 +464,26 @@ def get_or_create_analysis(spill_id: str) -> Any:
         confidence_score=96.4,
         fai_index=0.084,
         historical_observations=historical_obs,
+    )
+
+
+def get_or_create_investigation(spill_id: str):
+    cached = investigation_orchestrator.get_report(spill_id)
+    if cached:
+        return cached
+    analysis = get_or_create_analysis(spill_id)
+    return investigation_orchestrator.run_investigation(
+        spill_id=spill_id,
+        hindcast_origin=analysis.hindcast.origin,
+        base_uncertainty_radius_km=analysis.hindcast.uncertainty_radius_km,
+        observation_time=analysis.timestamp,
+        hours_back=analysis.hindcast.hours_back,
+        slick_centroid=analysis.geometry.centroid,
+        drift_speed_mps=analysis.movement.speed_mps,
+        drift_direction_deg=analysis.movement.direction_deg,
+        u_oil_mps=analysis.movement.u_oil_mps,
+        v_oil_mps=analysis.movement.v_oil_mps,
+        base_confidence=analysis.hindcast.confidence,
     )
 
 
@@ -589,7 +618,83 @@ def run_spill_forecast(spill_id: str, req: ForecastRequest):
 @app.get("/api/spill/{spill_id}/analysis")
 def get_full_spill_analysis(spill_id: str):
     analysis = get_or_create_analysis(spill_id)
-    return analysis.to_dict()
+    resp = analysis.to_dict()
+    try:
+        inv_report = get_or_create_investigation(spill_id)
+        resp["investigation"] = inv_report.to_dict()
+    except Exception as inv_err:
+        print(f"[API] Investigation report error: {inv_err}")
+    return resp
+
+
+# ==============================================================================
+# AI MARITIME INVESTIGATION & COASTAL EARLY WARNING REST API ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/spill/{spill_id}/origin")
+def get_spill_probable_origin(spill_id: str):
+    """
+    Returns multi-tier Probable Origin Regions (High 1σ, Medium 2σ, Low 3σ uncertainty zones)
+    and estimated Release Time Window.
+    """
+    report = get_or_create_investigation(spill_id)
+    return {
+        "spill_id": spill_id,
+        "origin_zones": report.origin_analysis.to_dict(),
+    }
+
+
+@app.get("/api/spill/{spill_id}/vessels")
+def get_spill_vessels(spill_id: str):
+    """
+    Returns explainable ranked vessel candidates (Category A AIS, Category B SAR-Correlated,
+    and Category C AIS-Unmatched SAR Detections) with multi-factor evidence scores.
+    """
+    report = get_or_create_investigation(spill_id)
+    return {
+        "spill_id": spill_id,
+        "investigation": report.vessel_investigation.to_dict(),
+    }
+
+
+@app.get("/api/spill/{spill_id}/coastal-risk")
+def get_spill_coastal_risk(spill_id: str):
+    """
+    Returns coastal impact forecast, vulnerable receptors (MPAs, ports, fisheries, beaches),
+    and active Early Warning Alerts with tactical mitigation actions.
+    """
+    report = get_or_create_investigation(spill_id)
+    return {
+        "spill_id": spill_id,
+        "coastal_risk": report.coastal_warning.to_dict(),
+    }
+
+
+@app.get("/api/spill/{spill_id}/investigation-report")
+def get_spill_investigation_report(spill_id: str):
+    """
+    Returns the complete unified Investigation Priority Report (structured data + Markdown briefing).
+    """
+    report = get_or_create_investigation(spill_id)
+    return report.to_dict()
+
+
+@app.get("/api/spill/{spill_id}/investigation-report/pdf")
+def get_spill_investigation_report_pdf(spill_id: str):
+    """
+    Returns the official Investigation Priority Report as a downloadable PDF document,
+    formatted cleanly without any informal emojis.
+    """
+    report = get_or_create_investigation(spill_id)
+    pdf_bytes = investigation_orchestrator.generate_pdf_report(report)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{report.report_id}.pdf"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 if __name__ == "__main__":

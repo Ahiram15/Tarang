@@ -12,6 +12,7 @@ from .severity.thickness_estimator import ThicknessEstimator, SpillSeverityResul
 from .drift.particle_model import LagrangianParticleModel
 from .drift.hindcast import HindcastEngine, HindcastResult
 from .drift.forecast import ForecastEngine, ForecastResult
+from .drift.coastal_boundary import CoastalBoundaryService
 
 
 @dataclass
@@ -55,6 +56,8 @@ class SpillAnalysis:
                 "current": self.movement.current,
                 "is_simulation": self.movement.is_simulation,
                 "mode_label": self.movement.mode_label,
+                # Shoreline-clamped drift vector endpoints for map rendering
+                "drift_vector_coords": self._compute_drift_vector_coords(),
             },
             "spreading": {
                 "status": self.spreading.status,
@@ -105,6 +108,25 @@ class SpillAnalysis:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
+
+    def _compute_drift_vector_coords(self) -> list:
+        """Returns [[start_lat, start_lon], [end_lat, end_lon]] for the net drift arrow,
+        with the endpoint clamped to the shoreline so it never crosses over dry land."""
+        import math
+        centroid = self.geometry.centroid  # {"lat": ..., "lon": ...}
+        c_lat = centroid["lat"] if isinstance(centroid, dict) else centroid.lat
+        c_lon = centroid["lon"] if isinstance(centroid, dict) else centroid.lon
+
+        # Visual arrow length: projected up to 25 km or until shoreline contact
+        clamped_pts = CoastalBoundaryService.clip_drift_vector(
+            start_lat=c_lat,
+            start_lon=c_lon,
+            drift_u=self.movement.u_oil_mps,
+            drift_v=self.movement.v_oil_mps,
+            max_dist_km=25.0,
+        )
+        # clamped_pts is [(lon0, lat0), (lon1, lat1)] — convert to [[lat, lon], ...] for Leaflet
+        return [[pt[1], pt[0]] for pt in clamped_pts]
 
 
 class SpillAnalysisStore:

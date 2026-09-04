@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 import numpy as np
 from shapely.geometry import Point, Polygon
+from .coastal_boundary import CoastalBoundaryService
 
 
 @dataclass
@@ -11,6 +12,7 @@ class Particle:
     lon: float
     lat: float
     trajectory: List[List[float]] = field(default_factory=list)  # [[lon, lat], ...]
+    beached: bool = False  # True once the particle has stranded on the shoreline
 
     def record_step(self):
         self.trajectory.append([round(self.lon, 6), round(self.lat, 6)])
@@ -81,7 +83,13 @@ class LagrangianParticleModel:
         dt_seconds: float,
         backward: bool = False,
     ):
-        """Advances or back-tracks all particles by dt_seconds using advection and diffusion."""
+        """Advances or back-tracks all particles by dt_seconds using advection and diffusion.
+
+        Beached particles are frozen at their shoreline contact point and do not
+        advect further inland.  The coastal boundary clamp runs on every step so
+        that even the diffusive random-walk component cannot push a particle over
+        dry land.
+        """
         sign = -1.0 if backward else 1.0
 
         # Advective displacement in meters
@@ -92,6 +100,11 @@ class LagrangianParticleModel:
         diff_sigma = math.sqrt(max(0.0, 2.0 * self.K_h * abs(dt_seconds)))
 
         for p in particles:
+            # Beached particles stay frozen on the shoreline — do not advect
+            if p.beached:
+                p.record_step()
+                continue
+
             zx = np.random.normal(0, 1)
             zy = np.random.normal(0, 1)
 
@@ -106,6 +119,22 @@ class LagrangianParticleModel:
             dlat = dy / m_per_deg_lat
             dlon = dx / m_per_deg_lon
 
-            p.lat += dlat
-            p.lon += dlon
+            new_lat = p.lat + dlat
+            new_lon = p.lon + dlon
+
+            # ── Coastal boundary check ──────────────────────────────────────
+            # clamp_step_to_shoreline returns the exact shoreline contact point
+            # if the proposed step would cross over dry land.
+            shore_lat, shore_lon, hit_land = CoastalBoundaryService.clamp_step_to_shoreline(
+                new_lat=new_lat,
+                new_lon=new_lon,
+                prev_lat=p.lat,
+                prev_lon=p.lon,
+            )
+
+            p.lat = shore_lat
+            p.lon = shore_lon
+            if hit_land:
+                p.beached = True  # freeze particle from this step onward
+
             p.record_step()
