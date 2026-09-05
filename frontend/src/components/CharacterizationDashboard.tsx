@@ -141,15 +141,15 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
 
   // Basemap and Display Toggles
   const [basemapType, setBasemapType] = useState<'satellite' | 'dark'>('satellite');
-  const [showWindWaves, setShowWindWaves] = useState<boolean>(true);
+  const [showWindWaves, setShowWindWaves] = useState<boolean>(false);
   const [focusTrigger, setFocusTrigger] = useState<number>(0);
 
   // Layer toggles
   const [showSpillPolygon, setShowSpillPolygon] = useState<boolean>(true);
-  const [showDriftArrow, setShowDriftArrow] = useState<boolean>(true);
-  const [showHindcast, setShowHindcast] = useState<boolean>(true);
-  const [showForecast, setShowForecast] = useState<boolean>(true);
-  const [showUncertaintyCone, setShowUncertaintyCone] = useState<boolean>(true);
+  const [showDriftArrow, setShowDriftArrow] = useState<boolean>(false);
+  const [showHindcast, setShowHindcast] = useState<boolean>(false);
+  const [showForecast, setShowForecast] = useState<boolean>(false);
+  const [showUncertaintyCone, setShowUncertaintyCone] = useState<boolean>(false);
   const [showFlowlines, setShowFlowlines] = useState<boolean>(false);
 
   const activeForecastStep = forecastSteps.find((s) => s.hours === selectedForecastHour) || forecastSteps[0];

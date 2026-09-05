@@ -121,11 +121,11 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
 
   // Layer toggles
   const [showOriginZones, setShowOriginZones] = useState<boolean>(true);
-  const [showVesselTracks, setShowVesselTracks] = useState<boolean>(true);
-  const [showAisGaps, setShowAisGaps] = useState<boolean>(true);
-  const [showSarDetections, setShowSarDetections] = useState<boolean>(true);
-  const [showCoastalReceptors, setShowCoastalReceptors] = useState<boolean>(true);
-  const [showCoastalDrift, setShowCoastalDrift] = useState<boolean>(true);
+  const [showVesselTracks, setShowVesselTracks] = useState<boolean>(false);
+  const [showAisGaps, setShowAisGaps] = useState<boolean>(false);
+  const [showSarDetections, setShowSarDetections] = useState<boolean>(false);
+  const [showCoastalReceptors, setShowCoastalReceptors] = useState<boolean>(false);
+  const [showCoastalDrift, setShowCoastalDrift] = useState<boolean>(false);
 
   const originAnalysis = investigationReport.origin_analysis;
   const vesselInv = investigationReport.vessel_investigation;
@@ -1597,7 +1597,7 @@ Reference ID: ${investigationReport.report_id}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           {alert.recommended_actions.map((action, aIdx) => (
                             <label key={aIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.68rem', color: '#94a3b8', cursor: 'pointer' }}>
-                              <input type="checkbox" defaultChecked={aIdx === 0} style={{ marginTop: '2px' }} />
+                              <input type="checkbox" defaultChecked={false} style={{ marginTop: '2px' }} />
                               <span>{action}</span>
                             </label>
                           ))}
