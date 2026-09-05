@@ -8,6 +8,7 @@ interface OceanGlobeProps {
   targetLon?: number;
   useLiveSat?: boolean;
   onToggleLiveSat?: (val: boolean) => void;
+  onOpenSimulation?: () => void;
 }
 
 export const OceanGlobe: React.FC<OceanGlobeProps> = ({
@@ -16,6 +17,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
   targetLon = 57.744631,
   useLiveSat = false,
   onToggleLiveSat,
+  onOpenSimulation,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -370,8 +372,30 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontWeight: 900, color: '#00f2fe', fontSize: '0.95rem', letterSpacing: '1px' }}>SPILL TRACE</span>
             <span style={{ color: '#64748b', fontSize: '0.70rem' }}>|</span>
-            <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 600 }}>EARLY WARNING SYSTEM</span>
+            <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 600 }}>SPACE SURVEILLANCE</span>
           </div>
+          {onOpenSimulation && (
+            <button
+              onClick={onOpenSimulation}
+              style={{
+                background: 'rgba(0, 242, 254, 0.12)',
+                border: '1px solid rgba(0, 242, 254, 0.3)',
+                color: '#00f2fe',
+                borderRadius: '5px',
+                padding: '3px 8px',
+                fontSize: '0.66rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Radio size={11} />
+              <span>Watchdog Sim</span>
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
