@@ -406,41 +406,43 @@ function evaluatePixel(sample) {
         return img_rgb, matched_scene
 
     @staticmethod
-    def get_mock_sentinel1_image(width=256, height=256, create_simulated_spill=True):
-        """Loads authentic historical Sentinel-1 SAR imagery from the MV Wakashio disaster benchmark dataset."""
+    def get_mock_sentinel1_image(width=256, height=256, create_simulated_spill=True, incident="emerald"):
+        """Loads authentic historical Sentinel-1 SAR imagery from the incident benchmark dataset."""
         import json
         import os
 
-        # Check for pre-downloaded authentic Sentinel-1 SAR pass of MV Wakashio
-        benchmark_paths = [
-            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", f"sentinel1_sar_rgb_{width}.png"),
-            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel1_sar_rgb_512.png"),
-            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel1_sar_rgb_256.png"),
-        ]
-        
-        for path in benchmark_paths:
-            if os.path.exists(path):
-                img_bgr = cv2.imread(path)
-                if img_bgr is not None:
-                    if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
-                        img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
-                    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                    img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-                    
-                    meta_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel1_meta.json")
-                    if os.path.exists(meta_path):
-                        with open(meta_path, "r") as f:
-                            scene_meta = json.load(f)
-                    else:
-                        scene_meta = {
-                            "product_name": "S1A_EW_GRDM_1SDV_20200810T143616_20200810T143721_033845_03ECAD_D76C_COG.SAFE",
-                            "satellite": "Sentinel-1A SAR (C-Band EW)",
-                            "acquisition_time_utc": "2020-08-10 14:36:16 UTC",
-                            "date": "2020-08-10",
-                            "status": "Authentic Historical Incident Pass (MV Wakashio)"
-                        }
-                    print(f"[CDSEClient] Loaded authentic historical Sentinel-1 SAR benchmark imagery: {scene_meta.get('product_name')}")
-                    return img_rgb, img_gray, scene_meta
+        incident_folders = ["emerald_benchmark", "wakashio_benchmark"] if incident in ["emerald", "EMERALD_2021_MED"] else ["wakashio_benchmark", "emerald_benchmark"]
+
+        for folder in incident_folders:
+            benchmark_paths = [
+                os.path.join(os.path.dirname(__file__), "data", folder, f"sentinel1_sar_rgb_{width}.png"),
+                os.path.join(os.path.dirname(__file__), "data", folder, "sentinel1_sar_rgb_512.png"),
+                os.path.join(os.path.dirname(__file__), "data", folder, "sentinel1_sar_rgb_256.png"),
+            ]
+            
+            for path in benchmark_paths:
+                if os.path.exists(path):
+                    img_bgr = cv2.imread(path)
+                    if img_bgr is not None:
+                        if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
+                            img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
+                        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                        img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                        
+                        meta_path = os.path.join(os.path.dirname(__file__), "data", folder, "sentinel1_meta.json")
+                        if os.path.exists(meta_path):
+                            with open(meta_path, "r") as f:
+                                scene_meta = json.load(f)
+                        else:
+                            scene_meta = {
+                                "product_name": "S1A_IW_GRDH_1SDV_20210205T154913_20210205T154938_036457_0447A7_E2EE_COG.SAFE" if folder == "emerald_benchmark" else "S1A_EW_GRDM_1SDV_20200810T143616_20200810T143721_033845_03ECAD_D76C_COG.SAFE",
+                                "satellite": "Sentinel-1A SAR (C-Band IW)" if folder == "emerald_benchmark" else "Sentinel-1A SAR (C-Band EW)",
+                                "acquisition_time_utc": "2021-02-05 15:49:13 UTC" if folder == "emerald_benchmark" else "2020-08-10 14:36:16 UTC",
+                                "date": "2021-02-05" if folder == "emerald_benchmark" else "2020-08-10",
+                                "status": f"Authentic Historical Incident Pass ({'MT Emerald' if folder == 'emerald_benchmark' else 'MV Wakashio'})"
+                            }
+                        print(f"[CDSEClient] Loaded authentic historical Sentinel-1 SAR benchmark imagery from {folder}: {scene_meta.get('product_name')}")
+                        return img_rgb, img_gray, scene_meta
 
         print("[CDSEClient] Serving procedural fallback Sentinel-1 SAR imagery...")
         np.random.seed(42)
@@ -482,40 +484,42 @@ function evaluatePixel(sample) {
         return img_rgb, img_gray, mock_scene
 
     @staticmethod
-    def get_mock_sentinel2_optical(width=256, height=256, create_simulated_spill=True):
-        """Loads authentic historical Sentinel-2 Optical RGB imagery from the MV Wakashio disaster benchmark dataset."""
+    def get_mock_sentinel2_optical(width=256, height=256, create_simulated_spill=True, incident="emerald"):
+        """Loads authentic historical Sentinel-2 Optical RGB imagery from the incident benchmark dataset."""
         import json
         import os
 
-        # Check for pre-downloaded authentic Sentinel-2 Optical pass of MV Wakashio
-        benchmark_paths = [
-            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", f"sentinel2_optical_{width}.png"),
-            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel2_optical_512.png"),
-            os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel2_optical_256.png"),
-        ]
+        incident_folders = ["emerald_benchmark", "wakashio_benchmark"] if incident in ["emerald", "EMERALD_2021_MED"] else ["wakashio_benchmark", "emerald_benchmark"]
 
-        for path in benchmark_paths:
-            if os.path.exists(path):
-                img_bgr = cv2.imread(path)
-                if img_bgr is not None:
-                    if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
-                        img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
-                    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                    
-                    meta_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "sentinel2_meta.json")
-                    if os.path.exists(meta_path):
-                        with open(meta_path, "r") as f:
-                            scene_meta = json.load(f)
-                    else:
-                        scene_meta = {
-                            "product_name": "S2A_MSIL2A_20200811T062451_N0500_R091_T40KEC_20230411T115543.SAFE",
-                            "satellite": "Sentinel-2A MSI (True Color RGB)",
-                            "acquisition_time_utc": "2020-08-11 06:24:51 UTC",
-                            "date": "2020-08-11",
-                            "status": "Authentic Historical Incident Pass (MV Wakashio)"
-                        }
-                    print(f"[CDSEClient] Loaded authentic historical Sentinel-2 Optical benchmark imagery: {scene_meta.get('product_name')}")
-                    return img_rgb, scene_meta
+        for folder in incident_folders:
+            benchmark_paths = [
+                os.path.join(os.path.dirname(__file__), "data", folder, f"sentinel2_optical_{width}.png"),
+                os.path.join(os.path.dirname(__file__), "data", folder, "sentinel2_optical_512.png"),
+                os.path.join(os.path.dirname(__file__), "data", folder, "sentinel2_optical_256.png"),
+            ]
+
+            for path in benchmark_paths:
+                if os.path.exists(path):
+                    img_bgr = cv2.imread(path)
+                    if img_bgr is not None:
+                        if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
+                            img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
+                        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                        
+                        meta_path = os.path.join(os.path.dirname(__file__), "data", folder, "sentinel2_meta.json")
+                        if os.path.exists(meta_path):
+                            with open(meta_path, "r") as f:
+                                scene_meta = json.load(f)
+                        else:
+                            scene_meta = {
+                                "product_name": "S2B_MSIL2A_20210204T082039_N0500_R121_T36SXB_20230602T102746.SAFE" if folder == "emerald_benchmark" else "S2A_MSIL2A_20200811T062451_N0500_R091_T40KEC_20230411T115543.SAFE",
+                                "satellite": "Sentinel-2B MSI (True Color RGB)" if folder == "emerald_benchmark" else "Sentinel-2A MSI (True Color RGB)",
+                                "acquisition_time_utc": "2021-02-04 08:20:39 UTC" if folder == "emerald_benchmark" else "2020-08-11 06:24:51 UTC",
+                                "date": "2021-02-04" if folder == "emerald_benchmark" else "2020-08-11",
+                                "status": f"Authentic Historical Incident Pass ({'MT Emerald' if folder == 'emerald_benchmark' else 'MV Wakashio'})"
+                            }
+                        print(f"[CDSEClient] Loaded authentic historical Sentinel-2 Optical benchmark imagery from {folder}: {scene_meta.get('product_name')}")
+                        return img_rgb, scene_meta
 
         print("[CDSEClient] Serving procedural fallback Sentinel-2 Optical imagery...")
         np.random.seed(99)

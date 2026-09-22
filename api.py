@@ -239,34 +239,18 @@ def run_satellite_scan(req: ScanRequest):
         except Exception as live_err:
             print(f"[API] Live ESA fetch failed ({live_err}). Falling back to calibrated benchmark data...")
             sar_img_color, sar_img_gray, scene_info_s1 = CDSEClient.get_mock_sentinel1_image()
-            optical_img_rgb, scene_info_s2 = CDSEClient.get_mock_sentinel2_optical()
     is_emerald_area = abs(req.lat - 33.15) < 3.0 and abs(req.lon - 34.20) < 3.0
-    if not is_live and is_emerald_area:
-        from backend.modules.benchmark_emerald import generate_emerald_sar_patch
-        sar_img_gray, _ = generate_emerald_sar_patch(size=256)
-        sar_img_color = cv2.cvtColor(sar_img_gray, cv2.COLOR_GRAY2RGB)
-        scene_info_s1 = {
-            "product_name": "S1A_IW_GRDH_1SDV_20210205T035017_20210205T035042_036449_044738_5EE0",
-            "satellite": "Sentinel-1A (C-Band SAR)",
-            "date": "2021-02-05",
-            "time": "03:50:17 UTC",
-            "location": "Levantine Basin, Eastern Mediterranean Sea",
-            "mode": "IW (Interferometric Wide Swath)",
-            "polarization": "VV + VH Dual-Pol",
-        }
-        scene_info_s2 = {
-            "satellite": "Sentinel-2 MSI",
-            "status": "Nighttime Radar Acquisition (03:50 UTC) — Optical Pass not coincident",
-        }
-    elif not is_live:
-        sar_img_color, sar_img_gray, scene_info_s1 = CDSEClient.get_mock_sentinel1_image()
-        optical_img_rgb, scene_info_s2 = CDSEClient.get_mock_sentinel2_optical()
+    emerald_benchmark_dir = os.path.join(os.path.dirname(__file__), "data", "emerald_benchmark")
+    benchmark_dir = emerald_benchmark_dir if (is_emerald_area and os.path.exists(emerald_benchmark_dir)) else os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark")
+
+    if not is_live:
+        incident_name = "emerald" if is_emerald_area else "wakashio"
+        sar_img_color, sar_img_gray, scene_info_s1 = CDSEClient.get_mock_sentinel1_image(incident=incident_name)
+        optical_img_rgb, scene_info_s2 = CDSEClient.get_mock_sentinel2_optical(incident=incident_name)
 
     # 1. Raw SAR (unfiltered microwave speckle noise)
     raw_sar_display = sar_img_color.copy() if sar_img_color is not None else cv2.cvtColor(sar_img_gray, cv2.COLOR_GRAY2RGB)
 
-    # Pre-rendered benchmark assets check for zero-latency presentation
-    benchmark_dir = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark")
     palette_key_map = {
         "False-Color": "false_color_rgb",
         "Turbo": "turbo_heatmap",

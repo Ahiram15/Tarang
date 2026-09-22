@@ -1,0 +1,41 @@
+{
+  "type": "Feature",
+  "properties": {
+    "incident_id": "EMERALD_2021_MED",
+    "vessel_target": "EMERALD (IMO 9231224)",
+    "satellite": "Sentinel-1A SAR (IW Mode)",
+    "acquisition_time": "2021-02-05T03:50:17Z",
+    "classification": "Heavy Crude Oil Slick",
+    "confidence": 0.94,
+    "estimated_area_km2": 42.6,
+    "length_km": 68.4,
+    "mean_width_km": 1.2
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          33.5,
+          33.7
+        ],
+        [
+          33.5,
+          33.151074
+        ],
+        [
+          34.198633,
+          33.151074
+        ],
+        [
+          34.198633,
+          33.7
+        ],
+        [
+          33.5,
+          33.7
+        ]
+      ]
+    ]
+  }
+}
