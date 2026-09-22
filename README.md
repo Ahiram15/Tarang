@@ -150,6 +150,8 @@ Oil_spill(sos)/
 | `GET` | `/api/spill/{id}/vessels` | Returns ranked vessel candidates (Category A, B, C) with multi-factor scores and explainable reasons. |
 | `GET` | `/api/spill/{id}/coastal-risk` | Returns coastal drift impact forecast, vulnerable receptors (MPAs, ports, fisheries, beaches), and active early warning alerts. |
 | `GET` | `/api/spill/{id}/investigation-report` | Returns the full consolidated investigation priority report (structured data + Markdown briefing). |
+| `POST` | `/api/v1/demo/replay-emerald` | Runs the full 7-step historical benchmark on MT EMERALD (IMO 9231224) returning attribution telemetry. |
+| `GET` | `/api/v1/demo/emerald-docket.pdf` | Serves the official cryptographic SHA-256 stamped PDF enforcement docket for MT EMERALD. |
 
 ---
 
@@ -248,12 +250,23 @@ Open a PR on GitHub with a description of your changes and test verification res
 
 ---
 
-## 📜 8. Incident Specifications (MV Wakashio Grounding)
+## 📜 8. Benchmark Incidents
 
-* **Incident**: MV Wakashio Coral Reef Grounding (Mauritius)
+### A. MV Wakashio Grounding (Mauritius)
+* **Incident**: MV Wakashio Coral Reef Grounding (Mauritius, Indian Ocean)
 * **Wreck Coordinates**: `20°26′17.23″ S, 57°44′40.67″ E` (`-20.438119°S, 57.744631°E`)
 * **Standard AOI Bounding Box**: `[-20.38, 57.68 to -20.50, 57.82]`
 * **Validation Satellites**: Sentinel-1 C-Band SAR & Sentinel-2 MSI Optical
+
+### B. MT Emerald Mystery Oil Spill (Eastern Mediterranean)
+* **Incident**: Deliberate discharge by Suezmax Crude Oil Tanker during an 8-hour AIS blackout (~50 km off Levant coast)
+* **Vessel Details**: MT *Emerald* (ex-name: *Ebn Batuta*) | IMO: `9231224` | MMSI: `372469000` (alias: `356145000`) | Flag: Panama
+* **Discharge Window**: February 1, 2021 (22:00 UTC) to February 2, 2021 (04:00 UTC)
+* **Estimated Volume**: 1,000 to 2,000 metric tons of crude oil
+* **Release Centroid**: `33.15° N, 34.20° E` ($\pm 25\text{ km}$ uncertainty radius)
+* **AOI Bounding Box**: `[33.50, 32.50, 35.50, 34.50]`
+* **Validation Satellites**: Sentinel-1 SAR Primary (`S1A_IW_GRDH_...20210205T035017`) & Shoreward (`S1A_IW_GRDH_...20210211T035017`)
+* **Full Case Dossier**: [docs/EMERALD_CASE_STUDY.md](file:///d:/Oil_spill(sos)/docs/EMERALD_CASE_STUDY.md)
 
 ---
 

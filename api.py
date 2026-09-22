@@ -24,6 +24,7 @@ from cdse_client import CDSEClient
 from preprocess import preprocess_sar_image
 from characterization.engine import CharacterizationEngine, TemporalObservation
 from characterization.investigation import InvestigationOrchestrator
+from backend.modules.benchmark_emerald import run_emerald_benchmark
 
 load_dotenv()
 
@@ -91,6 +92,21 @@ HISTORICAL_INCIDENTS = [
         "area_km2": 28.5,
         "type": "Historical SAR Observation (Sentinel-1 at 01:37 UTC)",
         "country": "Mauritius",
+        "severity": "CRITICAL"
+    },
+    {
+        "id": "emerald",
+        "name": "🇵🇦 MT Emerald Mystery Spill (Levantine Basin, Eastern Mediterranean)",
+        "shortName": "MT Emerald Spill (Eastern Med)",
+        "lat": 33.15,
+        "lon": 34.20,
+        "dms": "33°09′00″ N, 34°12′00″ E",
+        "bbox": {"north": 34.50, "south": 32.50, "west": 33.50, "east": 35.50},
+        "date": "2021-02-05",
+        "desc": "Deliberate discharge of 1,000-2,000 MT crude oil by Suezmax tanker during 8-hour AIS blackout en route to Baniyas, Syria.",
+        "area_km2": 42.6,
+        "type": "Historical SAR Observation (Sentinel-1A IW GRD)",
+        "country": "International Waters / Levantine Basin",
         "severity": "CRITICAL"
     }
 ]
@@ -870,6 +886,58 @@ def dispatch_coastal_alert_email(spill_id: str, req: CoastalEmailDispatchRequest
             "spill_id": spill_id,
         }
     }
+
+
+# ==============================================================================
+# Historical Benchmark Verification & Demo Routes
+# ==============================================================================
+
+@app.post("/api/v1/demo/replay-emerald")
+@app.get("/api/v1/demo/replay-emerald")
+def replay_emerald_benchmark():
+    """
+    Executes the complete historical benchmark verification harness for the
+    February 2021 MT Emerald Mystery Oil Spill in the Levantine Basin.
+    Runs end-to-end 100% offline without failing if external APIs are unreachable:
+      - Synthetic SAR low-backscatter patch generation (-22 dB on -10 dB sea)
+      - Tier 1 CFAR + Morphological Closing candidate detection
+      - U-Net delineation to WGS-84 GeoJSON polygon
+      - Tabular features & XGBoost validation (confidence > 0.85)
+      - OpenDrift Lagrangian backward trajectory to release corridor
+      - AIS transponder dark-gap analysis & attribution score (>= 92%)
+      - SHA-256 stamped PDF enforcement docket generation
+      - Simulated Resend legal dispatch receipt
+    """
+    try:
+        result = run_emerald_benchmark(offline_only=True)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Emerald benchmark execution failed: {str(e)}")
+
+
+@app.get("/api/v1/demo/emerald-docket.pdf")
+def download_emerald_docket_pdf():
+    """
+    Serves the court-ready cryptographic SHA-256 stamped enforcement PDF docket
+    naming EMERALD (IMO 9231224).
+    """
+    pdf_path = os.path.join("characterization", "investigation", "reports", "TARANG_EMERALD_ENFORCEMENT_DOCKET.pdf")
+    if not os.path.exists(pdf_path):
+        run_emerald_benchmark(offline_only=True)
+
+    if not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail="Emerald enforcement docket PDF could not be found.")
+
+    with open(pdf_path, "rb") as f:
+        pdf_bytes = f.read()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'inline; filename="TARANG_EMERALD_ENFORCEMENT_DOCKET.pdf"'
+        }
+    )
 
 
 
