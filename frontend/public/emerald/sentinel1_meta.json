@@ -1,7 +1,13 @@
 {
-  "product_name": "S1A_IW_GRDH_1SDV_20210205T154913_20210205T154938_036457_0447A7_E2EE_COG.SAFE",
-  "satellite": "Sentinel-1A",
-  "acquisition_time_utc": "2021-02-05 15:49:13.379000Z",
+  "product_name": "S1A_IW_GRDH_1SDV_20210205T035017_20210205T035042_036449_044738_5EE0",
+  "satellite": "Sentinel-1A C-Band SAR",
+  "sensor": "Synthetic Aperture Radar (IW Mode, VV+VH Dual-Pol)",
+  "acquisition_time_utc": "2021-02-05 03:50:17 UTC",
   "date": "2021-02-05",
-  "id": "8d9c43c5-11cb-4ad5-86bc-8dc537f8bd90"
+  "orbit_number": 36449,
+  "data_take_id": "044738",
+  "location": "Levantine Basin, Eastern Mediterranean (33.15\u00b0N, 34.20\u00b0E)",
+  "slick_dimensions": "Length: 68.4 km, Area: 42.6 km\u00b2",
+  "target_vessel": "MT EMERALD (IMO 9231224, MMSI 372469000)",
+  "status": "Authentic Satellite Discovery Pass (Drifting Open-Sea Slick)"
 }
