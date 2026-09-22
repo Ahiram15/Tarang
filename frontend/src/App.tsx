@@ -138,7 +138,7 @@ export const App: React.FC = () => {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#050811', color: '#f1f5f9', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      
+
       {/* Global Top Navigation Bar */}
       <div style={{
         height: '42px',

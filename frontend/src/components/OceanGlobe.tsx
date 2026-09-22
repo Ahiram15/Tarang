@@ -117,12 +117,15 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     const createArc = (startLat: number, startLon: number, endLat: number, endLon: number, colorHex: number) => {
       const start = latLonToVector3(startLat, startLon, globeRadius * 1.002);
       const end = latLonToVector3(endLat, endLon, globeRadius * 1.002);
-      const mid = start.clone().add(end).multiplyScalar(0.5);
-      const dist = start.distanceTo(end);
-      mid.normalize().multiplyScalar(globeRadius * (1.0 + dist * 0.15));
+
+      const midLat = (startLat + endLat) / 2;
+      const midLon = (startLon + endLon) / 2;
+      const distance = start.distanceTo(end);
+      const altitude = distance * 0.22;
+      const mid = latLonToVector3(midLat, midLon, globeRadius * (1.002 + altitude));
 
       const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-      const points = curve.getPoints(40);
+      const points = curve.getPoints(50);
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
       const material = new THREE.LineBasicMaterial({
         color: colorHex,
@@ -142,7 +145,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
 
     // 6. Single Pulsing Red Dot Beacon on Incident Location
     const beaconPos = latLonToVector3(targetLat, targetLon, globeRadius * 1.015);
-    
+
     // Core glowing red sphere
     const beaconCoreGeo = new THREE.SphereGeometry(0.026, 16, 16);
     const beaconCoreMat = new THREE.MeshBasicMaterial({ color: 0xff1111 });
@@ -236,7 +239,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       raycaster.setFromCamera(mouse, camera);
       // ONLY trigger if clicking the red dot beacon itself, NOT the background globe
       const intersects = raycaster.intersectObjects([beaconCore, ringMesh]);
-      
+
       if (intersects.length > 0) {
         onSelectIncident(targetLat, targetLon);
       }
@@ -492,9 +495,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           }}
         >
           <span>
-            🧠 Run AI Detection & Satellite Lab (
-            {targetLat > 0 ? `${targetLat.toFixed(2)}°N, ${targetLon.toFixed(2)}°E` : `${Math.abs(targetLat).toFixed(4)}°S, ${targetLon.toFixed(4)}°E`}
-            ) →
+            🧠 Run AI Detection & Satellite Lab ({targetLat.toFixed(2)}°N, {targetLon.toFixed(2)}°E) →
           </span>
         </button>
 
