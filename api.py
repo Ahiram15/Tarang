@@ -80,21 +80,6 @@ def startup_warmup():
 
 HISTORICAL_INCIDENTS = [
     {
-        "id": "wakashio",
-        "name": "🇲🇺 MV Wakashio Disaster (Pointe d'Esny, Mauritius - Indian Ocean)",
-        "shortName": "MV Wakashio Grounding (Mauritius)",
-        "lat": -20.438119,
-        "lon": 57.744631,
-        "dms": "20°26′17.23″ S, 57°44′40.67″ E",
-        "bbox": {"north": -20.38, "south": -20.50, "west": 57.68, "east": 57.82},
-        "date": "2020-08-10",
-        "desc": "Bulk carrier grounded on coral reef near Pointe d'Esny, releasing ~1,000 tonnes of heavy fuel oil into protected marine lagoons.",
-        "area_km2": 28.5,
-        "type": "Historical SAR Observation (Sentinel-1 at 01:37 UTC)",
-        "country": "Mauritius",
-        "severity": "CRITICAL"
-    },
-    {
         "id": "emerald",
         "name": "🇵🇦 MT Emerald Mystery Spill (Levantine Basin, Eastern Mediterranean)",
         "shortName": "MT Emerald Spill (Eastern Med)",

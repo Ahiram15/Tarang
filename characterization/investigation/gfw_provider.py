@@ -156,19 +156,13 @@ class GFWMaritimeDataProvider:
         ]
         emerald_gaps = [
             AISGap(
-                gap_id="GAP-EMERALD-01",
                 start_time="2021-02-01T20:30:00Z",
                 end_time="2021-02-02T05:30:00Z",
                 duration_hours=8.0,
-                start_lat=32.75,
-                start_lon=34.02,
-                end_lat=33.85,
-                end_lon=34.50,
-                distance_km=132.0,
-                interpolated_positions=[
-                    {"lat": 33.12, "lon": 34.18, "timestamp": "2021-02-01T23:30:00Z"},
-                    {"lat": 33.30, "lon": 34.28, "timestamp": "2021-02-02T03:00:00Z"},
-                ],
+                last_known_pos={"lat": 32.75, "lon": 34.02},
+                first_known_pos={"lat": 33.85, "lon": 34.50},
+                distance_during_gap_km=132.0,
+                overlaps_release_window=True,
                 notes="Deliberate 8-hour AIS transponder blackout en route northward toward Baniyas, Syria.",
             )
         ]
@@ -237,7 +231,7 @@ class GFWMaritimeDataProvider:
                 callsign="NONE",
                 flag="UNKNOWN",
                 vessel_type="Uncorrelated Spaceborne Radar Reflection",
-                category=InvestigationCategory.CATEGORY_C_DARK_SAR.value,
+                category=InvestigationCategory.CATEGORY_C_SAR_UNMATCHED.value,
                 length_m=110.0,
                 beam_m=20.0,
                 trajectory=[

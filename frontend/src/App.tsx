@@ -27,15 +27,6 @@ const INCIDENTS: IncidentLocation[] = [
     date: '2021-02-05',
     spillId: 'emerald',
   },
-  {
-    id: 'wakashio',
-    name: 'MV Wakashio Grounding (Pointe d\'Esny, Mauritius)',
-    badge: '🇲🇺 MV WAKASHIO (-20.44°S, 57.74°E)',
-    lat: -20.438119,
-    lon: 57.744631,
-    date: '2020-08-10',
-    spillId: 'wakashio',
-  },
 ];
 
 export const App: React.FC = () => {
