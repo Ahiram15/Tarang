@@ -240,7 +240,25 @@ def run_satellite_scan(req: ScanRequest):
             print(f"[API] Live ESA fetch failed ({live_err}). Falling back to calibrated benchmark data...")
             sar_img_color, sar_img_gray, scene_info_s1 = CDSEClient.get_mock_sentinel1_image()
             optical_img_rgb, scene_info_s2 = CDSEClient.get_mock_sentinel2_optical()
-    else:
+    is_emerald_area = abs(req.lat - 33.15) < 3.0 and abs(req.lon - 34.20) < 3.0
+    if not is_live and is_emerald_area:
+        from backend.modules.benchmark_emerald import generate_emerald_sar_patch
+        sar_img_gray, _ = generate_emerald_sar_patch(size=256)
+        sar_img_color = cv2.cvtColor(sar_img_gray, cv2.COLOR_GRAY2RGB)
+        scene_info_s1 = {
+            "product_name": "S1A_IW_GRDH_1SDV_20210205T035017_20210205T035042_036449_044738_5EE0",
+            "satellite": "Sentinel-1A (C-Band SAR)",
+            "date": "2021-02-05",
+            "time": "03:50:17 UTC",
+            "location": "Levantine Basin, Eastern Mediterranean Sea",
+            "mode": "IW (Interferometric Wide Swath)",
+            "polarization": "VV + VH Dual-Pol",
+        }
+        scene_info_s2 = {
+            "satellite": "Sentinel-2 MSI",
+            "status": "Nighttime Radar Acquisition (03:50 UTC) — Optical Pass not coincident",
+        }
+    elif not is_live:
         sar_img_color, sar_img_gray, scene_info_s1 = CDSEClient.get_mock_sentinel1_image()
         optical_img_rgb, scene_info_s2 = CDSEClient.get_mock_sentinel2_optical()
 
@@ -478,14 +496,15 @@ def run_satellite_scan(req: ScanRequest):
 
     # Automatically run characterization engine and cache in SpillAnalysisStore
     try:
-        spill_id = "wakashio" if abs(req.lat - (-20.438119)) < 1.0 else f"spill_{int(abs(req.lat*100))}_{int(abs(req.lon*100))}"
+        is_emerald = abs(req.lat - 33.15) < 3.0 and abs(req.lon - 34.20) < 3.0
+        spill_id = "emerald" if is_emerald else ("wakashio" if abs(req.lat - (-20.438119)) < 1.0 else f"spill_{int(abs(req.lat*100))}_{int(abs(req.lon*100))}")
         char_analysis = char_engine.process_spill(
             spill_id=spill_id,
             binary_mask=binary_mask,
             center_lat=req.lat,
             center_lon=req.lon,
             buffer_deg=req.buffer,
-            observation_time=f"{target_date_str}T01:37:00Z",
+            observation_time=f"{target_date_str}T03:50:17Z" if is_emerald else f"{target_date_str}T01:37:00Z",
             confidence_score=round(max_confidence * 100.0, 1),
             fai_index=fai_val,
         )
@@ -538,16 +557,26 @@ def get_or_create_analysis(spill_id: str) -> Any:
             loaded_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
             if loaded_mask is not None:
                 default_mask = (loaded_mask > 127).astype(np.uint8)
+        historical_obs = [
+            TemporalObservation(timestamp="2020-08-07T06:00:00Z", area_km2=14.2),
+            TemporalObservation(timestamp="2020-08-10T01:37:00Z", area_km2=28.5),
+        ]
+    elif spill_id in ["emerald", "EMERALD_2021_MED"]:
+        c_lat, c_lon = 33.15, 34.20
+        obs_time = "2021-02-05T03:50:17Z"
+        buffer_deg = 0.08
+        from backend.modules.benchmark_emerald import generate_emerald_sar_patch
+        _, default_mask_256 = generate_emerald_sar_patch(size=256)
+        default_mask = (default_mask_256 > 127).astype(np.uint8)
+        historical_obs = [
+            TemporalObservation(timestamp="2021-02-05T03:50:17Z", area_km2=42.6),
+            TemporalObservation(timestamp="2021-02-11T03:50:17Z", area_km2=68.4),
+        ]
     else:
         c_lat, c_lon = 18.9000, 72.6500
         obs_time = "2011-08-08T05:32:00Z"
         buffer_deg = 0.06
-
-    # Multi-temporal observations for spreading
-    historical_obs = [
-        TemporalObservation(timestamp="2020-08-07T06:00:00Z", area_km2=14.2),
-        TemporalObservation(timestamp="2020-08-10T01:37:00Z", area_km2=28.5),
-    ] if spill_id == "wakashio" else None
+        historical_obs = None
 
     return char_engine.process_spill(
         spill_id=spill_id,

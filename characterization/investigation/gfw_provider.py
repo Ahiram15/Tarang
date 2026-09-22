@@ -131,12 +131,137 @@ class GFWMaritimeDataProvider:
         if abs(c_lat - (-20.438119)) < 1.0 and abs(c_lon - 57.744631) < 1.0:
             return self._build_wakashio_scenario(origin_zones)
 
-        # 3. Check if Mumbai / Arabian Sea area
+        # 3. Check if Eastern Mediterranean / MT Emerald area
+        if abs(c_lat - 33.15) < 3.0 and abs(c_lon - 34.20) < 3.0:
+            return self._build_emerald_scenario(origin_zones)
+
+        # 4. Check if Mumbai / Arabian Sea area
         if abs(c_lat - 18.9) < 2.0 and abs(c_lon - 72.8) < 2.0:
             return self._build_mumbai_scenario(origin_zones)
 
-        # 4. Generic realistic maritime generation for any custom ocean coordinate
+        # 5. Generic realistic maritime generation for any custom ocean coordinate
         return self._generate_dynamic_candidates(origin_zones)
+
+    def _build_emerald_scenario(self, origin_zones: ProbableOriginZones) -> List[CandidateVessel]:
+        candidates: List[CandidateVessel] = []
+
+        # 1. MT EMERALD (Suezmax Tanker) - Deliberate discharge during 8h blackout
+        emerald_wps = [
+            VesselWaypoint(lat=32.20, lon=33.80, timestamp="2021-02-01T16:00:00Z", speed_knots=13.6, course_deg=18.0),
+            VesselWaypoint(lat=32.75, lon=34.02, timestamp="2021-02-01T20:30:00Z", speed_knots=13.4, course_deg=22.0),
+            VesselWaypoint(lat=33.12, lon=34.18, timestamp="2021-02-01T23:30:00Z", speed_knots=6.8, course_deg=45.0),
+            VesselWaypoint(lat=33.30, lon=34.28, timestamp="2021-02-02T03:00:00Z", speed_knots=7.2, course_deg=35.0),
+            VesselWaypoint(lat=33.85, lon=34.50, timestamp="2021-02-02T05:30:00Z", speed_knots=13.2, course_deg=25.0),
+            VesselWaypoint(lat=34.80, lon=35.05, timestamp="2021-02-02T12:00:00Z", speed_knots=12.8, course_deg=15.0),
+        ]
+        emerald_gaps = [
+            AISGap(
+                gap_id="GAP-EMERALD-01",
+                start_time="2021-02-01T20:30:00Z",
+                end_time="2021-02-02T05:30:00Z",
+                duration_hours=8.0,
+                start_lat=32.75,
+                start_lon=34.02,
+                end_lat=33.85,
+                end_lon=34.50,
+                distance_km=132.0,
+                interpolated_positions=[
+                    {"lat": 33.12, "lon": 34.18, "timestamp": "2021-02-01T23:30:00Z"},
+                    {"lat": 33.30, "lon": 34.28, "timestamp": "2021-02-02T03:00:00Z"},
+                ],
+                notes="Deliberate 8-hour AIS transponder blackout en route northward toward Baniyas, Syria.",
+            )
+        ]
+        emerald_sar = [
+            SARVesselDetection(
+                detection_id="SAR-S1A-20210205-044738",
+                timestamp="2021-02-05T03:50:17Z",
+                lat=33.12,
+                lon=34.18,
+                estimated_length_m=250.0,
+                estimated_width_m=44.0,
+                confidence=0.94,
+                is_ais_matched=False,
+                matched_mmsi=None,
+                notes="Sentinel-1 radar hard-target echo detected near discharge path without AIS broadcast.",
+            )
+        ]
+        candidates.append(
+            CandidateVessel(
+                vessel_id="VESSEL-EMERALD-PRIMARY",
+                name="MT EMERALD",
+                mmsi="372469000",
+                imo="9231224",
+                callsign="HP6214",
+                flag="Panama [PA]",
+                vessel_type="Crude Oil Tanker (Suezmax)",
+                category=InvestigationCategory.CATEGORY_A_AIS.value,
+                length_m=250.0,
+                beam_m=44.0,
+                trajectory=emerald_wps,
+                ais_gaps=emerald_gaps,
+                sar_detections=emerald_sar,
+            )
+        )
+
+        # 2. MT MINERVA AURA (Aframax Tanker) - Category B SAR-correlated legitimate innocent transit
+        minerva_wps = [
+            VesselWaypoint(lat=32.50, lon=33.20, timestamp="2021-02-01T18:00:00Z", speed_knots=14.2, course_deg=310.0),
+            VesselWaypoint(lat=33.20, lon=32.40, timestamp="2021-02-02T02:00:00Z", speed_knots=14.0, course_deg=310.0),
+        ]
+        candidates.append(
+            CandidateVessel(
+                vessel_id="VESSEL-MINERVA-02",
+                name="MT MINERVA AURA",
+                mmsi="240562000",
+                imo="9411604",
+                callsign="SVBF3",
+                flag="Greece [GR]",
+                vessel_type="Crude Oil Tanker",
+                category=InvestigationCategory.CATEGORY_B_SAR_CORRELATED.value,
+                length_m=244.0,
+                beam_m=42.0,
+                trajectory=minerva_wps,
+                ais_gaps=[],
+                sar_detections=[],
+            )
+        )
+
+        # 3. UNKNOWN RADAR CONTACT - Category C Unmatched SAR Echo
+        candidates.append(
+            CandidateVessel(
+                vessel_id="SAR-DARK-ECHO-03",
+                name="UNIDENTIFIED RADAR ECHO (ECHO-MED-044738)",
+                mmsi="SAR-UNKNOWN",
+                imo="UNKNOWN",
+                callsign="NONE",
+                flag="UNKNOWN",
+                vessel_type="Uncorrelated Spaceborne Radar Reflection",
+                category=InvestigationCategory.CATEGORY_C_DARK_SAR.value,
+                length_m=110.0,
+                beam_m=20.0,
+                trajectory=[
+                    VesselWaypoint(lat=33.25, lon=34.35, timestamp="2021-02-02T01:15:00Z", speed_knots=0.0, course_deg=0.0)
+                ],
+                ais_gaps=[],
+                sar_detections=[
+                    SARVesselDetection(
+                        detection_id="SAR-MED-044738-B",
+                        timestamp="2021-02-05T03:50:17Z",
+                        lat=33.25,
+                        lon=34.35,
+                        estimated_length_m=110.0,
+                        estimated_width_m=20.0,
+                        confidence=0.76,
+                        is_ais_matched=False,
+                        matched_mmsi=None,
+                        notes="Radar reflection in Levantine corridor without matching AIS transponder.",
+                    )
+                ],
+            )
+        )
+
+        return candidates
 
     def _build_wakashio_scenario(self, origin_zones: ProbableOriginZones) -> List[CandidateVessel]:
         time_win = origin_zones.time_window

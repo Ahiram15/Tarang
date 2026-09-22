@@ -13,8 +13,8 @@ interface OceanGlobeProps {
 
 export const OceanGlobe: React.FC<OceanGlobeProps> = ({
   onSelectIncident,
-  targetLat = -20.438119,
-  targetLon = 57.744631,
+  targetLat = 33.15,
+  targetLon = 34.20,
   useLiveSat = false,
   onToggleLiveSat,
   onOpenSimulation,
@@ -113,7 +113,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       return new THREE.Vector3(x, y, z);
     };
 
-    // 5. Major South Indian Ocean Shipping Lanes
+    // 5. Active Shipping Lanes (Dynamically selected for Mediterranean or Indian Ocean)
     const createArc = (startLat: number, startLon: number, endLat: number, endLon: number, colorHex: number) => {
       const start = latLonToVector3(startLat, startLon, globeRadius * 1.002);
       const end = latLonToVector3(endLat, endLon, globeRadius * 1.002);
@@ -132,19 +132,28 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       return new THREE.Line(geometry, material);
     };
 
-    // Cape of Good Hope to Mauritius Lane (Cyan)
-    const lane1 = createArc(-34.35, 18.47, targetLat, targetLon, 0x00f2fe);
-    globeGroup.add(lane1);
+    const isMedLocation = targetLat > 0;
+    if (isMedLocation) {
+      // Mediterranean Corridor Lanes
+      const lane1 = createArc(31.25, 32.30, targetLat, targetLon, 0x00f2fe); // Suez to Levantine Basin
+      globeGroup.add(lane1);
+      const lane2 = createArc(targetLat, targetLon, 35.18, 35.94, 0x22c55e); // Levantine to Baniyas Syria
+      globeGroup.add(lane2);
+      const lane3 = createArc(targetLat, targetLon, 37.94, 23.63, 0xf97316); // Levantine to Piraeus Greece
+      globeGroup.add(lane3);
+    } else {
+      // Cape of Good Hope to Mauritius Lane (Cyan)
+      const lane1 = createArc(-34.35, 18.47, targetLat, targetLon, 0x00f2fe);
+      globeGroup.add(lane1);
+      // Mauritius to Sunda / Malacca Strait Corridor (Emerald Green)
+      const lane2 = createArc(targetLat, targetLon, -5.0, 105.0, 0x22c55e);
+      globeGroup.add(lane2);
+      // Mozambique Channel to Mauritius Route (Amber Orange)
+      const lane3 = createArc(-15.0, 42.0, targetLat, targetLon, 0xf97316);
+      globeGroup.add(lane3);
+    }
 
-    // Mauritius to Sunda / Malacca Strait Corridor (Emerald Green)
-    const lane2 = createArc(targetLat, targetLon, -5.0, 105.0, 0x22c55e);
-    globeGroup.add(lane2);
-
-    // Mozambique Channel to Mauritius Route (Amber Orange)
-    const lane3 = createArc(-15.0, 42.0, targetLat, targetLon, 0xf97316);
-    globeGroup.add(lane3);
-
-    // 6. Single Pulsing Red Dot Beacon on Mauritius Wreck (-20.438119 S, 57.744631 E)
+    // 6. Single Pulsing Red Dot Beacon on Incident Location
     const beaconPos = latLonToVector3(targetLat, targetLon, globeRadius * 1.015);
     
     // Core glowing red sphere
@@ -179,12 +188,16 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     cyanRim.position.set(-5, -2, -3);
     scene.add(cyanRim);
 
-    // LOCKED ROTATION: Lock Mauritius and South Indian Ocean facing directly forward
-    // Longitude ~57.75°E, Latitude ~ -20.44°S
-    const targetRotY = -Math.PI / 1.55;
-    const targetRotX = -0.32;
-    globeGroup.rotation.y = targetRotY;
-    globeGroup.rotation.x = targetRotX;
+    // LOCKED ROTATION: Lock active incident location facing directly forward
+    if (isMedLocation) {
+      // Longitude ~34.2°E, Latitude ~33.15°N
+      globeGroup.rotation.y = -2.17;
+      globeGroup.rotation.x = 0.55;
+    } else {
+      // Longitude ~57.75°E, Latitude ~ -20.44°S
+      globeGroup.rotation.y = -Math.PI / 1.55;
+      globeGroup.rotation.x = -0.32;
+    }
 
     // Mouse Interaction (Manual drag only, NO continuous over-rotation)
     let isDragging = false;
@@ -497,24 +510,49 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
             transition: 'all 0.2s',
           }}
         >
-          <span>🧠 Run AI Detection & Satellite Lab (-20.4381°S, 57.7446°E) →</span>
+          <span>
+            🧠 Run AI Detection & Satellite Lab (
+            {targetLat > 0 ? `${targetLat.toFixed(2)}°N, ${targetLon.toFixed(2)}°E` : `${Math.abs(targetLat).toFixed(4)}°S, ${targetLon.toFixed(4)}°E`}
+            ) →
+          </span>
         </button>
 
         {/* Corridor Legend with Colors */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Active Maritime Shipping Lanes:</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
-            <span style={{ width: '12px', height: '3px', background: '#00f2fe', borderRadius: '2px' }} />
-            <span>Cape of Good Hope ⇄ Mauritius Lane</span>
+          <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
+            {targetLat > 0 ? 'Active Mediterranean Corridors:' : 'Active Indian Ocean Corridors:'}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
-            <span style={{ width: '12px', height: '3px', background: '#22c55e', borderRadius: '2px' }} />
-            <span>Mauritius ⇄ Sunda / Malacca Strait</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
-            <span style={{ width: '12px', height: '3px', background: '#f97316', borderRadius: '2px' }} />
-            <span>Mozambique Channel ⇄ Mauritius Route</span>
-          </div>
+          {targetLat > 0 ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
+                <span style={{ width: '12px', height: '3px', background: '#00f2fe', borderRadius: '2px' }} />
+                <span>Suez Canal ⇄ Levantine Basin Corridor</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
+                <span style={{ width: '12px', height: '3px', background: '#22c55e', borderRadius: '2px' }} />
+                <span>Levantine Basin ⇄ Baniyas / Syria Tanker Route</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
+                <span style={{ width: '12px', height: '3px', background: '#f97316', borderRadius: '2px' }} />
+                <span>Levantine Basin ⇄ Piraeus / Aegean Route</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
+                <span style={{ width: '12px', height: '3px', background: '#00f2fe', borderRadius: '2px' }} />
+                <span>Cape of Good Hope ⇄ Mauritius Lane</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
+                <span style={{ width: '12px', height: '3px', background: '#22c55e', borderRadius: '2px' }} />
+                <span>Mauritius ⇄ Sunda / Malacca Strait</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
+                <span style={{ width: '12px', height: '3px', background: '#f97316', borderRadius: '2px' }} />
+                <span>Mozambique Channel ⇄ Mauritius Route</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -537,7 +575,9 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         }}>
           <span style={{ fontSize: '1rem' }}>🎯</span>
           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9' }}>
-            CLICK TO INSPECT WAKASHIO SATELLITE IMAGERY (-20.4381°S, 57.7446°E)
+            {targetLat > 0
+              ? `CLICK TO INSPECT MT EMERALD SATELLITE IMAGERY (${targetLat.toFixed(2)}°N, ${targetLon.toFixed(2)}°E)`
+              : `CLICK TO INSPECT WAKASHIO SATELLITE IMAGERY (${Math.abs(targetLat).toFixed(4)}°S, ${targetLon.toFixed(4)}°E)`}
           </span>
         </div>
       )}

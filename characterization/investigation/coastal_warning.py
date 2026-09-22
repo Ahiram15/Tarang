@@ -219,7 +219,62 @@ class CoastalEarlyWarningEngine:
                 ),
             ]
 
-        # 3. Dynamic Receptors generated around arbitrary ocean location
+        # 3. Eastern Mediterranean / Levantine Basin (MT Emerald Spill Corridor)
+        if abs(center_lat - 33.15) < 3.0 and abs(center_lon - 34.20) < 3.0:
+            return [
+                CoastalReceptor(
+                    receptor_id="MED-REC-01",
+                    name="Rosh HaNikra Marine Nature Reserve & Sea Caves",
+                    receptor_type=ReceptorType.MARINE_PROTECTED_AREA.value,
+                    lat=33.0900,
+                    lon=35.1050,
+                    sensitivity_level="CRITICAL",
+                    distance_to_slick_km=0.0,
+                    description="Pristine coastal chalk cliff caves, sea turtle breeding grounds, and protected monk seal habitats.",
+                ),
+                CoastalReceptor(
+                    receptor_id="MED-REC-02",
+                    name="Tyre Coast Nature Reserve & RAMSAR Wetland (Lebanon)",
+                    receptor_type=ReceptorType.MARINE_PROTECTED_AREA.value,
+                    lat=33.2500,
+                    lon=35.2000,
+                    sensitivity_level="CRITICAL",
+                    distance_to_slick_km=0.0,
+                    description="UNESCO World Heritage coastal biome and crucial Mediterranean green/loggerhead sea turtle nesting beaches.",
+                ),
+                CoastalReceptor(
+                    receptor_id="MED-REC-03",
+                    name="Haifa Commercial Port & Chemical Anchorage",
+                    receptor_type=ReceptorType.PORT_HARBOR.value,
+                    lat=32.8200,
+                    lon=35.0100,
+                    sensitivity_level="HIGH",
+                    distance_to_slick_km=0.0,
+                    description="Major deep-water cargo port and international bunkering anchorage corridor.",
+                ),
+                CoastalReceptor(
+                    receptor_id="MED-REC-04",
+                    name="Dor HaBonim Marine Reserve & Sandy Tourism Beaches",
+                    receptor_type=ReceptorType.BEACH_TOURISM.value,
+                    lat=32.6200,
+                    lon=34.9200,
+                    sensitivity_level="HIGH",
+                    distance_to_slick_km=0.0,
+                    description="Popular coastal recreation beaches and critical littoral intertidal ecosystems.",
+                ),
+                CoastalReceptor(
+                    receptor_id="MED-REC-05",
+                    name="Sidon (Saida) Artisanal Fishery Waters (Lebanon)",
+                    receptor_type=ReceptorType.FISHING_GROUND.value,
+                    lat=33.5600,
+                    lon=35.3700,
+                    sensitivity_level="HIGH",
+                    distance_to_slick_km=0.0,
+                    description="Vital nearshore commercial fishing fleet operating across the South Lebanese shelf.",
+                ),
+            ]
+
+        # 4. Dynamic Receptors generated around arbitrary ocean location
         return [
             CoastalReceptor(
                 receptor_id="DYN-REC-01",

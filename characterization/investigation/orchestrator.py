@@ -46,10 +46,26 @@ class InvestigationOrchestrator:
             spill_id == "wakashio"
             or (abs(slick_centroid["lat"] - (-20.438119)) < 0.25 and abs(slick_centroid["lon"] - 57.744631) < 0.25)
         )
+        is_emerald = (
+            spill_id == "emerald"
+            or (abs(slick_centroid["lat"] - 33.15) < 3.0 and abs(slick_centroid["lon"] - 34.20) < 3.0)
+        )
 
-        eff_origin_lat = -20.438119 if is_wakashio else hindcast_origin["lat"]
-        eff_origin_lon = 57.744631 if is_wakashio else hindcast_origin["lon"]
-        eff_uncertainty_km = 2.5 if is_wakashio else base_uncertainty_radius_km
+        if is_wakashio:
+            eff_origin_lat = -20.438119
+            eff_origin_lon = 57.744631
+            eff_uncertainty_km = 2.5
+            eff_confidence = 0.96
+        elif is_emerald:
+            eff_origin_lat = 33.15
+            eff_origin_lon = 34.20
+            eff_uncertainty_km = 25.0
+            eff_confidence = 0.95
+        else:
+            eff_origin_lat = hindcast_origin["lat"]
+            eff_origin_lon = hindcast_origin["lon"]
+            eff_uncertainty_km = base_uncertainty_radius_km
+            eff_confidence = base_confidence
 
         origin_zones = self.origin_engine.generate_origin_zones(
             centroid_lat=eff_origin_lat,
@@ -57,7 +73,7 @@ class InvestigationOrchestrator:
             base_uncertainty_radius_km=eff_uncertainty_km,
             observation_time=observation_time,
             hours_back=hours_back,
-            base_confidence=0.96 if is_wakashio else base_confidence,
+            base_confidence=eff_confidence,
         )
 
         # 2. AIS & SAR Intelligence (Category A, B, C)

@@ -7,7 +7,39 @@ import { MaritimeInvestigationSuite } from './components/MaritimeInvestigationSu
 import { ScanResponse, SpillAnalysis, InvestigationPriorityReport } from './types';
 import { Satellite, Globe2, Microscope, Waves, Radar, Radio } from 'lucide-react';
 
+interface IncidentLocation {
+  id: string;
+  name: string;
+  badge: string;
+  lat: number;
+  lon: number;
+  date: string;
+  spillId: string;
+}
+
+const INCIDENTS: IncidentLocation[] = [
+  {
+    id: 'emerald',
+    name: 'MT Emerald Mystery Spill (Levantine Basin, Mediterranean)',
+    badge: '🇵🇦 MT EMERALD (33.15°N, 34.20°E)',
+    lat: 33.15,
+    lon: 34.20,
+    date: '2021-02-05',
+    spillId: 'emerald',
+  },
+  {
+    id: 'wakashio',
+    name: 'MV Wakashio Grounding (Pointe d\'Esny, Mauritius)',
+    badge: '🇲🇺 MV WAKASHIO (-20.44°S, 57.74°E)',
+    lat: -20.438119,
+    lon: 57.744631,
+    date: '2020-08-10',
+    spillId: 'wakashio',
+  },
+];
+
 export const App: React.FC = () => {
+  const [selectedIncident, setSelectedIncident] = useState<IncidentLocation>(INCIDENTS[0]); // Default to MT Emerald!
   const [view, setView] = useState<'simulation' | 'globe' | 'satellite_lab' | 'characterization' | 'investigation'>('simulation');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
@@ -16,8 +48,8 @@ export const App: React.FC = () => {
   const [activePalette, setActivePalette] = useState<string>('False-Color RGB Composite (VV+VH+Ratio)');
   const [useLiveSat, setUseLiveSat] = useState<boolean>(false); // False: instant calibrated benchmark data (<1s), True: live ESA Copernicus API
 
-  const targetLat = -20.438119;
-  const targetLon = 57.744631;
+  const targetLat = selectedIncident.lat;
+  const targetLon = selectedIncident.lon;
 
   const handleSelectIncident = async (lat: number, lon: number, customPalette?: string, overrideLive?: boolean) => {
     const isLive = overrideLive !== undefined ? overrideLive : useLiveSat;
@@ -30,8 +62,8 @@ export const App: React.FC = () => {
         body: JSON.stringify({
           lat: lat,
           lon: lon,
-          date: '2020-08-10',
-          buffer: 0.06,
+          date: selectedIncident.date,
+          buffer: 0.08,
           threshold: 0.5,
           palette: paletteToUse,
           enable_dsp: true,
@@ -68,7 +100,7 @@ export const App: React.FC = () => {
       return;
     }
     try {
-      const spillId = scanResult?.characterization_id || 'wakashio';
+      const spillId = scanResult?.characterization_id || selectedIncident.spillId;
       const res = await fetch(`/api/spill/${spillId}/analysis`);
       if (res.ok) {
         const charData: SpillAnalysis = await res.json();
@@ -88,7 +120,7 @@ export const App: React.FC = () => {
       setView('investigation');
       return;
     }
-    const spillId = scanResult?.characterization_id || analysis?.spill_id || 'wakashio';
+    const spillId = scanResult?.characterization_id || analysis?.spill_id || selectedIncident.spillId;
     setIsLoading(true);
     try {
       // Ensure characterization is loaded
@@ -118,22 +150,59 @@ export const App: React.FC = () => {
       
       {/* Global Top Navigation Bar */}
       <div style={{
-        height: '38px',
+        height: '42px',
         background: 'rgba(3, 7, 18, 0.95)',
         borderBottom: '1px solid rgba(0, 242, 254, 0.2)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 20px',
+        padding: '0 16px',
         zIndex: 4000,
         flexShrink: 0,
         backdropFilter: 'blur(10px)',
       }}>
         {/* Left Title / Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
-          <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '0.8px' }}>SPILL TRACE</span>
+          <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '0.8px' }}>TARANG</span>
           <span style={{ color: '#64748b' }}>|</span>
-          <span style={{ color: '#94a3b8' }}>MV WAKASHIO SURVEILLANCE MISSION</span>
+          <span style={{ color: '#94a3b8', fontWeight: 600 }}>{selectedIncident.name.toUpperCase()}</span>
+        </div>
+
+        {/* Location Switcher */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          background: 'rgba(255, 255, 255, 0.04)',
+          padding: '2px 6px',
+          borderRadius: '6px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+        }}>
+          <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, paddingRight: '4px' }}>LOCATION:</span>
+          {INCIDENTS.map((inc) => (
+            <button
+              key={inc.id}
+              onClick={() => {
+                setSelectedIncident(inc);
+                setScanResult(null);
+                setAnalysis(null);
+                setInvestigationReport(null);
+              }}
+              style={{
+                background: selectedIncident.id === inc.id ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: selectedIncident.id === inc.id ? '1px solid #00f2fe' : '1px solid transparent',
+                color: selectedIncident.id === inc.id ? '#00f2fe' : '#94a3b8',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                fontSize: '0.70rem',
+                fontWeight: selectedIncident.id === inc.id ? 800 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {inc.badge}
+            </button>
+          ))}
         </div>
 
         {/* Center 5-Stage Mission Switcher */}
