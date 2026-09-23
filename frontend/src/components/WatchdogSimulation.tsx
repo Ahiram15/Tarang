@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Clock,
   Play,
@@ -33,7 +33,9 @@ import {
   Check,
   Sliders,
   BarChart3,
-  TrendingDown
+  TrendingDown,
+  Terminal,
+  Trash2
 } from 'lucide-react';
 
 interface WatchdogSimulationProps {
@@ -62,6 +64,100 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   // Active satellite selected for detail chip
   const [selectedSat, setSelectedSat] = useState<number>(0);
 
+  // Live Telemetry Console State
+  const [consoleMode, setConsoleMode] = useState<'console' | 'inspector'>('console');
+  const [isConsoleStreaming, setIsConsoleStreaming] = useState<boolean>(true);
+  const [consoleFilter, setConsoleFilter] = useState<'ALL' | 'TIER1' | 'TIER2' | 'AI' | 'ALERTS'>('ALL');
+  const consoleBottomRef = useRef<HTMLDivElement>(null);
+
+  const [consoleLogs, setConsoleLogs] = useState<Array<{
+    id: string;
+    time: string;
+    source: string;
+    level: 'POLL' | 'TIER1' | 'TIER2' | 'AI' | 'WIND' | 'ALERT' | 'INFO' | 'SUCCESS';
+    color: string;
+    message: string;
+  }>>([
+    { id: '1', time: '14:58:12.1', source: 'DAEMON', level: 'INFO', color: '#38bdf8', message: 'Autonomous Satellite Watchdog active. Polling interval: 30 mins.' },
+    { id: '2', time: '14:59:02.4', source: 'STAC', level: 'POLL', color: '#00f2fe', message: 'Querying Copernicus STAC API: catalogue.dataspace.copernicus.eu/stac' },
+    { id: '3', time: '14:59:45.8', source: 'ORBIT', level: 'INFO', color: '#94a3b8', message: 'Constellation check: Sentinel-1, Sentinel-2, Landsat-8, EOS-06 nominal.' },
+    { id: '4', time: '15:00:00.0', source: 'POLLER', level: 'POLL', color: '#00f2fe', message: '30-min synchronization triggered. Ingesting Levantine Basin orbit pass.' },
+    { id: '5', time: '15:00:01.8', source: 'INGEST', level: 'TIER1', color: '#f59e0b', message: 'New scene registered: S1B_IW_GRDH_1SDV_20210205T154212_025462' },
+    { id: '6', time: '15:00:03.2', source: 'TIER-1', level: 'TIER1', color: '#00f2fe', message: 'Fast ~2.1 MB quicklook preview retrieved. Applying GSHHG shoreline mask.' },
+    { id: '7', time: '15:00:04.5', source: 'CFAR-2P', level: 'ALERT', color: '#ef4444', message: 'Contrast anomaly detected: -8.4 dB below clutter baseline. BBOX extracted.' },
+    { id: '8', time: '15:00:05.9', source: 'TIER-2', level: 'TIER2', color: '#a855f7', message: 'CDSE Process API: Targeted 10m patch requested [33.15°N, 34.20°E] (~4.8 MB).' },
+    { id: '9', time: '15:00:07.4', source: 'SAVINGS', level: 'INFO', color: '#22c55e', message: 'Bandwidth optimization verified: 99.3% network transfer conserved (7 MB vs 1000 MB).' },
+    { id: '10', time: '15:00:08.8', source: 'STAGE-6', level: 'AI', color: '#ec4899', message: 'Sigma0 backscatter calibrated + 7x7 Gamma-MAP speckle filter converged.' },
+    { id: '11', time: '15:00:10.2', source: 'U-NET', level: 'AI', color: '#ec4899', message: 'Deep dual VV+VH segmentation complete (IoU: 0.887). Extracted slick: 42.6 km².' },
+    { id: '12', time: '15:00:11.7', source: 'EOS-06', level: 'WIND', color: '#38bdf8', message: 'ISRO scatterometer wind speed: 4.8 m/s NW. Natural look-alike rejected (p < 0.04).' },
+    { id: '13', time: '15:00:13.1', source: 'ALERT', level: 'ALERT', color: '#ef4444', message: 'CONFIRMED SPILL: Confidence 96.4%. Transmitted to 3D Globe & Hindcast Engine.' },
+  ]);
+
+  // Auto-scroll console to bottom when new logs arrive
+  useEffect(() => {
+    if (consoleMode === 'console' && consoleBottomRef.current) {
+      consoleBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [consoleLogs, consoleMode]);
+
+  // Periodic Live Background Telemetry Generator
+  useEffect(() => {
+    if (!isConsoleStreaming) return;
+    const pool = [
+      { source: 'STAC-POLL', level: 'POLL' as const, color: '#00f2fe', message: 'Copernicus STAC catalog heartbeat: 4 active satellite collections responding.' },
+      { source: 'EOS-06', level: 'WIND' as const, color: '#38bdf8', message: 'ISRO scatterometer wind vector: 4.8 m/s @ 312° NW across shipping corridor.' },
+      { source: 'TIER-1', level: 'TIER1' as const, color: '#f59e0b', message: '2-param CFAR baseline sea clutter recalibrated: μ = -14.2 dB, σ = 1.84 dB.' },
+      { source: 'CACHE', level: 'INFO' as const, color: '#22c55e', message: 'Storage guard active: 99.3% network transfer conserved (0 redundant gigabyte downloads).' },
+      { source: 'LANDSAT-8', level: 'INFO' as const, color: '#f59e0b', message: 'TIRS Band 10 thermal calibrated: Ocean surface baseline 19.4°C.' },
+      { source: 'SENTINEL-2', level: 'POLL' as const, color: '#38bdf8', message: 'MSI optical cloud-screening index updated for Mediterranean sector.' },
+      { source: 'CDSE', level: 'TIER2' as const, color: '#a855f7', message: 'Process API token refreshed. Sub-patch bounding box server warm and responsive.' },
+      { source: 'AIS-CROSS', level: 'INFO' as const, color: '#00f2fe', message: 'Corridor vessel transponder stream ingested: 18 commercial vessels tracked.' },
+    ];
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const timeStr = now.toISOString().substring(11, 21);
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      setConsoleLogs((prev) => [
+        ...prev.slice(-45),
+        {
+          id: `log-${Date.now()}-${Math.random()}`,
+          time: timeStr,
+          source: chosen.source,
+          level: chosen.level,
+          color: chosen.color,
+          message: chosen.message,
+        },
+      ]);
+    }, 2600);
+
+    return () => clearInterval(interval);
+  }, [isConsoleStreaming]);
+
+  const triggerManualPoll = () => {
+    const now = new Date();
+    const timeStr = now.toISOString().substring(11, 21);
+    setConsoleLogs((prev) => [
+      ...prev,
+      {
+        id: `poll-${Date.now()}`,
+        time: timeStr,
+        source: 'MANUAL',
+        level: 'POLL',
+        color: '#00f2fe',
+        message: '⚡ Manual poll triggered: Querying Copernicus OpenSearch STAC endpoint...',
+      },
+      {
+        id: `poll-res-${Date.now()}`,
+        time: timeStr,
+        source: 'CDSE',
+        level: 'TIER1',
+        color: '#f59e0b',
+        message: 'STAC query returned 1 active candidate scene. Dispatching Tier-1 screening.',
+      },
+    ]);
+  };
+
   // Auto-advance through the 30-min polling cycles when playing
   useEffect(() => {
     if (!isPlaying) return;
@@ -70,6 +166,28 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
     }, 4000);
     return () => clearTimeout(timer);
   }, [activeCycle, isPlaying]);
+
+  // When activeCycle changes, log contextual batch to console
+  useEffect(() => {
+    const now = new Date();
+    const timeStr = now.toISOString().substring(11, 21);
+    if (activeCycle === 0) {
+      setConsoleLogs((prev) => [
+        ...prev,
+        { id: `c0-${Date.now()}`, time: timeStr, source: 'POLLER-14:00', level: 'POLL', color: '#00f2fe', message: 'Cycle 14:00 UTC: Copernicus STAC sweep executed. Monitored corridors clear. Standby.' },
+      ]);
+    } else if (activeCycle === 1) {
+      setConsoleLogs((prev) => [
+        ...prev,
+        { id: `c1-${Date.now()}`, time: timeStr, source: 'POLLER-14:30', level: 'POLL', color: '#f59e0b', message: 'Cycle 14:30 UTC: Landsat-8 scene screened. CFAR nominal (no dark damping). Standby.' },
+      ]);
+    } else if (activeCycle === 2) {
+      setConsoleLogs((prev) => [
+        ...prev,
+        { id: `c2-${Date.now()}`, time: timeStr, source: 'POLLER-15:00', level: 'ALERT', color: '#ef4444', message: 'Cycle 15:00 UTC: Sentinel-1 pass acquired! Two-tier screening triggered: 42.6 km² spill verified.' },
+      ]);
+    }
+  }, [activeCycle]);
 
   const satellites = [
     {
@@ -593,102 +711,309 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             </div>
           </div>
 
-          {/* Active Step Deep-Dive Inspector */}
+          {/* Dual-Mode: Live Telemetry Console OR Step Deep-Dive Inspector */}
           <div style={{
-            background: 'rgba(6, 11, 24, 0.85)',
-            border: `1.5px solid ${pipelineSteps[activeStep - 1].color}`,
+            background: 'rgba(6, 11, 24, 0.90)',
+            border: consoleMode === 'console' ? '1.5px solid rgba(0, 242, 254, 0.4)' : `1.5px solid ${pipelineSteps[activeStep - 1].color}`,
             borderRadius: '12px',
-            padding: '16px',
+            padding: '14px 16px',
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            boxShadow: `0 0 20px ${pipelineSteps[activeStep - 1].color}25`,
+            boxShadow: consoleMode === 'console' ? '0 0 25px rgba(0, 242, 254, 0.15)' : `0 0 20px ${pipelineSteps[activeStep - 1].color}25`,
+            minHeight: '270px',
           }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    background: pipelineSteps[activeStep - 1].color,
-                    color: '#030712',
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: '50%',
+            {/* Mode Switcher Tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={() => setConsoleMode('console')}
+                  style={{
+                    background: consoleMode === 'console' ? 'rgba(0, 242, 254, 0.22)' : 'rgba(255,255,255,0.04)',
+                    border: consoleMode === 'console' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
+                    color: consoleMode === 'console' ? '#00f2fe' : '#94a3b8',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.72rem',
-                    fontWeight: 900,
-                  }}>
-                    {pipelineSteps[activeStep - 1].id}
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Terminal size={13} />
+                  <span>LIVE INGESTION CONSOLE</span>
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: isConsoleStreaming ? '#22c55e' : '#f59e0b',
+                    boxShadow: isConsoleStreaming ? '0 0 8px #22c55e' : 'none',
+                    display: 'inline-block'
+                  }} />
+                </button>
+
+                <button
+                  onClick={() => setConsoleMode('inspector')}
+                  style={{
+                    background: consoleMode === 'inspector' ? 'rgba(0, 242, 254, 0.22)' : 'rgba(255,255,255,0.04)',
+                    border: consoleMode === 'inspector' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
+                    color: consoleMode === 'inspector' ? '#00f2fe' : '#94a3b8',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Cpu size={13} />
+                  <span>STEP SPEC (STEP {activeStep})</span>
+                </button>
+              </div>
+
+              {consoleMode === 'console' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    onClick={() => setIsConsoleStreaming(!isConsoleStreaming)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: isConsoleStreaming ? '#22c55e' : '#f59e0b',
+                      borderRadius: '5px',
+                      padding: '3px 8px',
+                      fontSize: '0.66rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {isConsoleStreaming ? <Pause size={10} /> : <Play size={10} />}
+                    <span>{isConsoleStreaming ? 'STREAMING' : 'PAUSED'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => triggerManualPoll()}
+                    style={{
+                      background: 'rgba(0, 242, 254, 0.12)',
+                      border: '1px solid rgba(0, 242, 254, 0.3)',
+                      color: '#00f2fe',
+                      borderRadius: '5px',
+                      padding: '3px 8px',
+                      fontSize: '0.66rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Zap size={10} />
+                    <span>Poll STAC</span>
+                  </button>
+
+                  <button
+                    onClick={() => setConsoleLogs([])}
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '5px',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      padding: '3px 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    title="Clear Terminal"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* CONSOLE VIEW */}
+            {consoleMode === 'console' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                {/* Console Log Terminal Window */}
+                <div style={{
+                  background: '#020409',
+                  border: '1px solid rgba(0, 242, 254, 0.2)',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
+                  fontSize: '0.70rem',
+                  lineHeight: 1.55,
+                  flex: 1,
+                  height: '180px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.8)',
+                }}>
+                  {consoleLogs.length === 0 ? (
+                    <div style={{ color: '#64748b', fontStyle: 'italic', padding: '10px' }}>
+                      Console buffer empty. Streaming telemetry will appear shortly or click "Poll STAC"...
+                    </div>
+                  ) : (
+                    consoleLogs.map((log) => (
+                      <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', wordBreak: 'break-word' }}>
+                        <span style={{ color: '#475569', fontSize: '0.64rem', flexShrink: 0 }}>
+                          [{log.time}]
+                        </span>
+                        <span style={{
+                          color: log.color,
+                          fontWeight: 800,
+                          fontSize: '0.64rem',
+                          background: `${log.color}15`,
+                          padding: '0 4px',
+                          borderRadius: '3px',
+                          border: `1px solid ${log.color}35`,
+                          flexShrink: 0,
+                        }}>
+                          {log.source}
+                        </span>
+                        <span style={{
+                          color: log.level === 'ALERT' ? '#fca5a5' : log.level === 'SUCCESS' ? '#86efac' : '#cbd5e1',
+                          fontWeight: log.level === 'ALERT' ? 700 : 400,
+                        }}>
+                          {log.message}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                  <div ref={consoleBottomRef} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#00f2fe', marginTop: '2px' }}>
+                    <span style={{ fontSize: '0.66rem' }}>● CDSE_DAEMON_ACTIVE &gt;</span>
+                    <span style={{
+                      display: 'inline-block',
+                      width: '7px',
+                      height: '11px',
+                      background: '#00f2fe',
+                      animation: 'pulse 1s infinite'
+                    }} />
                   </div>
-                  <span style={{ fontSize: '0.86rem', fontWeight: 900, color: '#ffffff' }}>
-                    {pipelineSteps[activeStep - 1].title}
+                </div>
+
+                {/* Live Console Telemetry Ticker Footer */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                  paddingTop: '8px',
+                  marginTop: '8px',
+                  fontSize: '0.65rem',
+                  color: '#64748b',
+                  fontFamily: 'monospace',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>POLLER: <b style={{ color: '#22c55e' }}>ONLINE</b></span>
+                    <span>THROUGHPUT: <b style={{ color: '#38bdf8' }}>1.2 evt/s</b></span>
+                    <span>SATELLITES: <b style={{ color: '#f59e0b' }}>4 MONITORED</b></span>
+                  </div>
+                  <div>
+                    BANDWIDTH SAVINGS: <b style={{ color: '#22c55e' }}>99.3% ACTIVE</b>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* INSPECTOR VIEW */
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        background: pipelineSteps[activeStep - 1].color,
+                        color: '#030712',
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.72rem',
+                        fontWeight: 900,
+                      }}>
+                        {pipelineSteps[activeStep - 1].id}
+                      </div>
+                      <span style={{ fontSize: '0.86rem', fontWeight: 900, color: '#ffffff' }}>
+                        {pipelineSteps[activeStep - 1].title}
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: '0.64rem',
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: '4px',
+                      background: `${pipelineSteps[activeStep - 1].color}20`,
+                      color: pipelineSteps[activeStep - 1].color,
+                      border: `1px solid ${pipelineSteps[activeStep - 1].color}40`,
+                    }}>
+                      {pipelineSteps[activeStep - 1].tag}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '0.74rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '10px' }}>
+                    {pipelineSteps[activeStep - 1].desc}
+                  </div>
+
+                  {/* Specific technical pill for selected step */}
+                  {activeStep === 1 && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
+                      <b>Catalog Search:</b> Polling Copernicus STAC endpoint: <code>catalogue.dataspace.copernicus.eu/stac</code>. Queries Sentinel-1, Sentinel-2, Landsat-8, and ISRO EOS-06 wind fields every 30 minutes.
+                    </div>
+                  )}
+                  {activeStep === 2 && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
+                      <b>Quicklook Spec:</b> ~2 MB sub-sampled preview. OSM / GSHHG shoreline polygon mask applied with a 500m coastal buffer to prevent false land terrain triggers.
+                    </div>
+                  )}
+                  {activeStep === 3 && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
+                      <b>CFAR Threshold Formula:</b> <code>T_cfar = μ_clutter - k * σ_clutter</code>. Dynamically models local sea clutter statistics for constant false-alarm rate, independent of global wind state.
+                    </div>
+                  )}
+                  {activeStep === 4 && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
+                      <b>CDSE Process API:</b> <code>POST /api/v1/process</code> requests native 10m GeoTIFF patch constrained strictly to the flagged BBOX coordinates, avoiding 95% unnecessary image transfer.
+                    </div>
+                  )}
+                  {activeStep === 5 && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
+                      <b>SAR Preprocessing (Stage 6):</b> Calibration LUT converts raw DN to backscatter σ⁰ (dB). Gamma-MAP adaptive filter models radar reflectivity as Gamma-distributed to preserve intricate slick boundaries.
+                    </div>
+                  )}
+                  {activeStep === 6 && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
+                      <b>Deep Segmentation (Stage 8):</b> Dual-channel VV/VH U-Net delineates exact polygon contours. Compared against Level Set Method (LSM) and Superpixel SLIC to ensure sub-pixel boundary fidelity.
+                    </div>
+                  )}
+                  {activeStep === 7 && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
+                      <b>False Positive Removal (Stage 9 & 10):</b> Wind-speed gating rejects low-wind calm water (&lt;3 m/s via EOS-06). Cross-matches AIS cargo ship transponders. Confirmed score: <b>96.4%</b> → Handoff to Acts 1–4.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px', marginTop: '10px' }}>
+                  <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                    Pipeline Stage: <b>{pipelineSteps[activeStep - 1].sub}</b>
+                  </span>
+                  <span style={{ fontSize: '0.68rem', color: '#22c55e', fontWeight: 800 }}>
+                    STATUS: VERIFIED
                   </span>
                 </div>
-                <span style={{
-                  fontSize: '0.64rem',
-                  fontWeight: 800,
-                  padding: '2px 7px',
-                  borderRadius: '4px',
-                  background: `${pipelineSteps[activeStep - 1].color}20`,
-                  color: pipelineSteps[activeStep - 1].color,
-                  border: `1px solid ${pipelineSteps[activeStep - 1].color}40`,
-                }}>
-                  {pipelineSteps[activeStep - 1].tag}
-                </span>
               </div>
-
-              <div style={{ fontSize: '0.74rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '12px' }}>
-                {pipelineSteps[activeStep - 1].desc}
-              </div>
-
-              {/* Specific technical pill for selected step */}
-              {activeStep === 1 && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                  <b>Catalog Search:</b> Polling Copernicus STAC endpoint: <code>catalogue.dataspace.copernicus.eu/stac</code>. Queries Sentinel-1, Sentinel-2, Landsat-8, and ISRO EOS-06 wind fields every 30 minutes.
-                </div>
-              )}
-              {activeStep === 2 && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                  <b>Quicklook Spec:</b> ~2 MB sub-sampled preview. OSM / GSHHG shoreline polygon mask applied with a 500m coastal buffer to prevent false land terrain triggers.
-                </div>
-              )}
-              {activeStep === 3 && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                  <b>CFAR Threshold Formula:</b> <code>T_cfar = μ_clutter - k * σ_clutter</code>. Dynamically models local sea clutter statistics for constant false-alarm rate, independent of global wind state.
-                </div>
-              )}
-              {activeStep === 4 && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                  <b>CDSE Process API:</b> <code>POST /api/v1/process</code> requests native 10m GeoTIFF patch constrained strictly to the flagged BBOX coordinates, avoiding 95% unnecessary image transfer.
-                </div>
-              )}
-              {activeStep === 5 && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                  <b>SAR Preprocessing (Stage 6):</b> Calibration LUT converts raw DN to backscatter σ⁰ (dB). Gamma-MAP adaptive filter models radar reflectivity as Gamma-distributed to preserve intricate slick boundaries.
-                </div>
-              )}
-              {activeStep === 6 && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                  <b>Deep Segmentation (Stage 8):</b> Dual-channel VV/VH U-Net delineates exact polygon contours. Compared against Level Set Method (LSM) and Superpixel SLIC to ensure sub-pixel boundary fidelity.
-                </div>
-              )}
-              {activeStep === 7 && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                  <b>False Positive Removal (Stage 9 & 10):</b> Wind-speed gating rejects low-wind calm water (&lt;3 m/s via EOS-06). Cross-matches AIS cargo ship transponders. Confirmed score: <b>96.4%</b> → Handoff to Acts 1–4.
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px', marginTop: '10px' }}>
-              <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                Pipeline Stage: <b>{pipelineSteps[activeStep - 1].sub}</b>
-              </span>
-              <span style={{ fontSize: '0.68rem', color: '#22c55e', fontWeight: 800 }}>
-                STATUS: VERIFIED
-              </span>
-            </div>
+            )}
           </div>
         </div>
 
