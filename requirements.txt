@@ -7,6 +7,10 @@ python-dotenv>=1.0.0
 requests>=2.31.0
 httpx>=0.24.0
 
+# WebSockets & Real-Time Streaming (AISStream & Telemetry)
+websockets>=12.0
+websocket-client>=1.6.0
+
 # Deep Learning & Computer Vision
 tensorflow>=2.12.0
 h5py>=3.8.0
