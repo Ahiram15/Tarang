@@ -119,7 +119,8 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
   const [selectedAlert, setSelectedAlert] = useState<CoastalAlert | null>(null);
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
 
-  // Layer toggles
+  // Basemap & Layer toggles
+  const [basemapType, setBasemapType] = useState<'satellite' | 'ocean' | 'voyager' | 'dark'>('satellite');
   const [showOriginZones, setShowOriginZones] = useState<boolean>(true);
   const [showVesselTracks, setShowVesselTracks] = useState<boolean>(false);
   const [showAisGaps, setShowAisGaps] = useState<boolean>(false);
@@ -890,6 +891,89 @@ Reference ID: ${investigationReport.report_id}
           flexDirection: 'column',
           position: 'relative',
         }}>
+          {/* Basemap Style / Color Map Selector Pill */}
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            left: '52px',
+            zIndex: 1000,
+            background: 'rgba(6, 10, 20, 0.92)',
+            border: '1px solid rgba(0, 242, 254, 0.35)',
+            borderRadius: '8px',
+            padding: '4px 6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)',
+          }}>
+            <span style={{ fontSize: '0.66rem', color: '#00f2fe', fontWeight: 800, padding: '0 4px' }}>MAP:</span>
+            <button
+              onClick={() => setBasemapType('satellite')}
+              style={{
+                background: basemapType === 'satellite' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
+                border: basemapType === 'satellite' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: basemapType === 'satellite' ? '#ffffff' : '#94a3b8',
+                borderRadius: '5px',
+                padding: '3px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🛰️ Satellite (Color)
+            </button>
+            <button
+              onClick={() => setBasemapType('ocean')}
+              style={{
+                background: basemapType === 'ocean' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
+                border: basemapType === 'ocean' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: basemapType === 'ocean' ? '#ffffff' : '#94a3b8',
+                borderRadius: '5px',
+                padding: '3px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🌊 Ocean Blue
+            </button>
+            <button
+              onClick={() => setBasemapType('voyager')}
+              style={{
+                background: basemapType === 'voyager' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
+                border: basemapType === 'voyager' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: basemapType === 'voyager' ? '#ffffff' : '#94a3b8',
+                borderRadius: '5px',
+                padding: '3px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🗺️ Color Coastal
+            </button>
+            <button
+              onClick={() => setBasemapType('dark')}
+              style={{
+                background: basemapType === 'dark' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
+                border: basemapType === 'dark' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: basemapType === 'dark' ? '#ffffff' : '#94a3b8',
+                borderRadius: '5px',
+                padding: '3px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🌑 Dark
+            </button>
+          </div>
+
           {/* Map Layer Toolbar */}
           <div style={{
             position: 'absolute',
@@ -981,11 +1065,35 @@ Reference ID: ${investigationReport.report_id}
               zoom={11}
               style={{ width: '100%', height: '100%' }}
             >
-              <TileLayer
-                url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
-                maxZoom={16}
-              />
+              {/* Dynamic Basemap Tiles */}
+              {basemapType === 'satellite' && (
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
+                  maxZoom={18}
+                />
+              )}
+              {basemapType === 'ocean' && (
+                <TileLayer
+                  url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
+                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, GEBCO, NOAA'
+                  maxZoom={16}
+                />
+              )}
+              {basemapType === 'voyager' && (
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/">CARTO</a>, &copy; OpenStreetMap'
+                  maxZoom={19}
+                />
+              )}
+              {basemapType === 'dark' && (
+                <TileLayer
+                  url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
+                  maxZoom={16}
+                />
+              )}
 
               {/* 1. Multi-Tier Probable Origin Zones */}
               {showOriginZones && (
@@ -995,7 +1103,7 @@ Reference ID: ${investigationReport.report_id}
                     <Polygon
                       key="origin-zone-high"
                       positions={toLeafletPositions(originAnalysis.zones.high.polygon)}
-                      pathOptions={{ color: '#ef4444', fillColor: 'transparent', fillOpacity: 0, weight: 2 }}
+                      pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.22, weight: 2 }}
                     >
                       <Tooltip permanent={false}>High Probability Zone (1σ Core Boundary): ±{originAnalysis.zones.high.radius_km} km</Tooltip>
                     </Polygon>
@@ -1006,7 +1114,7 @@ Reference ID: ${investigationReport.report_id}
                     <Polygon
                       key="origin-zone-med"
                       positions={toLeafletPositions(originAnalysis.zones.medium.polygon)}
-                      pathOptions={{ color: '#f59e0b', fillColor: 'transparent', fillOpacity: 0, weight: 1.5, dashArray: '4, 4' }}
+                      pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.12, weight: 1.5, dashArray: '4, 4' }}
                     >
                       <Tooltip permanent={false}>Medium Probability Zone (2σ Region Boundary): ±{originAnalysis.zones.medium.radius_km} km</Tooltip>
                     </Polygon>
@@ -1017,7 +1125,7 @@ Reference ID: ${investigationReport.report_id}
                     <Polygon
                       key="origin-zone-low"
                       positions={toLeafletPositions(originAnalysis.zones.low.polygon)}
-                      pathOptions={{ color: '#94a3b8', fillColor: 'transparent', fillOpacity: 0, weight: 1, dashArray: '6, 6' }}
+                      pathOptions={{ color: '#38bdf8', fillColor: '#38bdf8', fillOpacity: 0.06, weight: 1, dashArray: '6, 6' }}
                     >
                       <Tooltip permanent={false}>Outer Spatial Uncertainty Boundary (3σ): ±{originAnalysis.zones.low.radius_km} km</Tooltip>
                     </Polygon>

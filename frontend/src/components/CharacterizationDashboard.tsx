@@ -42,6 +42,41 @@ interface CharacterizationDashboardProps {
   onOpenInvestigation?: () => void;
 }
 
+// Convert GeoJSON Polygon or MultiPolygon to React-Leaflet positions
+export const toLeafletPositions = (geoJsonPolygon: any): any => {
+  if (!geoJsonPolygon || !geoJsonPolygon.coordinates || !geoJsonPolygon.coordinates.length) return [];
+  if (geoJsonPolygon.type === 'MultiPolygon') {
+    return geoJsonPolygon.coordinates.map((poly: any[]) =>
+      poly[0].map((pt: number[]) => [pt[1], pt[0]] as [number, number])
+    );
+  }
+  return geoJsonPolygon.coordinates[0].map((pt: number[]) => [pt[1], pt[0]] as [number, number]);
+};
+
+// Flatten all polygon points for safe LatLngBounds computation
+export const extractAllLeafletPoints = (geoJsonPolygon: any): [number, number][] => {
+  if (!geoJsonPolygon || !geoJsonPolygon.coordinates) return [];
+  const pts: [number, number][] = [];
+  const recurse = (arr: any) => {
+    if (Array.isArray(arr) && arr.length >= 2 && typeof arr[0] === 'number' && typeof arr[1] === 'number') {
+      pts.push([arr[1], arr[0]]);
+    } else if (Array.isArray(arr)) {
+      for (let i = 0; i < arr.length; i++) {
+        recurse(arr[i]);
+      }
+    }
+  };
+  recurse(geoJsonPolygon.coordinates);
+  return pts;
+};
+
+// Formatting helper for lat/lon coordinates
+export const formatLatLon = (lat: number, lon: number) => {
+  const latStr = `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}`;
+  const lonStr = `${Math.abs(lon).toFixed(4)}°${lon >= 0 ? 'E' : 'W'}`;
+  return `${latStr}, ${lonStr}`;
+};
+
 // Auto-focus and smoothly track the spill boundary
 const MapCameraController: React.FC<{
   bounds: [number, number][];
@@ -77,9 +112,14 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   onOpenInvestigation,
 }) => {
   const centroid = analysis.geometry.centroid;
-  const currentPolyCoords = analysis.geometry.boundary.geometry.coordinates[0].map(
-    (pt: number[]) => [pt[1], pt[0]] as [number, number]
-  );
+  const currentPolyPositions = useMemo(() => {
+    return toLeafletPositions(analysis.geometry.boundary.geometry);
+  }, [analysis]);
+
+  const allPolyPoints: [number, number][] = useMemo(() => {
+    const pts = extractAllLeafletPoints(analysis.geometry.boundary.geometry);
+    return pts.length > 0 ? pts : [[centroid.lat, centroid.lon]];
+  }, [analysis, centroid]);
 
   // Movement velocity arrow coordinates (strictly contained within marine lagoon water)
   const moveAngleRad = (analysis.movement.direction_deg * Math.PI) / 180;
@@ -155,23 +195,33 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   const activeForecastStep = forecastSteps.find((s) => s.hours === selectedForecastHour) || forecastSteps[0];
 
   // Dynamically calculate the drifting slick coordinates as time advances
-  const driftingSlickCoords = useMemo(() => {
+  const driftingSlickPositions = useMemo(() => {
     if (!activeForecastStep || activeForecastStep.hours === 0) {
-      return currentPolyCoords;
+      return currentPolyPositions;
     }
     const dLat = activeForecastStep.centroid.lat - centroid.lat;
     const dLon = activeForecastStep.centroid.lon - centroid.lon;
     const expansionFactor = 1.0 + (activeForecastStep.hours / 72.0) * 0.35;
 
-    return currentPolyCoords.map(([lat, lon]: [number, number]) => {
-      const relLat = (lat - centroid.lat) * expansionFactor;
-      const relLon = (lon - centroid.lon) * expansionFactor;
-      return [
-        activeForecastStep.centroid.lat + relLat,
-        activeForecastStep.centroid.lon + relLon,
-      ] as [number, number];
-    });
-  }, [activeForecastStep, centroid, currentPolyCoords]);
+    const shiftCoords = (item: any): any => {
+      if (Array.isArray(item) && item.length >= 2 && typeof item[0] === 'number' && typeof item[1] === 'number') {
+        const lat = item[0];
+        const lon = item[1];
+        const relLat = (lat - centroid.lat) * expansionFactor;
+        const relLon = (lon - centroid.lon) * expansionFactor;
+        return [
+          activeForecastStep.centroid.lat + relLat,
+          activeForecastStep.centroid.lon + relLon,
+        ] as [number, number];
+      }
+      if (Array.isArray(item)) {
+        return item.map(shiftCoords);
+      }
+      return item;
+    };
+
+    return shiftCoords(currentPolyPositions);
+  }, [activeForecastStep, centroid, currentPolyPositions]);
 
   // Generate ocean swell wave crests traveling directly along the drift trajectory
   const trajectoryWaveData = useMemo(() => {
@@ -275,17 +325,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
     const curIdx = hoursList.indexOf(selectedForecastHour);
     const prevIdx = (curIdx - 1 + hoursList.length) % hoursList.length;
     setSelectedForecastHour(hoursList[prevIdx]);
-  };
-
-  // Convert GeoJSON Polygon or MultiPolygon to React-Leaflet positions
-  const toLeafletPositions = (geoJsonPolygon: any): [number, number][] | [number, number][][] => {
-    if (!geoJsonPolygon || !geoJsonPolygon.coordinates || !geoJsonPolygon.coordinates.length) return [];
-    if (geoJsonPolygon.type === 'MultiPolygon') {
-      return geoJsonPolygon.coordinates.map((poly: any[]) =>
-        poly[0].map((pt: number[]) => [pt[1], pt[0]] as [number, number])
-      );
-    }
-    return geoJsonPolygon.coordinates[0].map((pt: number[]) => [pt[1], pt[0]] as [number, number]);
   };
 
   // Hindcast origin coordinates
@@ -808,7 +847,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
             >
               {/* Dynamic Camera Controller: Zooms directly into spill and smoothly follows movement */}
               <MapCameraController
-                bounds={currentPolyCoords}
+                bounds={allPolyPoints}
                 activeLat={activeForecastStep.centroid.lat}
                 activeLon={activeForecastStep.centroid.lon}
                 isPlaying={isPlayingForecast}
@@ -864,7 +903,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               {/* 1. Current Observed Spill Boundary (T+0h Reference) */}
               {showSpillPolygon && (
                 <Polygon
-                  positions={currentPolyCoords}
+                  positions={currentPolyPositions}
                   pathOptions={{
                     color: '#ef4444',
                     fillColor: '#ef4444',
@@ -881,8 +920,8 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                       <b style={{ color: '#dc2626' }}>🚨 Observed Oil Spill Slick Boundary</b><br />
                       <b>Surface Area:</b> {analysis.geometry.area_km2} km²<br />
                       <b>Perimeter:</b> {analysis.geometry.perimeter_km} km<br />
-                      <b>Centroid:</b> {centroid.lat.toFixed(5)}°S, {centroid.lon.toFixed(5)}°E<br />
-                      <b>Zone:</b> Grand Port Lagoon (Between Barrier Reef & Pointe d'Esny Coastline)
+                      <b>Centroid:</b> {formatLatLon(centroid.lat, centroid.lon)}<br />
+                      <b>Zone:</b> {analysis.spill_id === 'emerald' || centroid.lat > 0 ? 'Eastern Mediterranean Sea (Levantine Basin)' : "Grand Port Lagoon (Between Barrier Reef & Pointe d'Esny Coastline)"}
                     </div>
                   </Popup>
                 </Polygon>
@@ -911,7 +950,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
 
                   {/* Active Drifting Slick Boundary */}
                   <Polygon
-                    positions={driftingSlickCoords}
+                    positions={driftingSlickPositions}
                     pathOptions={{
                       color: '#f43f5e',
                       fillColor: '#f43f5e',
@@ -926,7 +965,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     <Popup>
                       <b>🚨 Predicted Moving Slick (+{activeForecastStep.hours}h)</b><br />
                       Valid Time: {activeForecastStep.valid_time}<br />
-                      Predicted Centroid: {activeForecastStep.centroid.lat.toFixed(4)}°S, {activeForecastStep.centroid.lon.toFixed(4)}°E<br />
+                      Predicted Centroid: {formatLatLon(activeForecastStep.centroid.lat, activeForecastStep.centroid.lon)}<br />
                       Predicted Area: ~{(analysis.geometry.area_km2 * (1 + (activeForecastStep.hours / 72) * 0.35)).toFixed(3)} km²<br />
                       Shoreline Distance: ~{(Math.max(0.1, 1.8 - (activeForecastStep.hours / 72) * 1.6)).toFixed(2)} km
                     </Popup>
@@ -955,15 +994,15 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                       <Tooltip permanent={false} direction="top">
                         <b>🧭 Shoreline Contact Point</b><br />
                         Heading: {analysis.movement.direction} ({analysis.movement.direction_deg}°)<br />
-                        Lagoon Water Edge (Pointe d'Esny)
+                        {analysis.spill_id === 'emerald' || centroid.lat > 0 ? 'Levantine Coastal Intercept' : "Lagoon Water Edge (Pointe d'Esny)"}
                       </Tooltip>
                       <Popup>
                         <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
                           <b style={{ color: '#16a34a' }}>🧭 Net Drift Vector Terminal</b><br />
-                          <b>Location:</b> Lagoon Waterline Intercept (Pointe d'Esny Coast)<br />
+                          <b>Location:</b> {analysis.spill_id === 'emerald' || centroid.lat > 0 ? 'Levantine Coastal Waterline' : "Lagoon Waterline Intercept (Pointe d'Esny Coast)"}<br />
                           <b>Velocity:</b> {analysis.movement.speed_mps} m/s ({analysis.movement.speed_kmh} km/h)<br />
                           <b>Drift Heading:</b> {analysis.movement.direction} ({analysis.movement.direction_deg}°)<br />
-                          <b>Coordinates:</b> {driftCoords[1][0].toFixed(5)}°S, {driftCoords[1][1].toFixed(5)}°E<br />
+                          <b>Coordinates:</b> {formatLatLon(driftCoords[1][0], driftCoords[1][1])}<br />
                           <span style={{ color: '#059669', fontWeight: 600 }}>✓ Strictly Clamped to Coastal Water Boundary</span>
                         </div>
                       </Popup>
@@ -972,24 +1011,44 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 </>
               )}
 
+              {/* 🏝️ Sensitive Nature Reserves */}
+              {(analysis.spill_id === 'wakashio' || centroid.lat < 0) && (
+                <Marker
+                  position={[-20.4202, 57.7303]}
+                  icon={createReserveIcon()}
+                >
+                  <Tooltip direction="top" offset={[0, -12]}>
+                    <b>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
+                    Endangered endemic fauna & coastal mangrove sanctuary
+                  </Tooltip>
+                  <Popup>
+                    <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
+                      <b style={{ color: '#059669' }}>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
+                      <b>Ecological Status:</b> High-Priority Conservation Sanctuary<br />
+                      <b>Key Risk:</b> Oil slick advection entering the northern lagoon channels
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
 
-              {/* 🏝️ Sensitive Nature Reserve: Ile aux Aigrettes */}
-              <Marker
-                position={[-20.4202, 57.7303]}
-                icon={createReserveIcon()}
-              >
-                <Tooltip direction="top" offset={[0, -12]}>
-                  <b>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
-                  Endangered endemic fauna & coastal mangrove sanctuary
-                </Tooltip>
-                <Popup>
-                  <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
-                    <b style={{ color: '#059669' }}>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
-                    <b>Ecological Status:</b> High-Priority Conservation Sanctuary<br />
-                    <b>Key Risk:</b> Oil slick advection entering the northern lagoon channels
-                  </div>
-                </Popup>
-              </Marker>
+              {(analysis.spill_id === 'emerald' || centroid.lat > 0) && (
+                <Marker
+                  position={[33.090, 35.105]}
+                  icon={createReserveIcon()}
+                >
+                  <Tooltip direction="top" offset={[0, -12]}>
+                    <b>🏝️ Rosh HaNikra & Achziv Marine Reserves</b><br />
+                    Protected Mediterranean marine canyon & turtle nesting sanctuary
+                  </Tooltip>
+                  <Popup>
+                    <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
+                      <b style={{ color: '#059669' }}>🏝️ Mediterranean Coastal Sanctuaries</b><br />
+                      <b>Ecological Status:</b> High-Priority Marine Protected Area<br />
+                      <b>Key Risk:</b> Heavy crude slick shoreline washup along coastal belt
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
 
               {/* 3. Backward Hindcast (Probable Origin -48h) */}
               {showHindcast && viewMode !== 'forecast' && (
@@ -1025,7 +1084,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     <Popup>
                       <b>🎯 Reconstructed Probable Origin (-48h)</b><br />
                       Estimated Event: {analysis.hindcast.origin_time_window.estimated_origin_time}<br />
-                      Coordinates: {hindcastOrigin.lat.toFixed(4)}°S, {hindcastOrigin.lon.toFixed(4)}°E<br />
+                      Coordinates: {formatLatLon(hindcastOrigin.lat, hindcastOrigin.lon)}<br />
                       Uncertainty: ±{analysis.hindcast.uncertainty_radius_km} km<br />
                       Confidence: {Math.round(analysis.hindcast.confidence * 100)}%
                     </Popup>
@@ -1102,7 +1161,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                         <Popup>
                           <b>🎯 Predicted Horizon: +{step.hours} Hours</b><br />
                           Valid Time: {step.valid_time}<br />
-                          Centroid: {step.centroid.lat.toFixed(4)}°S, {step.centroid.lon.toFixed(4)}°E<br />
+                          Centroid: {formatLatLon(step.centroid.lat, step.centroid.lon)}<br />
                           Uncertainty: ±{step.uncertainty_radius_km} km<br />
                           Confidence: {Math.round(step.confidence * 100)}%
                         </Popup>
@@ -1429,7 +1488,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#64748b' }}>Predicted Centroid:</span>
-                <span style={{ color: '#f1f5f9' }}>{activeForecastStep.centroid.lat.toFixed(4)}°S, {activeForecastStep.centroid.lon.toFixed(4)}°E</span>
+                <span style={{ color: '#f1f5f9' }}>{formatLatLon(activeForecastStep.centroid.lat, activeForecastStep.centroid.lon)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#64748b' }}>Uncertainty Radius:</span>

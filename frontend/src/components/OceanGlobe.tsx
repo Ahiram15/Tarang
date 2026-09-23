@@ -14,6 +14,7 @@ export interface IncidentLocation {
 
 interface OceanGlobeProps {
   onSelectIncident: (lat: number, lon: number, incident?: IncidentLocation) => void;
+  onInspectIncident?: (lat: number, lon: number, incident?: IncidentLocation) => void;
   targetLat?: number;
   targetLon?: number;
   useLiveSat?: boolean;
@@ -48,6 +49,7 @@ const DEFAULT_INCIDENTS: IncidentLocation[] = [
 
 export const OceanGlobe: React.FC<OceanGlobeProps> = ({
   onSelectIncident,
+  onInspectIncident,
   targetLat,
   targetLon,
   useLiveSat = false,
@@ -343,9 +345,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         const hitId = (intersects[0].object as any).incidentId;
         const clickedInc = incidents.find(i => i.id === hitId);
         if (clickedInc) {
-          setActiveIncidentId(clickedInc.id);
-          targetRotRef.current = incidentRotations.current[clickedInc.id] || targetRotRef.current;
-          onSelectIncident(clickedInc.lat, clickedInc.lon, clickedInc);
+          handleSwitchIncident(clickedInc);
         }
       }
     };
@@ -665,7 +665,13 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
 
         {/* Primary Action Button: Launch Satellite Lab */}
         <button
-          onClick={() => onSelectIncident(currentIncident.lat, currentIncident.lon, currentIncident)}
+          onClick={() => {
+            if (onInspectIncident) {
+              onInspectIncident(currentIncident.lat, currentIncident.lon, currentIncident);
+            } else {
+              onSelectIncident(currentIncident.lat, currentIncident.lon, currentIncident);
+            }
+          }}
           style={{
             width: '100%',
             background: 'linear-gradient(135deg, #ef4444, #dc2626)',
@@ -690,50 +696,29 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           </span>
         </button>
 
-        {/* Dedicated Secondary Shortcuts: Hindcast & Forensic Dossier */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
+        {/* Dedicated Secondary Shortcut: Drift Forecast */}
+        <div style={{ marginBottom: '10px' }}>
           <button
             onClick={() => onOpenCharacterization?.(currentIncident)}
             style={{
+              width: '100%',
               background: 'rgba(0, 242, 254, 0.10)',
               border: '1px solid rgba(0, 242, 254, 0.3)',
               color: '#00f2fe',
               borderRadius: '6px',
-              padding: '6px 8px',
-              fontSize: '0.70rem',
+              padding: '7px 10px',
+              fontSize: '0.72rem',
               fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '5px',
+              gap: '6px',
               transition: 'all 0.15s ease',
             }}
           >
-            <Waves size={12} />
+            <Waves size={13} />
             <span>Own Drift Forecast</span>
-          </button>
-
-          <button
-            onClick={() => onOpenInvestigation?.(currentIncident)}
-            style={{
-              background: 'rgba(245, 158, 11, 0.10)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              color: '#f59e0b',
-              borderRadius: '6px',
-              padding: '6px 8px',
-              fontSize: '0.70rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '5px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Radar size={12} />
-            <span>Forensic Dossier</span>
           </button>
         </div>
 
@@ -796,7 +781,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         }}>
           <span style={{ fontSize: '1rem' }}>🎯</span>
           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9' }}>
-            CLICK RED DOT TO INSPECT {hoveredIncident.id === 'emerald' ? 'MT EMERALD (Mediterranean)' : 'MV WAKASHIO (Mauritius)'} — {hoveredIncident.lat.toFixed(2)}°, {hoveredIncident.lon.toFixed(2)}°
+            BEACON: {hoveredIncident.id === 'emerald' ? 'MT EMERALD (Mediterranean)' : 'MV WAKASHIO (Mauritius)'} — {hoveredIncident.lat.toFixed(2)}°, {hoveredIncident.lon.toFixed(2)}° (Click to Focus)
           </span>
         </div>
       )}

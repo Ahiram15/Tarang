@@ -121,8 +121,8 @@ export const App: React.FC = () => {
     handleSelectIncident(targetLat, targetLon, newPalette);
   };
 
-  const handleOpenCharacterization = async () => {
-    const spillId = selectedIncident.spillId;
+  const handleOpenCharacterization = async (targetSpillId?: string) => {
+    const spillId = targetSpillId || selectedIncident.spillId;
     if (analysis && analysis.spill_id === spillId) {
       setView('characterization');
       return;
@@ -145,8 +145,8 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleOpenInvestigation = async () => {
-    const spillId = selectedIncident.spillId;
+  const handleOpenInvestigation = async (targetSpillId?: string) => {
+    const spillId = targetSpillId || selectedIncident.spillId;
     if (investigationReport && analysis && analysis.spill_id === spillId) {
       setView('investigation');
       return;
@@ -199,42 +199,6 @@ export const App: React.FC = () => {
           <span style={{ color: '#94a3b8', fontWeight: 600 }}>{selectedIncident.name.toUpperCase()}</span>
         </div>
 
-        {/* Location Switcher */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          background: 'rgba(255, 255, 255, 0.04)',
-          padding: '2px 6px',
-          borderRadius: '6px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-        }}>
-          <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, paddingRight: '4px' }}>LOCATION:</span>
-          {INCIDENTS.map((inc) => (
-            <button
-              key={inc.id}
-              onClick={() => {
-                setSelectedIncident(inc);
-                setScanResult(null);
-                setAnalysis(null);
-                setInvestigationReport(null);
-              }}
-              style={{
-                background: selectedIncident.id === inc.id ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
-                border: selectedIncident.id === inc.id ? '1px solid #00f2fe' : '1px solid transparent',
-                color: selectedIncident.id === inc.id ? '#00f2fe' : '#94a3b8',
-                borderRadius: '4px',
-                padding: '3px 8px',
-                fontSize: '0.70rem',
-                fontWeight: selectedIncident.id === inc.id ? 800 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              {inc.badge}
-            </button>
-          ))}
-        </div>
 
         {/* Center 5-Stage Mission Switcher */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -305,7 +269,7 @@ export const App: React.FC = () => {
           </button>
 
           <button
-            onClick={handleOpenCharacterization}
+            onClick={() => handleOpenCharacterization()}
             style={{
               background: view === 'characterization' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
               border: view === 'characterization' ? '1px solid #00f2fe' : '1px solid transparent',
@@ -325,7 +289,7 @@ export const App: React.FC = () => {
           </button>
 
           <button
-            onClick={handleOpenInvestigation}
+            onClick={() => handleOpenInvestigation()}
             style={{
               background: view === 'investigation' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
               border: view === 'investigation' ? '1px solid #f59e0b' : '1px solid transparent',
@@ -376,23 +340,32 @@ export const App: React.FC = () => {
           <OceanGlobe
             incidents={INCIDENTS}
             selectedIncident={selectedIncident}
-            onSelectIncident={(lat, lon, inc) => {
+            onSelectIncident={(_lat, _lon, inc) => {
+              if (inc) {
+                setSelectedIncident(inc);
+              }
+            }}
+            onInspectIncident={(lat, lon, inc) => {
               if (inc) {
                 setSelectedIncident(inc);
               }
               handleSelectIncident(lat, lon, undefined, undefined, inc);
             }}
             onOpenCharacterization={(inc) => {
-              if (inc && inc.id !== selectedIncident.id) {
+              if (inc) {
                 setSelectedIncident(inc);
+                handleOpenCharacterization(inc.spillId);
+              } else {
+                handleOpenCharacterization();
               }
-              handleOpenCharacterization();
             }}
             onOpenInvestigation={(inc) => {
-              if (inc && inc.id !== selectedIncident.id) {
+              if (inc) {
                 setSelectedIncident(inc);
+                handleOpenInvestigation(inc.spillId);
+              } else {
+                handleOpenInvestigation();
               }
-              handleOpenInvestigation();
             }}
             targetLat={targetLat}
             targetLon={targetLon}
