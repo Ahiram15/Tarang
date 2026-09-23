@@ -65,7 +65,6 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   const [selectedSat, setSelectedSat] = useState<number>(0);
 
   // Live Telemetry Console State
-  const [consoleMode, setConsoleMode] = useState<'console' | 'inspector'>('console');
   const [isConsoleStreaming, setIsConsoleStreaming] = useState<boolean>(true);
   const [consoleFilter, setConsoleFilter] = useState<'ALL' | 'TIER1' | 'TIER2' | 'AI' | 'ALERTS'>('ALL');
   const consoleBottomRef = useRef<HTMLDivElement>(null);
@@ -95,10 +94,10 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
 
   // Auto-scroll console to bottom when new logs arrive
   useEffect(() => {
-    if (consoleMode === 'console' && consoleBottomRef.current) {
+    if (consoleBottomRef.current) {
       consoleBottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [consoleLogs, consoleMode]);
+  }, [consoleLogs]);
 
   // Periodic Live Background Telemetry Generator
   useEffect(() => {
@@ -711,307 +710,171 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             </div>
           </div>
 
-          {/* Dual-Mode: Live Telemetry Console OR Step Deep-Dive Inspector */}
+          {/* Live Ingestion & Pipeline Telemetry Console */}
           <div style={{
             background: 'rgba(6, 11, 24, 0.90)',
-            border: consoleMode === 'console' ? '1.5px solid rgba(0, 242, 254, 0.4)' : `1.5px solid ${pipelineSteps[activeStep - 1].color}`,
+            border: '1.5px solid rgba(0, 242, 254, 0.35)',
             borderRadius: '10px',
             padding: '10px 14px',
-            flex: consoleMode === 'console' ? '0 0 auto' : 1,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: consoleMode === 'console' ? '0 0 18px rgba(0, 242, 254, 0.12)' : `0 0 20px ${pipelineSteps[activeStep - 1].color}25`,
+            boxShadow: '0 0 18px rgba(0, 242, 254, 0.12)',
           }}>
-            {/* Mode Switcher Tabs */}
+            {/* Header: Title & Controls */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button
-                  onClick={() => setConsoleMode('console')}
-                  style={{
-                    background: consoleMode === 'console' ? 'rgba(0, 242, 254, 0.22)' : 'rgba(255,255,255,0.04)',
-                    border: consoleMode === 'console' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
-                    color: consoleMode === 'console' ? '#00f2fe' : '#94a3b8',
-                    borderRadius: '5px',
-                    padding: '3px 8px',
-                    fontSize: '0.70rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <Terminal size={12} />
-                  <span>LIVE INGESTION CONSOLE</span>
-                  <span style={{
-                    width: '5px',
-                    height: '5px',
-                    borderRadius: '50%',
-                    background: isConsoleStreaming ? '#22c55e' : '#f59e0b',
-                    boxShadow: isConsoleStreaming ? '0 0 6px #22c55e' : 'none',
-                    display: 'inline-block'
-                  }} />
-                </button>
-
-                <button
-                  onClick={() => setConsoleMode('inspector')}
-                  style={{
-                    background: consoleMode === 'inspector' ? 'rgba(0, 242, 254, 0.22)' : 'rgba(255,255,255,0.04)',
-                    border: consoleMode === 'inspector' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
-                    color: consoleMode === 'inspector' ? '#00f2fe' : '#94a3b8',
-                    borderRadius: '5px',
-                    padding: '3px 8px',
-                    fontSize: '0.70rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <Cpu size={12} />
-                  <span>STEP SPEC (STEP {activeStep})</span>
-                </button>
+                <Terminal size={12} color="#00f2fe" />
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#00f2fe', letterSpacing: '0.5px' }}>
+                  LIVE INGESTION & PIPELINE TELEMETRY
+                </span>
+                <span style={{
+                  width: '5px',
+                  height: '5px',
+                  borderRadius: '50%',
+                  background: isConsoleStreaming ? '#22c55e' : '#f59e0b',
+                  boxShadow: isConsoleStreaming ? '0 0 6px #22c55e' : 'none',
+                  display: 'inline-block'
+                }} />
               </div>
 
-              {consoleMode === 'console' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <button
-                    onClick={() => setIsConsoleStreaming(!isConsoleStreaming)}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      color: isConsoleStreaming ? '#22c55e' : '#f59e0b',
-                      borderRadius: '4px',
-                      padding: '2px 6px',
-                      fontSize: '0.62rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                    }}
-                  >
-                    {isConsoleStreaming ? <Pause size={9} /> : <Play size={9} />}
-                    <span>{isConsoleStreaming ? 'STREAMING' : 'PAUSED'}</span>
-                  </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  onClick={() => setIsConsoleStreaming(!isConsoleStreaming)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: isConsoleStreaming ? '#22c55e' : '#f59e0b',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                  }}
+                >
+                  {isConsoleStreaming ? <Pause size={9} /> : <Play size={9} />}
+                  <span>{isConsoleStreaming ? 'STREAMING' : 'PAUSED'}</span>
+                </button>
 
-                  <button
-                    onClick={() => triggerManualPoll()}
-                    style={{
-                      background: 'rgba(0, 242, 254, 0.12)',
-                      border: '1px solid rgba(0, 242, 254, 0.3)',
-                      color: '#00f2fe',
-                      borderRadius: '4px',
-                      padding: '2px 6px',
-                      fontSize: '0.62rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                    }}
-                  >
-                    <Zap size={9} />
-                    <span>Poll</span>
-                  </button>
+                <button
+                  onClick={() => triggerManualPoll()}
+                  style={{
+                    background: 'rgba(0, 242, 254, 0.12)',
+                    border: '1px solid rgba(0, 242, 254, 0.3)',
+                    color: '#00f2fe',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                  }}
+                >
+                  <Zap size={9} />
+                  <span>Poll</span>
+                </button>
 
-                  <button
-                    onClick={() => setConsoleLogs([])}
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '4px',
-                      color: '#94a3b8',
-                      cursor: 'pointer',
-                      padding: '2px 5px',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                    title="Clear Terminal"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                </div>
-              )}
+                <button
+                  onClick={() => setConsoleLogs([])}
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '4px',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '2px 5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title="Clear Terminal"
+                >
+                  <Trash2 size={10} />
+                </button>
+              </div>
             </div>
 
-            {/* CONSOLE VIEW */}
-            {consoleMode === 'console' ? (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* Console Log Terminal Window - Short & Compact */}
-                <div style={{
-                  background: '#020409',
-                  border: '1px solid rgba(0, 242, 254, 0.2)',
-                  borderRadius: '6px',
-                  padding: '7px 10px',
-                  fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
-                  fontSize: '0.67rem',
-                  lineHeight: 1.45,
-                  height: '92px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '3px',
-                  boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8)',
-                }}>
-                  {consoleLogs.length === 0 ? (
-                    <div style={{ color: '#64748b', fontStyle: 'italic', padding: '6px' }}>
-                      Console buffer empty. Streaming telemetry will appear shortly or click "Poll"...
-                    </div>
-                  ) : (
-                    consoleLogs.map((log) => (
-                      <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', wordBreak: 'break-word' }}>
-                        <span style={{ color: '#475569', fontSize: '0.62rem', flexShrink: 0 }}>
-                          [{log.time}]
-                        </span>
-                        <span style={{
-                          color: log.color,
-                          fontWeight: 800,
-                          fontSize: '0.60rem',
-                          background: `${log.color}15`,
-                          padding: '0 3px',
-                          borderRadius: '2px',
-                          border: `1px solid ${log.color}35`,
-                          flexShrink: 0,
-                        }}>
-                          {log.source}
-                        </span>
-                        <span style={{
-                          color: log.level === 'ALERT' ? '#fca5a5' : log.level === 'SUCCESS' ? '#86efac' : '#cbd5e1',
-                          fontWeight: log.level === 'ALERT' ? 700 : 400,
-                        }}>
-                          {log.message}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                  <div ref={consoleBottomRef} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#00f2fe', marginTop: '2px' }}>
-                    <span style={{ fontSize: '0.64rem' }}>● CDSE_DAEMON &gt;</span>
-                    <span style={{
-                      display: 'inline-block',
-                      width: '6px',
-                      height: '9px',
-                      background: '#00f2fe',
-                      animation: 'pulse 1s infinite'
-                    }} />
-                  </div>
+            {/* Console Log Terminal Window - Short & Compact */}
+            <div style={{
+              background: '#020409',
+              border: '1px solid rgba(0, 242, 254, 0.2)',
+              borderRadius: '6px',
+              padding: '7px 10px',
+              fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
+              fontSize: '0.67rem',
+              lineHeight: 1.45,
+              height: '92px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '3px',
+              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8)',
+            }}>
+              {consoleLogs.length === 0 ? (
+                <div style={{ color: '#64748b', fontStyle: 'italic', padding: '6px' }}>
+                  Console buffer empty. Streaming telemetry will appear shortly or click "Poll"...
                 </div>
-
-                {/* Live Console Telemetry Ticker Footer */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                  paddingTop: '6px',
-                  marginTop: '6px',
-                  fontSize: '0.62rem',
-                  color: '#64748b',
-                  fontFamily: 'monospace',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>POLLER: <b style={{ color: '#22c55e' }}>ONLINE</b></span>
-                    <span>THROUGHPUT: <b style={{ color: '#38bdf8' }}>1.2 evt/s</b></span>
-                    <span>SATELLITES: <b style={{ color: '#f59e0b' }}>4 ACTIVE</b></span>
-                  </div>
-                  <div>
-                    SAVINGS: <b style={{ color: '#22c55e' }}>99.3%</b>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* INSPECTOR VIEW */
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{
-                        background: pipelineSteps[activeStep - 1].color,
-                        color: '#030712',
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.72rem',
-                        fontWeight: 900,
-                      }}>
-                        {pipelineSteps[activeStep - 1].id}
-                      </div>
-                      <span style={{ fontSize: '0.86rem', fontWeight: 900, color: '#ffffff' }}>
-                        {pipelineSteps[activeStep - 1].title}
-                      </span>
-                    </div>
+              ) : (
+                consoleLogs.map((log) => (
+                  <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', wordBreak: 'break-word' }}>
+                    <span style={{ color: '#475569', fontSize: '0.62rem', flexShrink: 0 }}>
+                      [{log.time}]
+                    </span>
                     <span style={{
-                      fontSize: '0.64rem',
+                      color: log.color,
                       fontWeight: 800,
-                      padding: '2px 7px',
-                      borderRadius: '4px',
-                      background: `${pipelineSteps[activeStep - 1].color}20`,
-                      color: pipelineSteps[activeStep - 1].color,
-                      border: `1px solid ${pipelineSteps[activeStep - 1].color}40`,
+                      fontSize: '0.60rem',
+                      background: `${log.color}15`,
+                      padding: '0 3px',
+                      borderRadius: '2px',
+                      border: `1px solid ${log.color}35`,
+                      flexShrink: 0,
                     }}>
-                      {pipelineSteps[activeStep - 1].tag}
+                      {log.source}
+                    </span>
+                    <span style={{
+                      color: log.level === 'ALERT' ? '#fca5a5' : log.level === 'SUCCESS' ? '#86efac' : '#cbd5e1',
+                      fontWeight: log.level === 'ALERT' ? 700 : 400,
+                    }}>
+                      {log.message}
                     </span>
                   </div>
-
-                  <div style={{ fontSize: '0.74rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '10px' }}>
-                    {pipelineSteps[activeStep - 1].desc}
-                  </div>
-
-                  {/* Specific technical pill for selected step */}
-                  {activeStep === 1 && (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                      <b>Catalog Search:</b> Polling Copernicus STAC endpoint: <code>catalogue.dataspace.copernicus.eu/stac</code>. Queries Sentinel-1, Sentinel-2, Landsat-8, and ISRO EOS-06 wind fields every 30 minutes.
-                    </div>
-                  )}
-                  {activeStep === 2 && (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                      <b>Quicklook Spec:</b> ~2 MB sub-sampled preview. OSM / GSHHG shoreline polygon mask applied with a 500m coastal buffer to prevent false land terrain triggers.
-                    </div>
-                  )}
-                  {activeStep === 3 && (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                      <b>CFAR Threshold Formula:</b> <code>T_cfar = μ_clutter - k * σ_clutter</code>. Dynamically models local sea clutter statistics for constant false-alarm rate, independent of global wind state.
-                    </div>
-                  )}
-                  {activeStep === 4 && (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                      <b>CDSE Process API:</b> <code>POST /api/v1/process</code> requests native 10m GeoTIFF patch constrained strictly to the flagged BBOX coordinates, avoiding 95% unnecessary image transfer.
-                    </div>
-                  )}
-                  {activeStep === 5 && (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                      <b>SAR Preprocessing (Stage 6):</b> Calibration LUT converts raw DN to backscatter σ⁰ (dB). Gamma-MAP adaptive filter models radar reflectivity as Gamma-distributed to preserve intricate slick boundaries.
-                    </div>
-                  )}
-                  {activeStep === 6 && (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                      <b>Deep Segmentation (Stage 8):</b> Dual-channel VV/VH U-Net delineates exact polygon contours. Compared against Level Set Method (LSM) and Superpixel SLIC to ensure sub-pixel boundary fidelity.
-                    </div>
-                  )}
-                  {activeStep === 7 && (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.70rem', color: '#94a3b8' }}>
-                      <b>False Positive Removal (Stage 9 & 10):</b> Wind-speed gating rejects low-wind calm water (&lt;3 m/s via EOS-06). Cross-matches AIS cargo ship transponders. Confirmed score: <b>96.4%</b> → Handoff to Acts 1–4.
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px', marginTop: '10px' }}>
-                  <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                    Pipeline Stage: <b>{pipelineSteps[activeStep - 1].sub}</b>
-                  </span>
-                  <span style={{ fontSize: '0.68rem', color: '#22c55e', fontWeight: 800 }}>
-                    STATUS: VERIFIED
-                  </span>
-                </div>
+                ))
+              )}
+              <div ref={consoleBottomRef} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#00f2fe', marginTop: '2px' }}>
+                <span style={{ fontSize: '0.64rem' }}>● CDSE_DAEMON &gt;</span>
+                <span style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '9px',
+                  background: '#00f2fe',
+                  animation: 'pulse 1s infinite'
+                }} />
               </div>
-            )}
+            </div>
+
+            {/* Live Console Telemetry Ticker Footer */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              paddingTop: '6px',
+              marginTop: '6px',
+              fontSize: '0.62rem',
+              color: '#64748b',
+              fontFamily: 'monospace',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>POLLER: <b style={{ color: '#22c55e' }}>ONLINE</b></span>
+                <span>THROUGHPUT: <b style={{ color: '#38bdf8' }}>1.2 evt/s</b></span>
+                <span>SATELLITES: <b style={{ color: '#f59e0b' }}>4 ACTIVE</b></span>
+              </div>
+              <div>
+                SAVINGS: <b style={{ color: '#22c55e' }}>99.3%</b>
+              </div>
+            </div>
           </div>
         </div>
 
