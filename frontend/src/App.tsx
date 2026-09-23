@@ -192,11 +192,11 @@ export const App: React.FC = () => {
         flexShrink: 0,
         backdropFilter: 'blur(10px)',
       }}>
-        {/* Left Title / Badge */}
+        {/* Left Title / Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
-          <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '0.8px' }}>TARANG</span>
+          <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '1px', fontSize: '0.86rem' }}>TARANG</span>
           <span style={{ color: '#64748b' }}>|</span>
-          <span style={{ color: '#94a3b8', fontWeight: 600 }}>{selectedIncident.name.toUpperCase()}</span>
+          <span style={{ color: '#64748b', fontSize: '0.68rem', letterSpacing: '0.5px' }}>OCEAN SPILL INTELLIGENCE</span>
         </div>
 
 
