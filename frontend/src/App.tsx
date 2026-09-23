@@ -17,7 +17,7 @@ interface IncidentLocation {
   spillId: string;
 }
 
-const INCIDENTS: IncidentLocation[] = [
+export const INCIDENTS: IncidentLocation[] = [
   {
     id: 'emerald',
     name: 'MT Emerald Mystery Spill (Levantine Basin, Mediterranean)',
@@ -26,6 +26,15 @@ const INCIDENTS: IncidentLocation[] = [
     lon: 34.20,
     date: '2021-02-05',
     spillId: 'emerald',
+  },
+  {
+    id: 'wakashio',
+    name: 'MV Wakashio Grounding & Bunker Spill (Pointe d\'Esny, Mauritius)',
+    badge: '🇵🇦 MV WAKASHIO (20.44°S, 57.74°E)',
+    lat: -20.437,
+    lon: 57.742,
+    date: '2020-08-06',
+    spillId: 'wakashio',
   },
 ];
 
@@ -42,7 +51,20 @@ export const App: React.FC = () => {
   const targetLat = selectedIncident.lat;
   const targetLon = selectedIncident.lon;
 
-  const handleSelectIncident = async (lat: number, lon: number, customPalette?: string, overrideLive?: boolean) => {
+  const handleSelectIncident = async (
+    lat: number,
+    lon: number,
+    customPalette?: string,
+    overrideLive?: boolean,
+    incidentOverride?: IncidentLocation
+  ) => {
+    const inc = incidentOverride || INCIDENTS.find(i => Math.abs(i.lat - lat) < 1.0 && Math.abs(i.lon - lon) < 1.0) || selectedIncident;
+    if (inc.id !== selectedIncident.id) {
+      setSelectedIncident(inc);
+      setScanResult(null);
+      setAnalysis(null);
+      setInvestigationReport(null);
+    }
     const isLive = overrideLive !== undefined ? overrideLive : useLiveSat;
     const paletteToUse = customPalette || activePalette;
     setIsLoading(true);
@@ -51,9 +73,9 @@ export const App: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lat: lat,
-          lon: lon,
-          date: selectedIncident.date,
+          lat: inc.lat,
+          lon: inc.lon,
+          date: inc.date,
           buffer: 0.08,
           threshold: 0.5,
           palette: paletteToUse,
@@ -67,6 +89,20 @@ export const App: React.FC = () => {
         setScanResult(data);
         if (data.characterization) {
           setAnalysis(data.characterization);
+        } else {
+          // Fetch dedicated characterization & drift model for this incident
+          try {
+            const charRes = await fetch(`/api/spill/${inc.spillId}/analysis`);
+            if (charRes.ok) {
+              const charData: SpillAnalysis = await charRes.json();
+              setAnalysis(charData);
+              if (charData.investigation) {
+                setInvestigationReport(charData.investigation);
+              }
+            }
+          } catch (charErr) {
+            console.warn('Analysis fetch notice:', charErr);
+          }
         }
         if (data.investigation) {
           setInvestigationReport(data.investigation);
@@ -86,12 +122,13 @@ export const App: React.FC = () => {
   };
 
   const handleOpenCharacterization = async () => {
-    if (analysis) {
+    const spillId = selectedIncident.spillId;
+    if (analysis && analysis.spill_id === spillId) {
       setView('characterization');
       return;
     }
+    setIsLoading(true);
     try {
-      const spillId = scanResult?.characterization_id || selectedIncident.spillId;
       const res = await fetch(`/api/spill/${spillId}/analysis`);
       if (res.ok) {
         const charData: SpillAnalysis = await res.json();
@@ -103,26 +140,29 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load spill analysis:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleOpenInvestigation = async () => {
-    if (investigationReport && analysis) {
+    const spillId = selectedIncident.spillId;
+    if (investigationReport && analysis && analysis.spill_id === spillId) {
       setView('investigation');
       return;
     }
-    const spillId = scanResult?.characterization_id || analysis?.spill_id || selectedIncident.spillId;
     setIsLoading(true);
     try {
-      // Ensure characterization is loaded
-      if (!analysis) {
+      if (!analysis || analysis.spill_id !== spillId) {
         const charRes = await fetch(`/api/spill/${spillId}/analysis`);
         if (charRes.ok) {
           const charData: SpillAnalysis = await charRes.json();
           setAnalysis(charData);
+          if (charData.investigation) {
+            setInvestigationReport(charData.investigation);
+          }
         }
       }
-      // Fetch full investigation report
       const invRes = await fetch(`/api/spill/${spillId}/investigation-report`);
       if (invRes.ok) {
         const invData: InvestigationPriorityReport = await invRes.json();
@@ -334,7 +374,26 @@ export const App: React.FC = () => {
       {view === 'globe' && (
         <div style={{ position: 'relative', width: '100%', height: '100%', flex: 1 }}>
           <OceanGlobe
-            onSelectIncident={(lat, lon) => handleSelectIncident(lat, lon)}
+            incidents={INCIDENTS}
+            selectedIncident={selectedIncident}
+            onSelectIncident={(lat, lon, inc) => {
+              if (inc) {
+                setSelectedIncident(inc);
+              }
+              handleSelectIncident(lat, lon, undefined, undefined, inc);
+            }}
+            onOpenCharacterization={(inc) => {
+              if (inc && inc.id !== selectedIncident.id) {
+                setSelectedIncident(inc);
+              }
+              handleOpenCharacterization();
+            }}
+            onOpenInvestigation={(inc) => {
+              if (inc && inc.id !== selectedIncident.id) {
+                setSelectedIncident(inc);
+              }
+              handleOpenInvestigation();
+            }}
             targetLat={targetLat}
             targetLon={targetLon}
             useLiveSat={useLiveSat}

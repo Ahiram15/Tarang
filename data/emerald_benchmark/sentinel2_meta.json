@@ -1,9 +1,19 @@
 {
-  "product_name": "S2B_MSIL2A_20210204T082039_N0500_R121_T36SXB_20230602T102746.SAFE",
+  "product_name": "S2B_MSIL2A_20210214T082009_N0500_R121_T36SXB_20230606T101438.SAFE",
   "satellite": "Sentinel-2B MSI (Multi-Spectral Instrument)",
   "sensor": "Optical True-Color & Near-Infrared (Bands 4, 3, 2, 8)",
-  "acquisition_time_utc": "2021-02-04 08:20:39 UTC",
-  "date": "2021-02-04",
-  "location": "Levantine Basin Corridor (Pre-Blackout Tanker Transit)",
-  "status": "Authentic Optical Surveillance Pass"
+  "acquisition_time_utc": "2021-02-14 08:20:09 UTC",
+  "date": "2021-02-14",
+  "tile": "T36SXB",
+  "cloud_coverage_pct": 0.02,
+  "processing_level": "Level-2A (Surface Reflectance BOA)",
+  "location": "Levantine Coastline Corridor (Dor HaBonim / Hadera / Netanya)",
+  "bbox": [
+    34.4,
+    32.2,
+    34.95,
+    32.75
+  ],
+  "resolution_m": 10.0,
+  "status": "Authentic Copernicus CDSE Optical Acquisition"
 }

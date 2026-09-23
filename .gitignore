@@ -8,20 +8,58 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Environments
+# Environments & Secrets
 .venv/
 venv/
 ENV/
 env/
+.env.local
+.env.*.local
+*.local
 
-# Output Artifacts & Scratch
+# Output Artifacts, Dockets & Scratch
 output/
 test_output/
 .streamlit/secrets.toml
+characterization/investigation/reports/
+*.pdf
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Node / Frontend Build
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
 
 # IDE & OS Files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*.tmp
+*.bak
+
+# GSD
+.gsd/
+GSD-STYLE.md
+
+# Templates
+*.template
+templates/
+
+# Agent & Workflow Tooling
+.agent/
+.agents/
+.gemini/
+adapters/
+scripts/validate-*
+scripts/search_repo.*
+scripts/setup_search.*
+

@@ -451,16 +451,20 @@ def run_satellite_scan(req: ScanRequest):
         },
         "satellite_metadata": {
             "sentinel1_radar": {
-                "sensor": "Sentinel-1 C-Band SAR (5.405 GHz)",
-                "polarization": "Dual-Pol (VV + VH)",
-                "resolution": "10m Ground Resolution",
-                "acquisition_time": f"{target_date_str} 01:37:00 UTC"
+                "sensor": scene_info_s1.get("sensor") or scene_info_s1.get("satellite") or "Sentinel-1 C-Band SAR (5.405 GHz)",
+                "polarization": scene_info_s1.get("polarization", "Dual-Pol (VV + VH)"),
+                "resolution": f"{scene_info_s1.get('resolution_m', 10.0)}m Ground Resolution",
+                "acquisition_time": scene_info_s1.get("acquisition_time_utc", f"{target_date_str} 03:43:59 UTC"),
+                "product_name": scene_info_s1.get("product_name", "S1A_IW_GRDH_1SDV"),
+                "location": scene_info_s1.get("location", "Offshore Surveillance Sector"),
             },
             "sentinel2_optical": {
-                "sensor": "Sentinel-2 MSI Multispectral",
-                "bands": "Band 4 (Red), Band 8 (NIR), Band 11 (SWIR)",
-                "cloud_cover": "4.2%",
-                "acquisition_time": f"{target_date_str} 06:14:02 UTC"
+                "sensor": scene_info_s2.get("sensor") or scene_info_s2.get("satellite") or "Sentinel-2 MSI Multispectral",
+                "bands": "Band 4 (Red), Band 3 (Green), Band 2 (Blue), Band 8 (NIR)",
+                "cloud_cover": f"{scene_info_s2.get('cloud_coverage_pct', 0.02)}%",
+                "acquisition_time": scene_info_s2.get("acquisition_time_utc", f"{target_date_str} 08:20:09 UTC"),
+                "product_name": scene_info_s2.get("product_name", "S2B_MSIL2A"),
+                "location": scene_info_s2.get("location", "Coastal Surveillance Sector"),
             }
         },
         "visual_layers": {
@@ -549,9 +553,15 @@ def get_or_create_analysis(spill_id: str) -> Any:
         c_lat, c_lon = 33.15, 34.20
         obs_time = "2021-02-05T03:50:17Z"
         buffer_deg = 0.08
-        from backend.modules.benchmark_emerald import generate_emerald_sar_patch
-        _, default_mask_256 = generate_emerald_sar_patch(size=256)
-        default_mask = (default_mask_256 > 127).astype(np.uint8)
+        mask_path = os.path.join(os.path.dirname(__file__), "data", "emerald_benchmark", "real_binary_mask_256.png")
+        if os.path.exists(mask_path):
+            loaded_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            if loaded_mask is not None:
+                default_mask = (loaded_mask > 127).astype(np.uint8)
+        else:
+            from backend.modules.benchmark_emerald import generate_emerald_sar_patch
+            _, default_mask_256 = generate_emerald_sar_patch(size=256)
+            default_mask = (default_mask_256 > 127).astype(np.uint8)
         historical_obs = [
             TemporalObservation(timestamp="2021-02-05T03:50:17Z", area_km2=42.6),
             TemporalObservation(timestamp="2021-02-11T03:50:17Z", area_km2=68.4),

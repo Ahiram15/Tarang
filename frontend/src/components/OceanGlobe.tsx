@@ -1,27 +1,91 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Compass, Navigation, Radio, MapPin, Layers } from 'lucide-react';
+import { Compass, Navigation, Radio, MapPin, Layers, Waves, Radar, ArrowRight, ShieldAlert } from 'lucide-react';
+
+export interface IncidentLocation {
+  id: string;
+  name: string;
+  badge: string;
+  lat: number;
+  lon: number;
+  date: string;
+  spillId: string;
+}
 
 interface OceanGlobeProps {
-  onSelectIncident: (lat: number, lon: number) => void;
+  onSelectIncident: (lat: number, lon: number, incident?: IncidentLocation) => void;
   targetLat?: number;
   targetLon?: number;
   useLiveSat?: boolean;
   onToggleLiveSat?: (val: boolean) => void;
   onOpenSimulation?: () => void;
+  onOpenCharacterization?: (incident?: IncidentLocation) => void;
+  onOpenInvestigation?: (incident?: IncidentLocation) => void;
+  selectedIncident?: IncidentLocation;
+  incidents?: IncidentLocation[];
 }
+
+const DEFAULT_INCIDENTS: IncidentLocation[] = [
+  {
+    id: 'emerald',
+    name: 'MT Emerald Mystery Spill (Levantine Basin, Mediterranean)',
+    badge: '🇵🇦 MT EMERALD (33.15°N, 34.20°E)',
+    lat: 33.15,
+    lon: 34.20,
+    date: '2021-02-05',
+    spillId: 'emerald',
+  },
+  {
+    id: 'wakashio',
+    name: 'MV Wakashio Grounding & Bunker Spill (Pointe d\'Esny, Mauritius)',
+    badge: '🇵🇦 MV WAKASHIO (20.44°S, 57.74°E)',
+    lat: -20.437,
+    lon: 57.742,
+    date: '2020-08-06',
+    spillId: 'wakashio',
+  },
+];
 
 export const OceanGlobe: React.FC<OceanGlobeProps> = ({
   onSelectIncident,
-  targetLat = 33.15,
-  targetLon = 34.20,
+  targetLat,
+  targetLon,
   useLiveSat = false,
   onToggleLiveSat,
   onOpenSimulation,
+  onOpenCharacterization,
+  onOpenInvestigation,
+  selectedIncident,
+  incidents = DEFAULT_INCIDENTS,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState<boolean>(false);
-  const [rotationAngle, setRotationAngle] = useState<number>(0);
+  const [hoveredIncident, setHoveredIncident] = useState<IncidentLocation | null>(null);
+  const [activeIncidentId, setActiveIncidentId] = useState<string>(selectedIncident?.id || 'emerald');
+
+  // Keep activeIncident in sync with prop if passed
+  useEffect(() => {
+    if (selectedIncident && selectedIncident.id !== activeIncidentId) {
+      setActiveIncidentId(selectedIncident.id);
+    }
+  }, [selectedIncident]);
+
+  const currentIncident = incidents.find(i => i.id === activeIncidentId) || incidents[0];
+
+  // Target globe rotation for each incident
+  const incidentRotations = useRef<{ [key: string]: { x: number; y: number } }>({
+    emerald: { x: 0.55, y: -2.17 },   // Levantine Basin, Mediterranean (~33°N, 34°E)
+    wakashio: { x: -0.36, y: -2.60 }, // Mauritius, South Indian Ocean (~20°S, 57°E)
+  });
+
+  const targetRotRef = useRef<{ x: number; y: number }>(
+    incidentRotations.current[activeIncidentId] || incidentRotations.current.emerald
+  );
+
+  useEffect(() => {
+    if (incidentRotations.current[activeIncidentId]) {
+      targetRotRef.current = incidentRotations.current[activeIncidentId];
+    }
+  }, [activeIncidentId]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -29,24 +93,24 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // Scene, Camera, Renderer
+    // 1. Scene, Camera, WebGL Renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.z = 2.75;
+    camera.position.z = 2.80;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
 
-    // Globe Group
+    // 2. Globe Group
     const globeGroup = new THREE.Group();
     scene.add(globeGroup);
 
     const globeRadius = 1.0;
     const globeGeo = new THREE.SphereGeometry(globeRadius, 64, 64);
 
-    // 1. High-Resolution Blue & Green Earth Texture Loader
+    // High-Resolution Earth Texture Loader
     const textureLoader = new THREE.TextureLoader();
     const earthTextureUrl = 'https://unpkg.com/three-globe@2.31.1/example/img/earth-blue-marble.jpg';
     const earthBumpUrl = 'https://unpkg.com/three-globe@2.31.1/example/img/earth-topology.png';
@@ -65,7 +129,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     const globeMesh = new THREE.Mesh(globeGeo, globeMat);
     globeGroup.add(globeMesh);
 
-    // 2. Atmospheric Cyan Glow Rim
+    // 3. Atmospheric Cyan Rim Glow
     const atmosGeo = new THREE.SphereGeometry(globeRadius * 1.12, 64, 64);
     const atmosMat = new THREE.ShaderMaterial({
       vertexShader: `
@@ -89,7 +153,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
     scene.add(atmosMesh);
 
-    // 3. Starfield
+    // 4. Background Starfield
     const starCount = 800;
     const starGeo = new THREE.BufferGeometry();
     const starPos = new Float32Array(starCount * 3);
@@ -103,7 +167,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     const starField = new THREE.Points(starGeo, starMat);
     scene.add(starField);
 
-    // 4. Coordinates to 3D Vector Function
+    // 5. Geographic Coordinates to 3D Sphere Vector
     const latLonToVector3 = (lat: number, lon: number, radius: number) => {
       const phi = (90 - lat) * (Math.PI / 180);
       const theta = (lon + 180) * (Math.PI / 180);
@@ -113,7 +177,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       return new THREE.Vector3(x, y, z);
     };
 
-    // 5. Active Shipping Lanes (Mediterranean Corridor)
+    // Arcs for Shipping Corridors
     const createArc = (startLat: number, startLon: number, endLat: number, endLon: number, colorHex: number) => {
       const start = latLonToVector3(startLat, startLon, globeRadius * 1.002);
       const end = latLonToVector3(endLat, endLon, globeRadius * 1.002);
@@ -135,39 +199,75 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       return new THREE.Line(geometry, material);
     };
 
-    // Mediterranean Corridor Lanes
-    const lane1 = createArc(31.25, 32.30, targetLat, targetLon, 0x00f2fe); // Suez to Levantine Basin
-    globeGroup.add(lane1);
-    const lane2 = createArc(targetLat, targetLon, 35.18, 35.94, 0x22c55e); // Levantine to Baniyas Syria
-    globeGroup.add(lane2);
-    const lane3 = createArc(targetLat, targetLon, 37.94, 23.63, 0xf97316); // Levantine to Piraeus Greece
-    globeGroup.add(lane3);
+    // --- CORRIDORS 1: Mediterranean (Emerald) ---
+    const laneEm1 = createArc(31.25, 32.30, 33.15, 34.20, 0x00f2fe); // Suez to Levantine
+    globeGroup.add(laneEm1);
+    const laneEm2 = createArc(33.15, 34.20, 35.18, 35.94, 0x22c55e); // Levantine to Baniyas Syria
+    globeGroup.add(laneEm2);
+    const laneEm3 = createArc(33.15, 34.20, 37.94, 23.63, 0xf97316); // Levantine to Piraeus Greece
+    globeGroup.add(laneEm3);
 
-    // 6. Single Pulsing Red Dot Beacon on Incident Location
-    const beaconPos = latLonToVector3(targetLat, targetLon, globeRadius * 1.015);
+    // --- CORRIDORS 2: Indian Ocean (Wakashio) ---
+    const laneWk1 = createArc(1.35, 103.82, -20.437, 57.742, 0x00f2fe); // Malacca/Singapore to Mauritius
+    globeGroup.add(laneWk1);
+    const laneWk2 = createArc(-20.437, 57.742, -34.35, 18.47, 0x22c55e); // Mauritius to Cape of Good Hope
+    globeGroup.add(laneWk2);
+    const laneWk3 = createArc(-20.437, 57.742, -25.96, 32.58, 0xf97316); // Mauritius to Mozambique Channel
+    globeGroup.add(laneWk3);
 
-    // Core glowing red sphere
-    const beaconCoreGeo = new THREE.SphereGeometry(0.026, 16, 16);
-    const beaconCoreMat = new THREE.MeshBasicMaterial({ color: 0xff1111 });
-    const beaconCore = new THREE.Mesh(beaconCoreGeo, beaconCoreMat);
-    beaconCore.position.copy(beaconPos);
-    globeGroup.add(beaconCore);
+    // =========================================================================
+    // 6. TWO RED DOT BEACONS (EMERALD & WAKASHIO)
+    // =========================================================================
 
-    // Pulsing transparent ripple ring
-    const ringGeo = new THREE.RingGeometry(0.03, 0.085, 32);
-    const ringMat = new THREE.MeshBasicMaterial({
+    // --- RED DOT 1: MT EMERALD (Mediterranean: 33.15°N, 34.20°E) ---
+    const emPos = latLonToVector3(33.15, 34.20, globeRadius * 1.015);
+    const emCoreGeo = new THREE.SphereGeometry(0.026, 16, 16);
+    const emCoreMat = new THREE.MeshBasicMaterial({ color: 0xff1111 });
+    const emCore = new THREE.Mesh(emCoreGeo, emCoreMat);
+    emCore.position.copy(emPos);
+    (emCore as any).incidentId = 'emerald';
+    globeGroup.add(emCore);
+
+    const emRingGeo = new THREE.RingGeometry(0.03, 0.085, 32);
+    const emRingMat = new THREE.MeshBasicMaterial({
       color: 0xef4444,
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.9,
     });
-    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.position.copy(beaconPos);
-    ringMesh.lookAt(beaconPos.clone().multiplyScalar(2));
-    globeGroup.add(ringMesh);
+    const emRingMesh = new THREE.Mesh(emRingGeo, emRingMat);
+    emRingMesh.position.copy(emPos);
+    emRingMesh.lookAt(emPos.clone().multiplyScalar(2));
+    (emRingMesh as any).incidentId = 'emerald';
+    globeGroup.add(emRingMesh);
+
+    // --- RED DOT 2: MV WAKASHIO (Mauritius: -20.437°S, 57.742°E) ---
+    const wkPos = latLonToVector3(-20.437, 57.742, globeRadius * 1.015);
+    const wkCoreGeo = new THREE.SphereGeometry(0.026, 16, 16);
+    const wkCoreMat = new THREE.MeshBasicMaterial({ color: 0xff1111 });
+    const wkCore = new THREE.Mesh(wkCoreGeo, wkCoreMat);
+    wkCore.position.copy(wkPos);
+    (wkCore as any).incidentId = 'wakashio';
+    globeGroup.add(wkCore);
+
+    const wkRingGeo = new THREE.RingGeometry(0.03, 0.085, 32);
+    const wkRingMat = new THREE.MeshBasicMaterial({
+      color: 0xef4444,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const wkRingMesh = new THREE.Mesh(wkRingGeo, wkRingMat);
+    wkRingMesh.position.copy(wkPos);
+    wkRingMesh.lookAt(wkPos.clone().multiplyScalar(2));
+    (wkRingMesh as any).incidentId = 'wakashio';
+    globeGroup.add(wkRingMesh);
+
+    // Interactive target meshes for raycasting
+    const interactiveMeshes = [emCore, emRingMesh, wkCore, wkRingMesh];
 
     // 7. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.1);
     scene.add(ambientLight);
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 1.8);
@@ -178,12 +278,12 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     cyanRim.position.set(-5, -2, -3);
     scene.add(cyanRim);
 
-    // LOCKED ROTATION: Lock Eastern Mediterranean & Levantine Basin facing directly forward
-    // Longitude ~34.2°E, Latitude ~33.15°N
-    globeGroup.rotation.y = -2.17;
-    globeGroup.rotation.x = 0.55;
+    // Set initial rotation
+    const initRot = targetRotRef.current;
+    globeGroup.rotation.x = initRot.x;
+    globeGroup.rotation.y = initRot.y;
 
-    // Mouse Interaction (Manual drag only, NO continuous over-rotation)
+    // Mouse Interaction
     let isDragging = false;
     let dragDistance = 0;
     let prevMouse = { x: 0, y: 0 };
@@ -201,15 +301,17 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       mouse.x = ((e.clientX - rect.left) / width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / height) * 2 + 1;
 
-      // Raycast ONLY to check beacon hover
+      // Raycast to check beacon hover
       raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects([beaconCore, ringMesh]);
+      const intersects = raycaster.intersectObjects(interactiveMeshes);
       if (intersects.length > 0) {
         container.style.cursor = 'pointer';
-        setIsHovered(true);
+        const hitId = (intersects[0].object as any).incidentId;
+        const matched = incidents.find(i => i.id === hitId);
+        setHoveredIncident(matched || null);
       } else {
         container.style.cursor = isDragging ? 'grabbing' : 'grab';
-        setIsHovered(false);
+        setHoveredIncident(null);
       }
 
       if (isDragging) {
@@ -217,9 +319,8 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         const deltaY = e.clientY - prevMouse.y;
         dragDistance += Math.abs(deltaX) + Math.abs(deltaY);
         globeGroup.rotation.y += deltaX * 0.004;
-        globeGroup.rotation.x = Math.max(-0.6, Math.min(0.6, globeGroup.rotation.x + deltaY * 0.004));
+        globeGroup.rotation.x = Math.max(-0.7, Math.min(0.7, globeGroup.rotation.x + deltaY * 0.004));
         prevMouse = { x: e.clientX, y: e.clientY };
-        setRotationAngle(Math.round((globeGroup.rotation.y * 180) / Math.PI));
       }
     };
 
@@ -229,7 +330,6 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     };
 
     const onClick = (e: MouseEvent) => {
-      // If the user was dragging the globe, do NOT trigger click
       if (dragDistance > 6) return;
 
       const rect = container.getBoundingClientRect();
@@ -237,11 +337,16 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       mouse.y = -((e.clientY - rect.top) / height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
-      // ONLY trigger if clicking the red dot beacon itself, NOT the background globe
-      const intersects = raycaster.intersectObjects([beaconCore, ringMesh]);
+      const intersects = raycaster.intersectObjects(interactiveMeshes);
 
       if (intersects.length > 0) {
-        onSelectIncident(targetLat, targetLon);
+        const hitId = (intersects[0].object as any).incidentId;
+        const clickedInc = incidents.find(i => i.id === hitId);
+        if (clickedInc) {
+          setActiveIncidentId(clickedInc.id);
+          targetRotRef.current = incidentRotations.current[clickedInc.id] || targetRotRef.current;
+          onSelectIncident(clickedInc.lat, clickedInc.lon, clickedInc);
+        }
       }
     };
 
@@ -250,19 +355,30 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     window.addEventListener('mouseup', onMouseUp);
     container.addEventListener('click', onClick);
 
-    // Animation Loop (NO continuous rotation; only gentle ripple pulsing)
+    // Animation Loop with smooth auto-centering on active incident
     let animationId: number;
-    let clock = new THREE.Clock();
+    const clock = new THREE.Clock();
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
 
-      // Pulsing transparent ripple ring
+      // Smooth flight camera damping toward active incident when not dragging
+      if (!isDragging) {
+        const targetRot = targetRotRef.current;
+        globeGroup.rotation.y += (targetRot.y - globeGroup.rotation.y) * 0.06;
+        globeGroup.rotation.x += (targetRot.x - globeGroup.rotation.x) * 0.06;
+      }
+
+      // Pulsing transparent ripple rings
       const pulseScale = 1.0 + (Math.sin(elapsedTime * 3.5) + 1.0) * 0.6;
       const pulseOpacity = 0.9 - (Math.sin(elapsedTime * 3.5) + 1.0) * 0.4;
-      ringMesh.scale.set(pulseScale, pulseScale, 1);
-      ringMat.opacity = Math.max(0.1, pulseOpacity);
+
+      emRingMesh.scale.set(pulseScale, pulseScale, 1);
+      emRingMat.opacity = Math.max(0.12, pulseOpacity);
+
+      wkRingMesh.scale.set(pulseScale, pulseScale, 1);
+      wkRingMat.opacity = Math.max(0.12, pulseOpacity);
 
       renderer.render(scene, camera);
     };
@@ -291,7 +407,17 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
       }
       renderer.dispose();
     };
-  }, [targetLat, targetLon, onSelectIncident]);
+  }, [incidents, onSelectIncident]);
+
+  const handleSwitchIncident = (inc: IncidentLocation) => {
+    setActiveIncidentId(inc.id);
+    if (incidentRotations.current[inc.id]) {
+      targetRotRef.current = incidentRotations.current[inc.id];
+    }
+    onSelectIncident(inc.lat, inc.lon, inc);
+  };
+
+  const isEmerald = currentIncident.id === 'emerald';
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
@@ -345,12 +471,21 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         </div>
 
         <div style={{ fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center' }}>
-          South Indian Ocean<br />
-          <b style={{ color: '#00f2fe' }}>Mauritius Sector</b>
+          {isEmerald ? (
+            <>
+              Eastern Mediterranean<br />
+              <b style={{ color: '#00f2fe' }}>Levantine Basin Sector</b>
+            </>
+          ) : (
+            <>
+              South Indian Ocean<br />
+              <b style={{ color: '#00f2fe' }}>Mauritius Sector</b>
+            </>
+          )}
         </div>
       </div>
 
-      {/* 📍 Top-Left Target Telemetry & Corridors HUD */}
+      {/* 📍 Top-Left Target Telemetry & Dual Incident Controller HUD */}
       <div style={{
         position: 'absolute',
         top: '24px',
@@ -362,14 +497,15 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         padding: '16px 20px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 242, 254, 0.15)',
         pointerEvents: 'auto',
-        maxWidth: '390px',
+        maxWidth: '410px',
         zIndex: 100,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(0, 242, 254, 0.2)' }}>
+        {/* Header Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '8px', borderBottom: '1px solid rgba(0, 242, 254, 0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontWeight: 900, color: '#00f2fe', fontSize: '0.95rem', letterSpacing: '1px' }}>SPILL TRACE</span>
+            <span style={{ fontWeight: 900, color: '#00f2fe', fontSize: '0.95rem', letterSpacing: '1px' }}>GLOBAL RADAR</span>
             <span style={{ color: '#64748b', fontSize: '0.70rem' }}>|</span>
-            <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 600 }}>SPACE SURVEILLANCE</span>
+            <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 600 }}>2 ACTIVE INCIDENTS</span>
           </div>
           {onOpenSimulation && (
             <button
@@ -395,18 +531,73 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           )}
         </div>
 
+        {/* Dual Red-Dot Incident Switcher */}
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>
+            SELECT ACTIVE SPILL BEACON:
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            {incidents.map((inc) => {
+              const isSelected = inc.id === activeIncidentId;
+              return (
+                <button
+                  key={inc.id}
+                  onClick={() => handleSwitchIncident(inc)}
+                  style={{
+                    padding: '8px 10px',
+                    fontSize: '0.72rem',
+                    fontWeight: isSelected ? 800 : 600,
+                    color: isSelected ? '#ffffff' : '#94a3b8',
+                    background: isSelected
+                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(220, 38, 38, 0.2))'
+                      : 'rgba(255, 255, 255, 0.04)',
+                    border: isSelected ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '2px',
+                    boxShadow: isSelected ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                      boxShadow: isSelected ? '0 0 8px #ef4444' : 'none'
+                    }} />
+                    <span style={{ fontWeight: 800 }}>{inc.id === 'emerald' ? 'MT EMERALD' : 'MV WAKASHIO'}</span>
+                  </div>
+                  <span style={{ fontSize: '0.64rem', color: isSelected ? '#fca5a5' : '#64748b' }}>
+                    {inc.id === 'emerald' ? 'Mediterranean Sea' : 'Mauritius Lagoon'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Incident Information */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 10px #ef4444' }} />
           <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#ef4444', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-            ORBITAL CHANGE DETECTION ALERT
+            {isEmerald ? 'TANKER MYSTERY DISCHARGE ALERT' : 'CORAL REEF GROUNDING ALERT'}
           </span>
         </div>
 
-        <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#f1f5f9', fontWeight: 700 }}>
-          Pointe d'Esny, Mauritius (-20.4381°S, 57.7446°E)
+        <h3 style={{ margin: 0, fontSize: '1.02rem', color: '#f1f5f9', fontWeight: 700 }}>
+          {isEmerald
+            ? 'Levantine Basin, Mediterranean (33.15°N, 34.20°E)'
+            : "Pointe d'Esny, Mauritius (-20.438°S, 57.745°E)"}
         </h3>
-        <p style={{ margin: '4px 0 10px 0', fontSize: '0.8rem', color: '#94a3b8' }}>
-          Coral reef grounding & oil slick flagged (~28.5 km²). AOI Bounding Box: <b>[-20.38, 57.68 to -20.50, 57.82]</b>.
+        <p style={{ margin: '4px 0 10px 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+          {isEmerald
+            ? 'Copernicus Sentinel-1 SAR & Sentinel-2 Optical detection. Drifting crude oil slick (~42.6 km²), coastal trajectory toward Hadera/Dor HaBonim.'
+            : 'Copernicus Sentinel-1 & 2 MSI detection. Bulk carrier grounded on coral barrier reef (~28.5 km² bunker fuel spill into tidal lagoon).'}
         </p>
 
         {/* Data Pipeline Mode Switcher */}
@@ -415,15 +606,15 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           border: '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: '8px',
           padding: '8px 10px',
-          marginBottom: '12px',
+          marginBottom: '10px',
           display: 'flex',
           flexDirection: 'column',
           gap: '6px',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Data Source Mode:</span>
+            <span style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 600 }}>Data Source Mode:</span>
             <span style={{ fontSize: '0.68rem', color: useLiveSat ? '#f59e0b' : '#00f2fe', fontWeight: 700 }}>
-              {useLiveSat ? '🛰️ ESA LIVE' : '⚡ INSTANT BENCHMARK'}
+              {useLiveSat ? '🛰️ ESA LIVE' : '⚡ INSTANT CALIBRATED'}
             </span>
           </div>
 
@@ -436,7 +627,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
               }}
               style={{
                 padding: '6px 8px',
-                fontSize: '0.72rem',
+                fontSize: '0.70rem',
                 fontWeight: !useLiveSat ? 800 : 500,
                 color: !useLiveSat ? '#00f2fe' : '#64748b',
                 background: !useLiveSat ? 'rgba(0, 242, 254, 0.18)' : 'rgba(255,255,255,0.03)',
@@ -457,7 +648,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
               }}
               style={{
                 padding: '6px 8px',
-                fontSize: '0.72rem',
+                fontSize: '0.70rem',
                 fontWeight: useLiveSat ? 800 : 500,
                 color: useLiveSat ? '#f59e0b' : '#64748b',
                 background: useLiveSat ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255,255,255,0.03)',
@@ -472,9 +663,9 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           </div>
         </div>
 
-        {/* Action Button */}
+        {/* Primary Action Button: Launch Satellite Lab */}
         <button
-          onClick={() => onSelectIncident(targetLat, targetLon)}
+          onClick={() => onSelectIncident(currentIncident.lat, currentIncident.lon, currentIncident)}
           style={{
             width: '100%',
             background: 'linear-gradient(135deg, #ef4444, #dc2626)',
@@ -482,11 +673,11 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
             borderRadius: '6px',
             color: '#fff',
             padding: '10px 14px',
-            fontSize: '0.85rem',
+            fontSize: '0.84rem',
             fontWeight: 700,
             cursor: 'pointer',
             boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)',
-            marginBottom: '12px',
+            marginBottom: '8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -495,35 +686,101 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           }}
         >
           <span>
-            🧠 Run AI Detection & Satellite Lab ({targetLat.toFixed(2)}°N, {targetLon.toFixed(2)}°E) →
+            🛰️ Inspect {isEmerald ? 'MT Emerald' : 'MV Wakashio'} Imagery ({currentIncident.lat.toFixed(2)}°, {currentIncident.lon.toFixed(2)}°) →
           </span>
         </button>
 
-        {/* Corridor Legend with Colors */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
-            Active Mediterranean Maritime Corridors:
+        {/* Dedicated Secondary Shortcuts: Hindcast & Forensic Dossier */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
+          <button
+            onClick={() => onOpenCharacterization?.(currentIncident)}
+            style={{
+              background: 'rgba(0, 242, 254, 0.10)',
+              border: '1px solid rgba(0, 242, 254, 0.3)',
+              color: '#00f2fe',
+              borderRadius: '6px',
+              padding: '6px 8px',
+              fontSize: '0.70rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Waves size={12} />
+            <span>Own Drift Forecast</span>
+          </button>
+
+          <button
+            onClick={() => onOpenInvestigation?.(currentIncident)}
+            style={{
+              background: 'rgba(245, 158, 11, 0.10)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              color: '#f59e0b',
+              borderRadius: '6px',
+              padding: '6px 8px',
+              fontSize: '0.70rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Radar size={12} />
+            <span>Forensic Dossier</span>
+          </button>
+        </div>
+
+        {/* Corridor Legend */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
+            {isEmerald ? 'Active Mediterranean Corridors:' : 'Active Indian Ocean Corridors:'}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
-            <span style={{ width: '12px', height: '3px', background: '#00f2fe', borderRadius: '2px' }} />
-            <span>Suez Canal ⇄ Levantine Basin Corridor</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
-            <span style={{ width: '12px', height: '3px', background: '#22c55e', borderRadius: '2px' }} />
-            <span>Levantine Basin ⇄ Baniyas / Syria Tanker Route</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#f1f5f9' }}>
-            <span style={{ width: '12px', height: '3px', background: '#f97316', borderRadius: '2px' }} />
-            <span>Levantine Basin ⇄ Piraeus / Aegean Route</span>
-          </div>
+          {isEmerald ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#f1f5f9' }}>
+                <span style={{ width: '10px', height: '3px', background: '#00f2fe', borderRadius: '2px' }} />
+                <span>Suez Canal ⇄ Levantine Basin Corridor</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#f1f5f9' }}>
+                <span style={{ width: '10px', height: '3px', background: '#22c55e', borderRadius: '2px' }} />
+                <span>Levantine Basin ⇄ Baniyas / Syria Route</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#f1f5f9' }}>
+                <span style={{ width: '10px', height: '3px', background: '#f97316', borderRadius: '2px' }} />
+                <span>Levantine Basin ⇄ Piraeus / Aegean Route</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#f1f5f9' }}>
+                <span style={{ width: '10px', height: '3px', background: '#00f2fe', borderRadius: '2px' }} />
+                <span>Strait of Malacca / Singapore ⇄ Mauritius Corridor</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#f1f5f9' }}>
+                <span style={{ width: '10px', height: '3px', background: '#22c55e', borderRadius: '2px' }} />
+                <span>Mauritius ⇄ Cape of Good Hope Bulk Route</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#f1f5f9' }}>
+                <span style={{ width: '10px', height: '3px', background: '#f97316', borderRadius: '2px' }} />
+                <span>Mauritius ⇄ Mozambique Channel Route</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Floating Hover Indicator Banner */}
-      {isHovered && (
+      {hoveredIncident && (
         <div style={{
           position: 'absolute',
-          bottom: '40px',
+          bottom: '36px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'rgba(10, 15, 29, 0.95)',
@@ -535,14 +792,14 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           alignItems: 'center',
           gap: '10px',
           pointerEvents: 'none',
+          zIndex: 200,
         }}>
           <span style={{ fontSize: '1rem' }}>🎯</span>
           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9' }}>
-            CLICK TO INSPECT MT EMERALD SATELLITE IMAGERY ({targetLat.toFixed(2)}°N, {targetLon.toFixed(2)}°E)
+            CLICK RED DOT TO INSPECT {hoveredIncident.id === 'emerald' ? 'MT EMERALD (Mediterranean)' : 'MV WAKASHIO (Mauritius)'} — {hoveredIncident.lat.toFixed(2)}°, {hoveredIncident.lon.toFixed(2)}°
           </span>
         </div>
       )}
     </div>
   );
 };
-

@@ -1,13 +1,21 @@
 {
-  "product_name": "S1A_IW_GRDH_1SDV_20210205T035017_20210205T035042_036449_044738_5EE0",
+  "product_name": "S1A_IW_GRDH_1SDV_20210213T034359_20210213T034424_036566_044B7E_2D90_COG.SAFE",
   "satellite": "Sentinel-1A C-Band SAR",
-  "sensor": "Synthetic Aperture Radar (IW Mode, VV+VH Dual-Pol)",
-  "acquisition_time_utc": "2021-02-05 03:50:17 UTC",
-  "date": "2021-02-05",
-  "orbit_number": 36449,
-  "data_take_id": "044738",
-  "location": "Levantine Basin, Eastern Mediterranean (33.15\u00b0N, 34.20\u00b0E)",
-  "slick_dimensions": "Length: 68.4 km, Area: 42.6 km\u00b2",
+  "sensor": "Synthetic Aperture Radar (IW GRD, Dual-Pol VV+VH)",
+  "acquisition_time_utc": "2021-02-13 03:43:59 UTC",
+  "date": "2021-02-13",
+  "orbit_number": 36566,
+  "relative_orbit": 14,
+  "data_take_id": "044B7E",
+  "location": "Levantine Basin, Offshore Hadera / Dor HaBonim (32.48\u00b0N, 34.68\u00b0E)",
+  "bbox": [
+    34.4,
+    32.2,
+    34.95,
+    32.75
+  ],
+  "slick_length_km": 26.4,
+  "resolution_m": 10.0,
   "target_vessel": "MT EMERALD (IMO 9231224, MMSI 372469000)",
-  "status": "Authentic Satellite Discovery Pass (Drifting Open-Sea Slick)"
+  "status": "Authentic Copernicus CDSE Ground Range Detected (GRD) Acquisition"
 }
