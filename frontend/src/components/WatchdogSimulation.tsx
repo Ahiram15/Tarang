@@ -67,7 +67,7 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   // Live Telemetry Console State
   const [isConsoleStreaming, setIsConsoleStreaming] = useState<boolean>(true);
   const [consoleFilter, setConsoleFilter] = useState<'ALL' | 'TIER1' | 'TIER2' | 'AI' | 'ALERTS'>('ALL');
-  const consoleBottomRef = useRef<HTMLDivElement>(null);
+  const terminalBoxRef = useRef<HTMLDivElement>(null);
 
   const [consoleLogs, setConsoleLogs] = useState<Array<{
     id: string;
@@ -92,10 +92,10 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
     { id: '13', time: '15:00:13.1', source: 'ALERT', level: 'ALERT', color: '#ef4444', message: 'CONFIRMED SPILL: Confidence 96.4%. Transmitted to 3D Globe & Hindcast Engine.' },
   ]);
 
-  // Auto-scroll console to bottom when new logs arrive
+  // Auto-scroll ONLY inside the terminal box (never scroll the main window)
   useEffect(() => {
-    if (consoleBottomRef.current) {
-      consoleBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (terminalBoxRef.current) {
+      terminalBoxRef.current.scrollTop = terminalBoxRef.current.scrollHeight;
     }
   }, [consoleLogs]);
 
@@ -796,21 +796,24 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             </div>
 
             {/* Console Log Terminal Window - Short & Compact */}
-            <div style={{
-              background: '#020409',
-              border: '1px solid rgba(0, 242, 254, 0.2)',
-              borderRadius: '6px',
-              padding: '7px 10px',
-              fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
-              fontSize: '0.67rem',
-              lineHeight: 1.45,
-              height: '92px',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '3px',
-              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8)',
-            }}>
+            <div
+              ref={terminalBoxRef}
+              style={{
+                background: '#020409',
+                border: '1px solid rgba(0, 242, 254, 0.2)',
+                borderRadius: '6px',
+                padding: '7px 10px',
+                fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
+                fontSize: '0.67rem',
+                lineHeight: 1.45,
+                height: '92px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '3px',
+                boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8)',
+              }}
+            >
               {consoleLogs.length === 0 ? (
                 <div style={{ color: '#64748b', fontStyle: 'italic', padding: '6px' }}>
                   Console buffer empty. Streaming telemetry will appear shortly or click "Poll"...
@@ -842,7 +845,7 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                   </div>
                 ))
               )}
-              <div ref={consoleBottomRef} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#00f2fe', marginTop: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#00f2fe', marginTop: '2px' }}>
                 <span style={{ fontSize: '0.64rem' }}>● CDSE_DAEMON &gt;</span>
                 <span style={{
                   display: 'inline-block',
