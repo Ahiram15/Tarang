@@ -715,17 +715,16 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
           <div style={{
             background: 'rgba(6, 11, 24, 0.90)',
             border: consoleMode === 'console' ? '1.5px solid rgba(0, 242, 254, 0.4)' : `1.5px solid ${pipelineSteps[activeStep - 1].color}`,
-            borderRadius: '12px',
-            padding: '14px 16px',
-            flex: 1,
+            borderRadius: '10px',
+            padding: '10px 14px',
+            flex: consoleMode === 'console' ? '0 0 auto' : 1,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            boxShadow: consoleMode === 'console' ? '0 0 25px rgba(0, 242, 254, 0.15)' : `0 0 20px ${pipelineSteps[activeStep - 1].color}25`,
-            minHeight: '270px',
+            boxShadow: consoleMode === 'console' ? '0 0 18px rgba(0, 242, 254, 0.12)' : `0 0 20px ${pipelineSteps[activeStep - 1].color}25`,
           }}>
             {/* Mode Switcher Tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <button
                   onClick={() => setConsoleMode('console')}
@@ -733,25 +732,25 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                     background: consoleMode === 'console' ? 'rgba(0, 242, 254, 0.22)' : 'rgba(255,255,255,0.04)',
                     border: consoleMode === 'console' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
                     color: consoleMode === 'console' ? '#00f2fe' : '#94a3b8',
-                    borderRadius: '6px',
-                    padding: '4px 10px',
-                    fontSize: '0.74rem',
+                    borderRadius: '5px',
+                    padding: '3px 8px',
+                    fontSize: '0.70rem',
                     fontWeight: 800,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '5px',
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <Terminal size={13} />
+                  <Terminal size={12} />
                   <span>LIVE INGESTION CONSOLE</span>
                   <span style={{
-                    width: '6px',
-                    height: '6px',
+                    width: '5px',
+                    height: '5px',
                     borderRadius: '50%',
                     background: isConsoleStreaming ? '#22c55e' : '#f59e0b',
-                    boxShadow: isConsoleStreaming ? '0 0 8px #22c55e' : 'none',
+                    boxShadow: isConsoleStreaming ? '0 0 6px #22c55e' : 'none',
                     display: 'inline-block'
                   }} />
                 </button>
@@ -762,41 +761,41 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                     background: consoleMode === 'inspector' ? 'rgba(0, 242, 254, 0.22)' : 'rgba(255,255,255,0.04)',
                     border: consoleMode === 'inspector' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
                     color: consoleMode === 'inspector' ? '#00f2fe' : '#94a3b8',
-                    borderRadius: '6px',
-                    padding: '4px 10px',
-                    fontSize: '0.74rem',
+                    borderRadius: '5px',
+                    padding: '3px 8px',
+                    fontSize: '0.70rem',
                     fontWeight: 800,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '5px',
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <Cpu size={13} />
+                  <Cpu size={12} />
                   <span>STEP SPEC (STEP {activeStep})</span>
                 </button>
               </div>
 
               {consoleMode === 'console' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <button
                     onClick={() => setIsConsoleStreaming(!isConsoleStreaming)}
                     style={{
                       background: 'rgba(255, 255, 255, 0.06)',
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       color: isConsoleStreaming ? '#22c55e' : '#f59e0b',
-                      borderRadius: '5px',
-                      padding: '3px 8px',
-                      fontSize: '0.66rem',
+                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      fontSize: '0.62rem',
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '3px',
                     }}
                   >
-                    {isConsoleStreaming ? <Pause size={10} /> : <Play size={10} />}
+                    {isConsoleStreaming ? <Pause size={9} /> : <Play size={9} />}
                     <span>{isConsoleStreaming ? 'STREAMING' : 'PAUSED'}</span>
                   </button>
 
@@ -806,18 +805,18 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                       background: 'rgba(0, 242, 254, 0.12)',
                       border: '1px solid rgba(0, 242, 254, 0.3)',
                       color: '#00f2fe',
-                      borderRadius: '5px',
-                      padding: '3px 8px',
-                      fontSize: '0.66rem',
+                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      fontSize: '0.62rem',
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '3px',
                     }}
                   >
-                    <Zap size={10} />
-                    <span>Poll STAC</span>
+                    <Zap size={9} />
+                    <span>Poll</span>
                   </button>
 
                   <button
@@ -825,16 +824,16 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                     style={{
                       background: 'rgba(255,255,255,0.04)',
                       border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '5px',
+                      borderRadius: '4px',
                       color: '#94a3b8',
                       cursor: 'pointer',
-                      padding: '3px 6px',
+                      padding: '2px 5px',
                       display: 'flex',
                       alignItems: 'center',
                     }}
                     title="Clear Terminal"
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={10} />
                   </button>
                 </div>
               )}
@@ -842,41 +841,40 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
 
             {/* CONSOLE VIEW */}
             {consoleMode === 'console' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                {/* Console Log Terminal Window */}
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Console Log Terminal Window - Short & Compact */}
                 <div style={{
                   background: '#020409',
                   border: '1px solid rgba(0, 242, 254, 0.2)',
-                  borderRadius: '8px',
-                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  padding: '7px 10px',
                   fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
-                  fontSize: '0.70rem',
-                  lineHeight: 1.55,
-                  flex: 1,
-                  height: '180px',
+                  fontSize: '0.67rem',
+                  lineHeight: 1.45,
+                  height: '92px',
                   overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px',
-                  boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.8)',
+                  gap: '3px',
+                  boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8)',
                 }}>
                   {consoleLogs.length === 0 ? (
-                    <div style={{ color: '#64748b', fontStyle: 'italic', padding: '10px' }}>
-                      Console buffer empty. Streaming telemetry will appear shortly or click "Poll STAC"...
+                    <div style={{ color: '#64748b', fontStyle: 'italic', padding: '6px' }}>
+                      Console buffer empty. Streaming telemetry will appear shortly or click "Poll"...
                     </div>
                   ) : (
                     consoleLogs.map((log) => (
-                      <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', wordBreak: 'break-word' }}>
-                        <span style={{ color: '#475569', fontSize: '0.64rem', flexShrink: 0 }}>
+                      <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', wordBreak: 'break-word' }}>
+                        <span style={{ color: '#475569', fontSize: '0.62rem', flexShrink: 0 }}>
                           [{log.time}]
                         </span>
                         <span style={{
                           color: log.color,
                           fontWeight: 800,
-                          fontSize: '0.64rem',
+                          fontSize: '0.60rem',
                           background: `${log.color}15`,
-                          padding: '0 4px',
-                          borderRadius: '3px',
+                          padding: '0 3px',
+                          borderRadius: '2px',
                           border: `1px solid ${log.color}35`,
                           flexShrink: 0,
                         }}>
@@ -892,11 +890,11 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                     ))
                   )}
                   <div ref={consoleBottomRef} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#00f2fe', marginTop: '2px' }}>
-                    <span style={{ fontSize: '0.66rem' }}>● CDSE_DAEMON_ACTIVE &gt;</span>
+                    <span style={{ fontSize: '0.64rem' }}>● CDSE_DAEMON &gt;</span>
                     <span style={{
                       display: 'inline-block',
-                      width: '7px',
-                      height: '11px',
+                      width: '6px',
+                      height: '9px',
                       background: '#00f2fe',
                       animation: 'pulse 1s infinite'
                     }} />
@@ -909,19 +907,19 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                  paddingTop: '8px',
-                  marginTop: '8px',
-                  fontSize: '0.65rem',
+                  paddingTop: '6px',
+                  marginTop: '6px',
+                  fontSize: '0.62rem',
                   color: '#64748b',
                   fontFamily: 'monospace',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>POLLER: <b style={{ color: '#22c55e' }}>ONLINE</b></span>
                     <span>THROUGHPUT: <b style={{ color: '#38bdf8' }}>1.2 evt/s</b></span>
-                    <span>SATELLITES: <b style={{ color: '#f59e0b' }}>4 MONITORED</b></span>
+                    <span>SATELLITES: <b style={{ color: '#f59e0b' }}>4 ACTIVE</b></span>
                   </div>
                   <div>
-                    BANDWIDTH SAVINGS: <b style={{ color: '#22c55e' }}>99.3% ACTIVE</b>
+                    SAVINGS: <b style={{ color: '#22c55e' }}>99.3%</b>
                   </div>
                 </div>
               </div>
