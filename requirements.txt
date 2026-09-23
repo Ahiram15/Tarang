@@ -1,4 +1,4 @@
-# Web API Framework
+# Web API Framework & Networking
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
@@ -14,13 +14,23 @@ numpy>=1.23.0
 opencv-python>=4.8.0
 pillow>=9.5.0
 
-# Scientific & Spatial Modeling
+# Machine Learning & Tabular Classification
+xgboost>=2.0.0
+scikit-learn>=1.3.0
+
+# Geospatial & Scientific Modeling
 shapely>=2.0.0
 scipy>=1.10.0
+geopandas>=1.0.0
+pyproj>=3.6.0
+matplotlib>=3.8.0
+
+# Utilities & Configuration
+PyYAML>=6.0.0
+python-dateutil>=2.8.2
 
 # PDF Report Generation
 reportlab>=4.0.0
 
-# Testing
+# Testing & Quality Assurance
 pytest>=8.0.0
-
