@@ -46,7 +46,7 @@ interface SensorMetadata {
 const Sentinel1Diagram: React.FC = () => (
   <svg style={{ width: '100%', height: '100%' }} viewBox="0 0 520 220" fill="none">
     <defs>
-      <linearGradient id="s1RadarBeam" x1="0%" y1="0%" x2="100%" y2="100%">
+      <linearGradient id="s1RadarBeam" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.75" />
         <stop offset="100%" stopColor="#00f2fe" stopOpacity="0.03" />
       </linearGradient>
@@ -57,12 +57,12 @@ const Sentinel1Diagram: React.FC = () => (
     </defs>
 
     {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="140" x2="520" y2="140" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
 
     {/* Sentinel-1 Satellite Platform */}
-    <g transform="translate(60, 22)">
+    <g transform="translate(62, 20)">
       {/* Solar Arrays */}
       <rect x="-44" y="-6" width="34" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
       <line x1="-27" y1="-6" x2="-27" y2="6" stroke="#38bdf8" strokeWidth="0.8" />
@@ -73,54 +73,54 @@ const Sentinel1Diagram: React.FC = () => (
       {/* SAR Antenna Array Bar */}
       <rect x="-24" y="8" width="48" height="5" rx="1.5" fill="#38bdf8" stroke="#00f2fe" strokeWidth="1.2" />
       <circle cx="0" cy="0" r="2.5" fill="#00f2fe" />
-      <text x="0" y="-12" fill="#00f2fe" fontFamily="'Space Grotesk', sans-serif" fontSize="11" fontWeight="bold" textAnchor="middle">SENTINEL-1A/B SAR (5.405 GHz C-BAND)</text>
+      <text x="0" y="-12" fill="#00f2fe" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">SENTINEL-1A/B SAR (5.405 GHz C-BAND)</text>
     </g>
 
     {/* Microwave Transmission Cone (Active Pulses) */}
-    <polygon points="60,35 125,140 355,140" fill="url(#s1RadarBeam)" />
+    <polygon points="62,33 125,138 355,138" fill="url(#s1RadarBeam)" />
     {/* Pulsed Wavefront Arcs */}
-    <path d="M 76 52 A 30 30 0 0 1 95 68" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.9" />
-    <path d="M 96 72 A 60 60 0 0 1 128 100" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.7" />
-    <path d="M 118 96 A 100 100 0 0 1 175 134" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.5" />
+    <path d="M 78 50 A 30 30 0 0 1 97 66" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.9" />
+    <path d="M 98 70 A 60 60 0 0 1 130 98" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.7" />
+    <path d="M 120 94 A 100 100 0 0 1 177 132" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.5" />
 
     {/* Incidence Angle Line & Text */}
-    <line x1="60" y1="35" x2="195" y2="140" stroke="rgba(0, 242, 254, 0.6)" strokeWidth="1.2" strokeDasharray="3 3" />
-    <text x="115" y="80" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold">θ = 34.2° INCIDENCE</text>
+    <line x1="62" y1="33" x2="195" y2="138" stroke="rgba(0, 242, 254, 0.6)" strokeWidth="1.2" strokeDasharray="3 3" />
+    <text x="120" y="78" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">θ = 34.2° INCIDENCE</text>
 
     {/* Ocean Body */}
-    <rect x="0" y="140" width="520" height="80" fill="url(#s1OceanGrad)" />
+    <rect x="0" y="138" width="520" height="82" fill="url(#s1OceanGrad)" />
 
-    {/* ZONE A: Clean Rough Ocean Waves (Left side: 0 to 220) */}
-    <path d="M 0 140 Q 18 132, 36 140 T 72 140 T 108 140 T 144 140 T 180 140 T 216 140" stroke="#38bdf8" strokeWidth="2.2" fill="none" />
+    {/* ZONE A: Clean Rough Ocean Waves (Left side: 0 to 216) */}
+    <path d="M 0 138 Q 18 130, 36 138 T 72 138 T 108 138 T 144 138 T 180 138 T 216 138" stroke="#38bdf8" strokeWidth="2.2" fill="none" />
     {/* Bragg Backscatter Echoes Returning to Satellite */}
-    <path d="M 150 140 L 72 35" stroke="#10b981" strokeWidth="1.75" strokeDasharray="5 3" />
-    <path d="M 105 140 L 62 35" stroke="#10b981" strokeWidth="1.4" strokeDasharray="5 3" opacity="0.8" />
-    <text x="105" y="156" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="10.5" fontWeight="bold" textAnchor="middle">ROUGH WATER (Bragg λ=4.8cm)</text>
-    <text x="105" y="170" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold" textAnchor="middle">BRIGHT ECHO: -14.2 dB</text>
+    <path d="M 150 138 L 74 33" stroke="#10b981" strokeWidth="1.75" strokeDasharray="5 3" />
+    <path d="M 105 138 L 64 33" stroke="#10b981" strokeWidth="1.4" strokeDasharray="5 3" opacity="0.8" />
+    <text x="105" y="155" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">ROUGH WATER (Bragg λ=4.8cm)</text>
+    <text x="105" y="171" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">BRIGHT ECHO: -14.2 dB</text>
 
-    {/* ZONE B: Oil Spill Monolayer Damping (Right side: 216 to 495) */}
-    <line x1="216" y1="140" x2="495" y2="140" stroke="#ef4444" strokeWidth="3.5" />
+    {/* ZONE B: Oil Spill Monolayer Damping (Right side: 216 to 500) */}
+    <line x1="216" y1="138" x2="500" y2="138" stroke="#ef4444" strokeWidth="3.5" />
     {/* Specular Reflection Bouncing Away to Space */}
-    <path d="M 285 140 L 455 50" stroke="#ef4444" strokeWidth="1.75" strokeDasharray="5 3" />
-    <text x="355" y="156" fill="#ef4444" fontFamily="'Space Grotesk', sans-serif" fontSize="10.5" fontWeight="bold" textAnchor="middle">OIL SLICK (CAPILLARY DAMPED)</text>
-    <text x="355" y="170" fill="#fca5a5" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold" textAnchor="middle">SPECULAR LOSS: -21.8 dB (NO ECHO)</text>
+    <path d="M 285 138 L 455 48" stroke="#ef4444" strokeWidth="1.75" strokeDasharray="5 3" />
+    <text x="355" y="155" fill="#ef4444" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">OIL SLICK (CAPILLARY DAMPED)</text>
+    <text x="355" y="171" fill="#fca5a5" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">SPECULAR LOSS: -21.8 dB (NO ECHO)</text>
 
     {/* Annotations Badge */}
-    <g transform="translate(340, 58)">
-      <rect x="0" y="0" width="165" height="26" rx="4" fill="rgba(3, 7, 18, 0.75)" stroke="rgba(239, 68, 68, 0.35)" strokeWidth="1" />
-      <text x="8" y="12" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="9" fontWeight="bold">● SPECULAR REFLECTION</text>
-      <text x="8" y="22" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="8">Radar pulse bounces away</text>
+    <g transform="translate(340, 50)">
+      <rect x="0" y="0" width="172" height="30" rx="4" fill="rgba(3, 7, 18, 0.8)" stroke="rgba(239, 68, 68, 0.35)" strokeWidth="1" />
+      <text x="8" y="13" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="bold">● SPECULAR REFLECTION</text>
+      <text x="8" y="25" fill="#cbd5e1" fontFamily="'JetBrains Mono', monospace" fontSize="9.5">Radar pulse bounces away</text>
     </g>
 
     {/* Backscatter Power Trace Inset along bottom */}
-    <g transform="translate(10, 185)">
-      <rect x="0" y="0" width="500" height="26" rx="4" fill="rgba(2, 6, 18, 0.7)" stroke="rgba(56, 189, 248, 0.15)" strokeWidth="1" />
-      <text x="10" y="17" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold">SIGMA-0 (dB):</text>
-      <path d="M 105 13 L 210 13 Q 225 21, 245 21 L 440 21 Q 460 13, 485 13" stroke="#00f2fe" strokeWidth="1.75" fill="none" />
-      <circle cx="210" cy="13" r="2.5" fill="#10b981" />
-      <circle cx="340" cy="21" r="3" fill="#ef4444" />
-      <text x="140" y="10" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="9.5">-14.2 dB (Sea)</text>
-      <text x="300" y="17" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="10" fontWeight="bold">-21.8 dB (Δ -7.6 dB DARK SPOT)</text>
+    <g transform="translate(10, 184)">
+      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(56, 189, 248, 0.12)" strokeWidth="1" />
+      <text x="10" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">SIGMA-0 (dB):</text>
+      <path d="M 115 14 L 210 14 Q 225 22, 245 22 L 440 22 Q 460 14, 485 14" stroke="#00f2fe" strokeWidth="1.75" fill="none" />
+      <circle cx="210" cy="14" r="2.5" fill="#10b981" />
+      <circle cx="340" cy="22" r="3" fill="#ef4444" />
+      <text x="145" y="11" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="600">-14.2 dB (Sea)</text>
+      <text x="295" y="18" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">-21.8 dB (Δ -7.6 dB DARK SPOT)</text>
     </g>
   </svg>
 );
@@ -142,33 +142,33 @@ const Sentinel2Diagram: React.FC = () => (
     </defs>
 
     {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="140" x2="520" y2="140" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
 
     {/* Solar Source */}
-    <g transform="translate(50, 24)">
+    <g transform="translate(50, 22)">
       <circle cx="0" cy="0" r="14" fill="#eab308" opacity="0.25" />
       <circle cx="0" cy="0" r="9" fill="#facc15" />
       <line x1="-15" y1="0" x2="15" y2="0" stroke="#fef08a" strokeWidth="1.2" />
       <line x1="0" y1="-15" x2="0" y2="15" stroke="#fef08a" strokeWidth="1.2" />
       <line x1="-11" y1="-11" x2="11" y2="11" stroke="#fef08a" strokeWidth="1" />
       <line x1="-11" y1="11" x2="11" y2="-11" stroke="#fef08a" strokeWidth="1" />
-      <text x="0" y="-14" fill="#facc15" fontFamily="'Space Grotesk', sans-serif" fontSize="11" fontWeight="bold" textAnchor="middle">SOLAR BROADBAND FLUX (E₀)</text>
+      <text x="0" y="-14" fill="#facc15" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">SOLAR BROADBAND FLUX (E₀)</text>
     </g>
 
     {/* Solar Illumination Cone */}
-    <polygon points="50,28 10,140 350,140" fill="url(#s2SunRays)" />
-    <line x1="50" y1="28" x2="160" y2="140" stroke="rgba(250, 204, 21, 0.5)" strokeWidth="1.2" strokeDasharray="3 3" />
-    <line x1="50" y1="28" x2="300" y2="140" stroke="rgba(250, 204, 21, 0.5)" strokeWidth="1.2" strokeDasharray="3 3" />
+    <polygon points="50,26 10,138 350,138" fill="url(#s2SunRays)" />
+    <line x1="50" y1="26" x2="160" y2="138" stroke="rgba(250, 204, 21, 0.5)" strokeWidth="1.2" strokeDasharray="3 3" />
+    <line x1="50" y1="26" x2="300" y2="138" stroke="rgba(250, 204, 21, 0.5)" strokeWidth="1.2" strokeDasharray="3 3" />
 
     {/* Sentinel-2 Satellite Platform with Multispectral Payload */}
-    <g transform="translate(420, 22)">
+    <g transform="translate(420, 20)">
       <rect x="-42" y="-6" width="28" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
       <rect x="-12" y="-9" width="24" height="18" rx="2" fill="#0f172a" stroke="#38bdf8" strokeWidth="1.5" />
       <polygon points="-8,9 8,9 12,16 -12,16" fill="#38bdf8" stroke="#00f2fe" strokeWidth="1" />
       <circle cx="0" cy="0" r="2.5" fill="#38bdf8" />
-      <text x="0" y="-12" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="11" fontWeight="bold" textAnchor="middle">SENTINEL-2 MSI TELESCOPE</text>
+      <text x="0" y="-12" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">SENTINEL-2 MSI TELESCOPE</text>
 
       {/* Internal Prism / Dispersive Sensor Simulation */}
       <g transform="translate(0, 18)">
@@ -176,37 +176,37 @@ const Sentinel2Diagram: React.FC = () => (
         <line x1="-4" y1="12" x2="-16" y2="24" stroke="#ef4444" strokeWidth="1.75" />
         <line x1="0" y1="12" x2="0" y2="24" stroke="#a855f7" strokeWidth="1.75" />
         <line x1="4" y1="12" x2="16" y2="24" stroke="#fbbf24" strokeWidth="1.75" />
-        <text x="-18" y="33" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="8.5">B4(665)</text>
-        <text x="0" y="33" fill="#a855f7" fontFamily="'JetBrains Mono', monospace" fontSize="8.5" textAnchor="middle">B8(842)</text>
-        <text x="18" y="33" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="8.5">B11(1.6µ)</text>
+        <text x="-18" y="34" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="600">B4(665)</text>
+        <text x="0" y="34" fill="#a855f7" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="600" textAnchor="middle">B8(842)</text>
+        <text x="18" y="34" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="600">B11(1.6µ)</text>
       </g>
     </g>
 
     {/* Ocean Body */}
-    <rect x="0" y="140" width="520" height="80" fill="url(#s2OceanGrad)" />
+    <rect x="0" y="138" width="520" height="82" fill="url(#s2OceanGrad)" />
 
     {/* Clean Water (Left: 0 to 210) -> NIR Absorbed */}
-    <path d="M 0 140 Q 24 135, 48 140 T 96 140 T 144 140 T 210 140" stroke="#38bdf8" strokeWidth="1.75" fill="none" />
-    <path d="M 110 140 L 110 168" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="3 2" />
-    <text x="105" y="156" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="10.5" fontWeight="bold" textAnchor="middle">CLEAN SEAWATER</text>
-    <text x="105" y="170" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" textAnchor="middle">Deep NIR Absorption (R ≈ 0.01)</text>
+    <path d="M 0 138 Q 24 133, 48 138 T 96 138 T 144 138 T 210 138" stroke="#38bdf8" strokeWidth="1.75" fill="none" />
+    <path d="M 110 138 L 110 168" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="3 2" />
+    <text x="105" y="155" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">CLEAN SEAWATER</text>
+    <text x="105" y="171" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="11" textAnchor="middle">Deep NIR Absorption (R ≈ 0.01)</text>
 
     {/* Hydrocarbon Slick (Right: 210 to 495) -> High Sunglint & FAI */}
-    <rect x="210" y="138" width="285" height="5" rx="2.5" fill="url(#s2OceanGrad)" stroke="#f59e0b" strokeWidth="2.5" />
-    <path d="M 285 138 L 415 40" stroke="#f59e0b" strokeWidth="1.75" strokeDasharray="5 3" />
-    <path d="M 350 138 L 422 40" stroke="#a855f7" strokeWidth="1.75" strokeDasharray="5 3" />
-    <text x="350" y="156" fill="#f59e0b" fontFamily="'Space Grotesk', sans-serif" fontSize="10.5" fontWeight="bold" textAnchor="middle">OIL EMULSION SUNGLINT</text>
-    <text x="350" y="170" fill="#a855f7" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold" textAnchor="middle">FAI INDEX PEAK: +0.072 (B8 NIR)</text>
+    <rect x="210" y="136" width="285" height="5" rx="2.5" fill="url(#s2OceanGrad)" stroke="#f59e0b" strokeWidth="2.5" />
+    <path d="M 285 136 L 415 38" stroke="#f59e0b" strokeWidth="1.75" strokeDasharray="5 3" />
+    <path d="M 350 136 L 422 38" stroke="#a855f7" strokeWidth="1.75" strokeDasharray="5 3" />
+    <text x="350" y="155" fill="#f59e0b" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">OIL EMULSION SUNGLINT</text>
+    <text x="350" y="171" fill="#c084fc" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">FAI INDEX PEAK: +0.072 (B8 NIR)</text>
 
     {/* Spectral Signature Profile Inset along bottom */}
-    <g transform="translate(10, 185)">
-      <rect x="0" y="0" width="500" height="26" rx="4" fill="rgba(2, 6, 18, 0.7)" stroke="rgba(56, 189, 248, 0.15)" strokeWidth="1" />
-      <text x="10" y="17" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold">SPECTRAL FAI:</text>
-      <path d="M 110 19 L 200 19 L 290 20 L 480 20" stroke="#38bdf8" strokeWidth="1.4" strokeDasharray="4 2" />
-      <path d="M 110 19 L 200 16 L 290 6 L 390 13 L 480 17" stroke="#f59e0b" strokeWidth="2" fill="none" />
+    <g transform="translate(10, 184)">
+      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(56, 189, 248, 0.12)" strokeWidth="1" />
+      <text x="10" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">SPECTRAL FAI:</text>
+      <path d="M 115 19 L 200 19 L 290 20 L 480 20" stroke="#38bdf8" strokeWidth="1.4" strokeDasharray="4 2" />
+      <path d="M 115 19 L 200 16 L 290 6 L 390 13 L 480 17" stroke="#f59e0b" strokeWidth="2" fill="none" />
       <circle cx="290" cy="6" r="3" fill="#a855f7" />
-      <text x="130" y="12" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="9.5">Water Baseline</text>
-      <text x="305" y="10" fill="#f59e0b" fontFamily="'JetBrains Mono', monospace" fontSize="10" fontWeight="bold">Oil FAI Peak (0.084) @ 842nm B8</text>
+      <text x="135" y="12" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10.5">Water Baseline</text>
+      <text x="305" y="10" fill="#f59e0b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">Oil FAI Peak (0.084) @ 842nm B8</text>
     </g>
   </svg>
 );
@@ -229,52 +229,52 @@ const LandsatDiagram: React.FC = () => (
     </defs>
 
     {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="140" x2="520" y2="140" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
 
     {/* Landsat-8/9 Satellite Platform with Cryogenic TIRS */}
-    <g transform="translate(410, 22)">
+    <g transform="translate(410, 20)">
       <rect x="-46" y="-7" width="30" height="14" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
       <rect x="-12" y="-10" width="26" height="20" rx="2" fill="#0f172a" stroke="#fbbf24" strokeWidth="1.5" />
       <rect x="-9" y="10" width="20" height="9" rx="1.5" fill="#1e293b" stroke="#f59e0b" strokeWidth="1.2" />
       <circle cx="1" cy="0" r="2.5" fill="#fbbf24" />
-      <text x="0" y="-13" fill="#fbbf24" fontFamily="'Space Grotesk', sans-serif" fontSize="11" fontWeight="bold" textAnchor="middle">LANDSAT TIRS (43K QWIP)</text>
+      <text x="0" y="-13" fill="#fbbf24" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">LANDSAT TIRS (43K QWIP)</text>
 
       {/* Split-Window Detector Array Badge */}
       <g transform="translate(0, 22)">
-        <rect x="-38" y="2" width="76" height="16" rx="3" fill="rgba(3, 7, 18, 0.75)" stroke="rgba(251, 191, 36, 0.4)" strokeWidth="0.9" />
-        <text x="-32" y="14" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="9">B10(10.8µm)</text>
-        <text x="8" y="14" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="9">B11(12.0µm)</text>
+        <rect x="-42" y="2" width="84" height="17" rx="3" fill="rgba(3, 7, 18, 0.8)" stroke="rgba(251, 191, 36, 0.4)" strokeWidth="0.9" />
+        <text x="-36" y="14" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="10" fontWeight="600">B10(10.8µm)</text>
+        <text x="8" y="14" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10" fontWeight="600">B11(12.0µm)</text>
       </g>
     </g>
 
     {/* Ocean Body */}
-    <rect x="0" y="140" width="520" height="80" fill="url(#lsCoolSea)" />
+    <rect x="0" y="138" width="520" height="82" fill="url(#lsCoolSea)" />
 
     {/* Ambient Seawater (Left: 0 to 210) -> 19.4°C SST */}
-    <path d="M 0 140 Q 24 136, 48 140 T 96 140 T 144 140 T 210 140" stroke="#38bdf8" strokeWidth="1.75" fill="none" />
-    <path d="M 100 134 Q 105 108, 100 82 T 105 48" stroke="#38bdf8" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.6" />
-    <text x="105" y="156" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="10.5" fontWeight="bold" textAnchor="middle">AMBIENT SEA SKIN: 19.4°C</text>
-    <text x="105" y="170" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" textAnchor="middle">Baseline Blackbody Flux (292.5 K)</text>
+    <path d="M 0 138 Q 24 134, 48 138 T 96 138 T 144 138 T 210 138" stroke="#38bdf8" strokeWidth="1.75" fill="none" />
+    <path d="M 100 132 Q 105 106, 100 80 T 105 46" stroke="#38bdf8" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.6" />
+    <text x="105" y="155" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">AMBIENT SEA SKIN: 19.4°C</text>
+    <text x="105" y="171" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="11" textAnchor="middle">Baseline Blackbody Flux (292.5 K)</text>
 
     {/* Thick Crude Emulsion (Right: 210 to 495) -> Solar Heat Absorption -> Hotspot */}
-    <rect x="210" y="137" width="285" height="7" rx="3.5" fill="url(#lsThermalHeat)" stroke="#ef4444" strokeWidth="2.5" />
-    <path d="M 260 134 Q 265 96, 272 62 T 340 34" stroke="#ef4444" strokeWidth="2" strokeDasharray="5 3" />
-    <path d="M 330 134 Q 338 96, 350 62 T 400 34" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5 3" />
-    <path d="M 390 134 Q 396 96, 408 62 T 415 34" stroke="#ef4444" strokeWidth="1.75" strokeDasharray="5 3" />
+    <rect x="210" y="135" width="285" height="7" rx="3.5" fill="url(#lsThermalHeat)" stroke="#ef4444" strokeWidth="2.5" />
+    <path d="M 260 132 Q 265 94, 272 60 T 340 32" stroke="#ef4444" strokeWidth="2" strokeDasharray="5 3" />
+    <path d="M 330 132 Q 338 94, 350 60 T 400 32" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5 3" />
+    <path d="M 390 132 Q 396 94, 408 60 T 415 32" stroke="#ef4444" strokeWidth="1.75" strokeDasharray="5 3" />
 
-    <text x="350" y="156" fill="#ef4444" fontFamily="'Space Grotesk', sans-serif" fontSize="10.5" fontWeight="bold" textAnchor="middle">THICK CRUDE CORE: 20.6°C</text>
-    <text x="350" y="170" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold" textAnchor="middle">THERMAL ANOMALY: +1.2 K (Solar Absorber)</text>
+    <text x="350" y="155" fill="#ef4444" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">THICK CRUDE CORE: 20.6°C</text>
+    <text x="350" y="171" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">THERMAL ANOMALY: +1.2 K (Solar Absorber)</text>
 
     {/* Thermal Gradient Inset along bottom */}
-    <g transform="translate(10, 185)">
-      <rect x="0" y="0" width="500" height="26" rx="4" fill="rgba(2, 6, 18, 0.7)" stroke="rgba(251, 191, 36, 0.15)" strokeWidth="1" />
-      <text x="10" y="17" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold">SST TRANSECT (°C):</text>
-      <path d="M 125 18 L 220 18 Q 245 6, 325 6 Q 405 6, 430 18 L 485 18" stroke="#fbbf24" strokeWidth="2" fill="none" />
+    <g transform="translate(10, 184)">
+      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(251, 191, 36, 0.12)" strokeWidth="1" />
+      <text x="10" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">SST TRANSECT (°C):</text>
+      <path d="M 135 18 L 220 18 Q 245 6, 325 6 Q 405 6, 430 18 L 485 18" stroke="#fbbf24" strokeWidth="2" fill="none" />
       <circle cx="325" cy="6" r="3" fill="#ef4444" />
-      <text x="145" y="13" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="9.5">19.4°C Water</text>
-      <text x="338" y="12" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="10" fontWeight="bold">20.6°C Slick Core (+1.2 K ΔT)</text>
+      <text x="155" y="13" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10.5">19.4°C Water</text>
+      <text x="338" y="12" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">20.6°C Slick Core (+1.2 K ΔT)</text>
     </g>
   </svg>
 );
@@ -300,71 +300,71 @@ const EOS06Diagram: React.FC = () => (
     </defs>
 
     {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="140" x2="520" y2="140" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.07)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
 
     {/* ISRO EOS-06 Satellite Platform with Rotating Scatterometer Dish */}
-    <g transform="translate(260, 20)">
+    <g transform="translate(260, 18)">
       <rect x="-65" y="-6" width="34" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
       <rect x="31" y="-6" width="34" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
       <rect x="-14" y="-8" width="28" height="16" rx="2" fill="#0f172a" stroke="#c084fc" strokeWidth="1.5" />
       <ellipse cx="0" cy="13" rx="17" ry="5" fill="#1e293b" stroke="#c084fc" strokeWidth="1.5" />
       <line x1="0" y1="8" x2="0" y2="13" stroke="#c084fc" strokeWidth="1.5" />
       <circle cx="0" cy="0" r="2.5" fill="#c084fc" />
-      <text x="0" y="-12" fill="#c084fc" fontFamily="'Space Grotesk', sans-serif" fontSize="11" fontWeight="bold" textAnchor="middle">ISRO EOS-06 OSCAT (13.515 GHz Ku-Band)</text>
-      <text x="0" y="25" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="9" textAnchor="middle">⟳ 20.5 RPM CONICAL SCAN</text>
+      <text x="0" y="-12" fill="#c084fc" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">ISRO EOS-06 OSCAT (13.515 GHz Ku-Band)</text>
+      <text x="0" y="26" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="600" textAnchor="middle">⟳ 20.5 RPM CONICAL SCAN</text>
     </g>
 
     {/* Dual Conical Rotating Radar Beams */}
-    <polygon points="260,33 150,140 370,140" fill="url(#eosInnerCone)" />
-    <line x1="260" y1="33" x2="150" y2="140" stroke="#00f2fe" strokeWidth="1.2" strokeDasharray="4 3" />
-    <line x1="260" y1="33" x2="370" y2="140" stroke="#00f2fe" strokeWidth="1.2" strokeDasharray="4 3" />
-    <polygon points="260,33 70,140 450,140" fill="url(#eosOuterCone)" />
-    <line x1="260" y1="33" x2="70" y2="140" stroke="#c084fc" strokeWidth="1.4" strokeDasharray="5 3" />
-    <line x1="260" y1="33" x2="450" y2="140" stroke="#c084fc" strokeWidth="1.4" strokeDasharray="5 3" />
+    <polygon points="260,31 150,138 370,138" fill="url(#eosInnerCone)" />
+    <line x1="260" y1="31" x2="150" y2="138" stroke="#00f2fe" strokeWidth="1.2" strokeDasharray="4 3" />
+    <line x1="260" y1="31" x2="370" y2="138" stroke="#00f2fe" strokeWidth="1.2" strokeDasharray="4 3" />
+    <polygon points="260,31 70,138 450,138" fill="url(#eosOuterCone)" />
+    <line x1="260" y1="31" x2="70" y2="138" stroke="#c084fc" strokeWidth="1.4" strokeDasharray="5 3" />
+    <line x1="260" y1="31" x2="450" y2="138" stroke="#c084fc" strokeWidth="1.4" strokeDasharray="5 3" />
 
     {/* Ocean Body */}
-    <rect x="0" y="140" width="520" height="80" fill="url(#eosOceanGrad)" />
+    <rect x="0" y="138" width="520" height="82" fill="url(#eosOceanGrad)" />
 
     {/* Conical Swath Footprint Ellipses on Ocean */}
-    <ellipse cx="260" cy="140" rx="110" ry="9" fill="none" stroke="#00f2fe" strokeWidth="1.75" />
-    <ellipse cx="260" cy="140" rx="190" ry="14" fill="none" stroke="#c084fc" strokeWidth="1.75" strokeDasharray="5 3" />
+    <ellipse cx="260" cy="138" rx="110" ry="9" fill="none" stroke="#00f2fe" strokeWidth="1.75" />
+    <ellipse cx="260" cy="138" rx="190" ry="14" fill="none" stroke="#c084fc" strokeWidth="1.75" strokeDasharray="5 3" />
 
     {/* 2D Wind Vector Field Grid on Sea Surface */}
-    <g transform="translate(100, 156)">
+    <g transform="translate(100, 154)">
       <line x1="14" y1="7" x2="-10" y2="-7" stroke="#38bdf8" strokeWidth="1.75" />
       <polygon points="-10,-7 -4,-3 -7,0" fill="#38bdf8" />
     </g>
-    <g transform="translate(220, 156)">
+    <g transform="translate(220, 154)">
       <line x1="14" y1="7" x2="-10" y2="-7" stroke="#10b981" strokeWidth="2.2" />
       <polygon points="-10,-7 -4,-3 -7,0" fill="#10b981" />
     </g>
-    <g transform="translate(340, 156)">
+    <g transform="translate(340, 154)">
       <line x1="14" y1="7" x2="-10" y2="-7" stroke="#10b981" strokeWidth="2.2" />
       <polygon points="-10,-7 -4,-3 -7,0" fill="#10b981" />
     </g>
-    <g transform="translate(430, 156)">
+    <g transform="translate(430, 154)">
       <line x1="14" y1="7" x2="-10" y2="-7" stroke="#38bdf8" strokeWidth="1.75" />
       <polygon points="-10,-7 -4,-3 -7,0" fill="#38bdf8" />
     </g>
 
-    <text x="260" y="168" fill="#10b981" fontFamily="'Space Grotesk', sans-serif" fontSize="10.5" fontWeight="bold" textAnchor="middle">
+    <text x="260" y="167" fill="#10b981" fontFamily="'Space Grotesk', sans-serif" fontSize="11.5" fontWeight="bold" textAnchor="middle">
       SURFACE WIND FIELD: 4.8 m/s @ 312° NW (VALIDATED GMF INVERSION)
     </text>
 
     {/* Wind Speed Gating Status Gauge Inset along bottom */}
-    <g transform="translate(10, 185)">
-      <rect x="0" y="0" width="500" height="26" rx="4" fill="rgba(2, 6, 18, 0.7)" stroke="rgba(192, 132, 252, 0.15)" strokeWidth="1" />
-      <text x="10" y="17" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold">WIND GATE:</text>
-      <rect x="95" y="6" width="75" height="14" rx="2.5" fill="rgba(239, 68, 68, 0.2)" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="1" />
-      <text x="132" y="16" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="8.5" textAnchor="middle">&lt;3m/s (Look-alike)</text>
+    <g transform="translate(10, 184)">
+      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(192, 132, 252, 0.12)" strokeWidth="1" />
+      <text x="8" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="bold">WIND GATE:</text>
+      <rect x="90" y="5" width="80" height="18" rx="2.5" fill="rgba(239, 68, 68, 0.2)" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="1" />
+      <text x="130" y="17" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" textAnchor="middle">&lt;3m/s (Calm)</text>
 
-      <rect x="178" y="5" width="215" height="16" rx="2.5" fill="rgba(16, 185, 129, 0.25)" stroke="#10b981" strokeWidth="1.2" />
-      <text x="285" y="16" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="bold" textAnchor="middle">● 3–12 m/s VALID OIL WINDOW [4.8 m/s NW]</text>
+      <rect x="176" y="4" width="220" height="20" rx="2.5" fill="rgba(16, 185, 129, 0.25)" stroke="#10b981" strokeWidth="1.2" />
+      <text x="286" y="18" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="bold" textAnchor="middle">● 3–12 m/s VALID OIL WINDOW [4.8 m/s NW]</text>
 
-      <rect x="400" y="6" width="90" height="14" rx="2.5" fill="rgba(100, 116, 139, 0.2)" stroke="rgba(100, 116, 139, 0.3)" strokeWidth="1" />
-      <text x="445" y="16" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="8.5" textAnchor="middle">&gt;12m/s (Dispersion)</text>
+      <rect x="402" y="5" width="90" height="18" rx="2.5" fill="rgba(100, 116, 139, 0.2)" stroke="rgba(100, 116, 139, 0.3)" strokeWidth="1" />
+      <text x="447" y="17" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" textAnchor="middle">&gt;12m/s (Dispersion)</text>
     </g>
   </svg>
 );
@@ -1130,21 +1130,21 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
-            padding: '10px 14px',
+            padding: '8px 12px',
             borderRadius: '8px',
-            background: 'rgba(9, 19, 37, 0.7)',
+            background: 'rgba(9, 19, 37, 0.65)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(0, 242, 254, 0.2)',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(0, 242, 254, 0.15)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
             justifyContent: 'space-between',
-            gap: '8px',
+            gap: '6px',
           }}>
             {/* Inspector Top Bar */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingBottom: '6px',
+              paddingBottom: '5px',
               borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
               flexShrink: 0,
             }}>
@@ -1152,7 +1152,7 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                 <Activity size={16} color="#00f2fe" />
                 <span style={{
                   fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: '13px',
+                  fontSize: '13.5px',
                   fontWeight: 800,
                   textTransform: 'uppercase',
                   letterSpacing: '0.03em',
@@ -1164,9 +1164,9 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                   padding: '1px 6px',
                   borderRadius: '3px',
                   background: 'rgba(0, 242, 254, 0.12)',
-                  border: '1px solid rgba(0, 242, 254, 0.3)',
+                  border: '1px solid rgba(0, 242, 254, 0.25)',
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '9px',
+                  fontSize: '9.5px',
                   color: '#00f2fe',
                   fontWeight: 700,
                 }}>
@@ -1175,7 +1175,7 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
               </div>
               <span style={{
                 fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '11px',
+                fontSize: '11.5px',
                 color: '#38bdf8',
                 fontWeight: 600,
               }}>
@@ -1205,10 +1205,10 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                     }} />
                     <span style={{
                       fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '9.5px',
+                      fontSize: '10.5px',
                       color: '#00f2fe',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
+                      letterSpacing: '0.04em',
                       fontWeight: 700,
                     }}>
                       {currentInspector.mechanismTitle}
@@ -1217,9 +1217,9 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
 
                   <p style={{
                     fontFamily: "'Inter', sans-serif",
-                    fontSize: '11px',
+                    fontSize: '11.5px',
                     color: '#cbd5e1',
-                    lineHeight: 1.4,
+                    lineHeight: 1.42,
                     margin: 0,
                   }}>
                     {currentInspector.summary}
@@ -1230,16 +1230,16 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                 <div style={{
                   padding: '4px 8px',
                   borderRadius: '4px',
-                  background: 'rgba(3, 7, 18, 0.7)',
-                  border: '1px solid rgba(0, 242, 254, 0.18)',
+                  background: 'rgba(3, 7, 18, 0.65)',
+                  border: '1px solid rgba(0, 242, 254, 0.15)',
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '9.5px',
+                  fontSize: '10px',
                   color: '#8ed5ff',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                 }}>
-                  <span style={{ color: '#64748b', fontSize: '8.5px', fontWeight: 700 }}>RULE:</span>
+                  <span style={{ color: '#64748b', fontSize: '9px', fontWeight: 700 }}>RULE:</span>
                   <span style={{ wordBreak: 'break-all' }}>{currentInspector.physicsFormula}</span>
                 </div>
 
@@ -1248,41 +1248,40 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, 1fr)',
                   gap: '5px',
-                  padding: '5px 7px',
+                  padding: '5px 8px',
                   borderRadius: '6px',
-                  background: 'rgba(3, 7, 18, 0.65)',
-                  border: '1px solid rgba(0, 242, 254, 0.15)',
+                  background: 'rgba(3, 7, 18, 0.6)',
+                  border: '1px solid rgba(0, 242, 254, 0.12)',
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '9.5px',
+                  fontSize: '10px',
                 }}>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '8.5px' }}>{currentInspector.metric1Label}</div>
-                    <div style={{ color: '#8ed5ff', fontWeight: 700, marginTop: '2px' }}>{currentInspector.metric1Value}</div>
+                    <div style={{ color: '#64748b', fontSize: '9px' }}>{currentInspector.metric1Label}</div>
+                    <div style={{ color: '#8ed5ff', fontWeight: 700, fontSize: '11px', marginTop: '2px' }}>{currentInspector.metric1Value}</div>
                   </div>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '8.5px' }}>{currentInspector.metric2Label}</div>
-                    <div style={{ color: '#fbbf24', fontWeight: 700, marginTop: '2px' }}>{currentInspector.metric2Value}</div>
+                    <div style={{ color: '#64748b', fontSize: '9px' }}>{currentInspector.metric2Label}</div>
+                    <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: '11px', marginTop: '2px' }}>{currentInspector.metric2Value}</div>
                   </div>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '8.5px' }}>{currentInspector.metric3Label}</div>
-                    <div style={{ color: '#10b981', fontWeight: 700, marginTop: '2px' }}>{currentInspector.metric3Value}</div>
+                    <div style={{ color: '#64748b', fontSize: '9px' }}>{currentInspector.metric3Label}</div>
+                    <div style={{ color: '#10b981', fontWeight: 700, fontSize: '11px', marginTop: '2px' }}>{currentInspector.metric3Value}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Dynamic ENLARGED Visual Ingestion Diagram */}
+              {/* Dynamic ENLARGED Visual Ingestion Diagram with Reduced Outer Box */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '4px',
+                padding: '2px',
                 borderRadius: '6px',
-                background: 'rgba(2, 6, 18, 0.95)',
-                border: '1px solid rgba(0, 242, 254, 0.28)',
+                background: 'rgba(2, 6, 18, 0.65)',
+                border: '1px solid rgba(0, 242, 254, 0.12)',
                 height: '100%',
                 minHeight: '190px',
                 position: 'relative',
-                boxShadow: 'inset 0 0 20px rgba(0, 242, 254, 0.1)',
                 overflow: 'hidden',
               }}>
                 {selectedSensor === 'sentinel1' && <Sentinel1Diagram />}
