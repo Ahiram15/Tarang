@@ -1459,21 +1459,24 @@ Reference ID: ${investigationReport.report_id}
               })}
             </MapContainer>
 
-            {/* Dynamic Mouse Cursor Tracking Card Overlay */}
+            {/* Fixed Corner HUD / Telemetry Card Overlay (Bottom-Left Elevated) */}
             {cursorState.isVisible && (
               <div
                 style={{
                   position: 'absolute',
-                  left: `${Math.min(cursorState.x + 18, (mapContainerRef.current?.clientWidth || 800) - 320)}px`,
-                  top: `${Math.max(12, Math.min(cursorState.y - 10, (mapContainerRef.current?.clientHeight || 600) - 210))}px`,
-                  pointerEvents: 'none',
+                  bottom: '5.2rem',
+                  left: '1rem',
                   zIndex: 1000,
-                  transition: 'left 0.03s ease-out, top 0.03s ease-out',
+                  margin: 0,
+                  transform: 'none',
+                  pointerEvents: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'opacity 0.2s ease-in-out',
                 }}
               >
                 <SpillTooltipCard
                   mode={cursorState.isHoveringSpill ? 'spill' : 'inspector'}
-                  title={cursorState.isHoveringSpill ? '🎯 Probable Origin Boundary' : undefined}
+                  title={cursorState.isHoveringSpill ? '🚨 Active Spill Target (+0h)' : '🌐 Live Maritime Telemetry'}
                   lat={cursorState.lat}
                   lon={cursorState.lon}
                   areaKm2={analysis.geometry.area_km2}
