@@ -1,0 +1,71 @@
+{
+  "incident": "MV Wakashio Disaster (August 2020, Mauritius)",
+  "chronological_date_wise_timeline": [
+    {
+      "step": 1,
+      "date": "2020-08-05",
+      "timestamp_utc": "2020-08-05T06:15:37Z",
+      "satellite": "Landsat-8",
+      "sensor": "OLI (Optical) + TIRS (Thermal Infrared)",
+      "incident_phase": "Pre-Spill Baseline (1 day before fuel tank breached on Aug 6)",
+      "file": "landsat8_20200805_baseline_scene.png",
+      "type": "Raw Top-of-Atmosphere / Surface Reflectance"
+    },
+    {
+      "step": 2,
+      "date": "2020-08-10",
+      "timestamp_utc": "2020-08-10T14:36:16Z",
+      "satellite": "Sentinel-1A",
+      "sensor": "C-SAR (5.405 GHz Microwave Radar)",
+      "incident_phase": "Initial Radar Slick Detection (Capillary wave damping anomaly)",
+      "files": [
+        "sentinel1_sar_gray_512.png",
+        "sentinel1_sar_rgb_512.png"
+      ],
+      "type": "Raw Radar Backscatter Amplitude & Polarimetric Dual-Pol"
+    },
+    {
+      "step": 3,
+      "date": "2020-08-11",
+      "timestamp_utc": "2020-08-11T06:24:51Z",
+      "satellite": "Sentinel-2A",
+      "sensor": "MSI (Multispectral 10m Optical & NIR)",
+      "incident_phase": "Peak Optical Plume Expansion (+16 hours after SAR pass)",
+      "files": [
+        "original_esa_sentinel2_wakashio.jpg",
+        "sentinel2_optical_512.png"
+      ],
+      "type": "Raw Multispectral True Color & NIR Surface Reflectance"
+    },
+    {
+      "step": 4,
+      "date": "2020-08-14",
+      "timestamp_utc": "2020-08-14T06:09:29Z",
+      "satellite": "Landsat-8",
+      "sensor": "OLI (Optical) + TIRS (Thermal Infrared)",
+      "incident_phase": "Maximum Spill Extent (1.2% cloud cover, 24h prior to hull fracture)",
+      "file": "landsat8_20200814_rgb_scene.png",
+      "type": "Raw Optical & Thermal Infrared Surface Reflectance"
+    },
+    {
+      "step": 5,
+      "date": "2020-08-15",
+      "timestamp_utc": "2020-08-15T14:44:22Z",
+      "satellite": "Sentinel-1A",
+      "sensor": "C-SAR (5.405 GHz Microwave Radar)",
+      "incident_phase": "Hull Breakup Event (Vessel split into two sections on coral reef)",
+      "file": "sentinel1_20200815_hull_break_sar.png",
+      "type": "Raw Microwave SAR Dual-Pol (VV+VH Composite)"
+    },
+    {
+      "step": 6,
+      "date": "2020-08-21",
+      "timestamp_utc": "2020-08-21T06:15:43Z",
+      "satellite": "Landsat-8",
+      "sensor": "OLI (Optical 30m)",
+      "incident_phase": "Post-Break Monitoring (Salvage & towing of bow section)",
+      "file": "landsat8_20200821_post_break_scene.png",
+      "type": "Raw Optical Surface Reflectance"
+    }
+  ]
+}
