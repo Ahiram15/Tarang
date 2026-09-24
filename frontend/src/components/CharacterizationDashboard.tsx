@@ -1329,20 +1329,24 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               )}
             </MapContainer>
 
-            {/* Dynamic Mouse Cursor Tracking Card Overlay */}
+            {/* Bottom-Left Live Maritime Telemetry HUD Card (Elevated cleanly above timeline bar) */}
             {cursorState.isVisible && (
               <div
                 style={{
                   position: 'absolute',
-                  left: `${Math.min(cursorState.x + 18, (mapContainerRef.current?.clientWidth || 800) - 320)}px`,
-                  top: `${Math.max(12, Math.min(cursorState.y - 10, (mapContainerRef.current?.clientHeight || 600) - 210))}px`,
-                  pointerEvents: 'none',
+                  bottom: '5.2rem',
+                  left: '1rem',
                   zIndex: 1000,
-                  transition: 'left 0.03s ease-out, top 0.03s ease-out',
+                  margin: 0,
+                  transform: 'none',
+                  pointerEvents: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'opacity 0.2s ease-in-out',
                 }}
               >
                 <SpillTooltipCard
                   mode={cursorState.isHoveringSpill ? 'spill' : 'inspector'}
+                  title={cursorState.isHoveringSpill ? '🚨 Active Spill Target (+0h)' : '🌐 Live Maritime Telemetry'}
                   lat={cursorState.lat}
                   lon={cursorState.lon}
                   areaKm2={analysis.geometry.area_km2}
@@ -1351,150 +1355,156 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 />
               </div>
             )}
-          </div>
 
-          {/* Floating Live Map Timeline Player HUD Overlay */}
-          <div style={{
-            position: 'absolute',
-            bottom: '16px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1000,
-            background: 'rgba(6, 10, 20, 0.94)',
-            border: isPlayingForecast ? '1px solid #a855f7' : '1px solid rgba(0, 242, 254, 0.4)',
-            boxShadow: isPlayingForecast ? '0 0 25px rgba(168, 85, 247, 0.5)' : '0 8px 32px rgba(0,0,0,0.65)',
-            borderRadius: '12px',
-            padding: '10px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            backdropFilter: 'blur(12px)',
-            maxWidth: '92%',
-            transition: 'all 0.3s ease',
-          }}>
-            {/* Play / Pause button */}
-            <button
-              onClick={() => setIsPlayingForecast(!isPlayingForecast)}
-              title={isPlayingForecast ? 'Pause Animation' : 'Play Timeline Animation'}
+            {/* Compact Live Map Timeline Player HUD Overlay (Bottom-Right) */}
+            <div
               style={{
-                background: isPlayingForecast ? 'rgba(239, 68, 68, 0.35)' : 'rgba(168, 85, 247, 0.35)',
-                border: isPlayingForecast ? '2px solid #ef4444' : '2px solid #a855f7',
-                color: '#ffffff',
-                borderRadius: '50%',
-                width: '36px',
-                height: '36px',
+                position: 'absolute',
+                bottom: '1rem',
+                right: '1rem',
+                zIndex: 1000,
+                margin: 0,
+                transform: 'none',
+                maxWidth: 'calc(100% - 350px)',
+                boxSizing: 'border-box',
+                pointerEvents: 'auto',
+                background: 'rgba(6, 10, 20, 0.94)',
+                border: isPlayingForecast ? '1px solid #a855f7' : '1px solid rgba(0, 242, 254, 0.4)',
+                boxShadow: isPlayingForecast ? '0 0 25px rgba(168, 85, 247, 0.5)' : '0 8px 32px rgba(0,0,0,0.65)',
+                borderRadius: '12px',
+                padding: '0.4rem 0.8rem',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: isPlayingForecast ? '0 0 14px #ef4444' : '0 0 14px #a855f7',
-                flexShrink: 0,
+                gap: '0.35rem',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                transition: 'all 0.3s ease',
               }}
             >
-              {isPlayingForecast ? <Pause size={17} /> : <Play size={17} style={{ marginLeft: '2px' }} />}
-            </button>
-
-            {/* Stepper buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              {/* Play / Pause button */}
               <button
-                onClick={handleStepBackward}
-                title="Previous Milestone"
+                onClick={() => setIsPlayingForecast(!isPlayingForecast)}
+                title={isPlayingForecast ? 'Pause Animation' : 'Play Timeline Animation'}
                 style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: '#94a3b8',
-                  borderRadius: '6px',
-                  padding: '5px 7px',
-                  cursor: 'pointer',
+                  background: isPlayingForecast ? 'rgba(239, 68, 68, 0.35)' : 'rgba(168, 85, 247, 0.35)',
+                  border: isPlayingForecast ? '2px solid #ef4444' : '2px solid #a855f7',
+                  color: '#ffffff',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: isPlayingForecast ? '0 0 14px #ef4444' : '0 0 14px #a855f7',
+                  flexShrink: 0,
                 }}
               >
-                <SkipBack size={13} />
+                {isPlayingForecast ? <Pause size={15} /> : <Play size={15} style={{ marginLeft: '2px' }} />}
               </button>
+
+              {/* Stepper buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <button
+                  onClick={handleStepBackward}
+                  title="Previous Milestone"
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#94a3b8',
+                    borderRadius: '6px',
+                    padding: '4px 6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <SkipBack size={12} />
+                </button>
+                <button
+                  onClick={handleStepForward}
+                  title="Next Milestone"
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#94a3b8',
+                    borderRadius: '6px',
+                    padding: '4px 6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <SkipForward size={12} />
+                </button>
+              </div>
+
+              {/* Horizon Milestones Pills */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                {forecastSteps.map((step) => {
+                  const isActive = selectedForecastHour === step.hours;
+                  return (
+                    <button
+                      key={`map-hud-step-${step.hours}`}
+                      onClick={() => {
+                        setIsPlayingForecast(false);
+                        setSelectedForecastHour(step.hours);
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '6px',
+                        border: isActive ? '2px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+                        background: isActive ? 'rgba(168, 85, 247, 0.45)' : 'rgba(0,0,0,0.4)',
+                        color: isActive ? '#ffffff' : '#94a3b8',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        boxShadow: isActive ? '0 0 10px rgba(168, 85, 247, 0.5)' : 'none',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      +{step.hours}h
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Status Info */}
+              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '10px', marginLeft: '6px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.7rem', fontWeight: 800 }}>
+                  <span style={{ color: isPlayingForecast ? '#22c55e' : '#a855f7', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    {isPlayingForecast ? '🟢 ANIMATING' : 'FORECAST HORIZON'}
+                  </span>
+                  <span style={{ color: '#ffffff', background: 'rgba(168,85,247,0.35)', padding: '1px 5px', borderRadius: '4px' }}>
+                    +{activeForecastStep.hours} Hours
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                  {activeForecastStep.valid_time} • ±{activeForecastStep.uncertainty_radius_km} km
+                </div>
+              </div>
+
+              {/* Speed Toggle */}
               <button
-                onClick={handleStepForward}
-                title="Next Milestone"
+                onClick={() => setPlaybackSpeedMs((prev) => (prev === 1200 ? 600 : prev === 600 ? 350 : 1200))}
+                title="Toggle playback speed"
                 style={{
                   background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: '#94a3b8',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#38bdf8',
                   borderRadius: '6px',
-                  padding: '5px 7px',
+                  padding: '3px 6px',
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
-                <SkipForward size={13} />
+                {playbackSpeedMs === 350 ? '3x' : playbackSpeedMs === 600 ? '2x' : '1x'}
               </button>
             </div>
-
-            {/* Horizon Milestones Pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {forecastSteps.map((step) => {
-                const isActive = selectedForecastHour === step.hours;
-                return (
-                  <button
-                    key={`map-hud-step-${step.hours}`}
-                    onClick={() => {
-                      setIsPlayingForecast(false);
-                      setSelectedForecastHour(step.hours);
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      border: isActive ? '2px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
-                      background: isActive ? 'rgba(168, 85, 247, 0.45)' : 'rgba(0,0,0,0.4)',
-                      color: isActive ? '#ffffff' : '#94a3b8',
-                      fontSize: '0.74rem',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      boxShadow: isActive ? '0 0 10px rgba(168, 85, 247, 0.5)' : 'none',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    +{step.hours}h
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Active Status Info */}
-            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.70rem', fontWeight: 800 }}>
-                <span style={{ color: isPlayingForecast ? '#22c55e' : '#a855f7', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  {isPlayingForecast ? '🟢 ANIMATING' : 'FORECAST HORIZON'}
-                </span>
-                <span style={{ color: '#ffffff', background: 'rgba(168,85,247,0.35)', padding: '1px 5px', borderRadius: '4px' }}>
-                  +{activeForecastStep.hours} Hours
-                </span>
-              </div>
-              <div style={{ fontSize: '0.66rem', color: '#94a3b8' }}>
-                {activeForecastStep.valid_time} • ±{activeForecastStep.uncertainty_radius_km} km
-              </div>
-            </div>
-
-            {/* Speed Toggle */}
-            <button
-              onClick={() => setPlaybackSpeedMs((prev) => (prev === 1200 ? 600 : prev === 600 ? 350 : 1200))}
-              title="Toggle playback speed"
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: '#38bdf8',
-                borderRadius: '6px',
-                padding: '4px 7px',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            >
-              {playbackSpeedMs === 350 ? '3x' : playbackSpeedMs === 600 ? '2x' : '1x'}
-            </button>
           </div>
         </div>
 
