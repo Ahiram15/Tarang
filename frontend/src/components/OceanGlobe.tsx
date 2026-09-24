@@ -295,6 +295,110 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     globeGroup.rotation.x = initRot.x;
     globeGroup.rotation.y = initRot.y;
 
+    // =========================================================================
+    // 8. ORBITING SATELLITES — 4 Realistic Satellite Models
+    // =========================================================================
+    const satelliteConfigs = [
+      { orbitRadius: 1.36, speed: 0.42, inclination: 0.52, startAngle: 0.0, bodyColor: 0xc0d8f0, panelColor: 0x1a6fbd, glowColor: 0x00f2fe, name: 'S1' }, // Sentinel-1 SAR
+      { orbitRadius: 1.44, speed: 0.27, inclination: -0.28, startAngle: 2.1, bodyColor: 0xd4e8c0, panelColor: 0x2d8a3e, glowColor: 0x38ef7d, name: 'S2' }, // Sentinel-2 Optical
+      { orbitRadius: 1.52, speed: 0.19, inclination: 1.10, startAngle: 4.3, bodyColor: 0xe8d4c0, panelColor: 0x9b4e1a, glowColor: 0xf97316, name: 'EV' }, // ENVISAT
+      { orbitRadius: 1.60, speed: 0.14, inclination: -0.72, startAngle: 1.55, bodyColor: 0xd8c8e8, panelColor: 0x6b3fa0, glowColor: 0xa78bfa, name: 'LS' }, // Landsat-9
+    ];
+
+    const satPivots: THREE.Group[] = [];
+    const satGroups: THREE.Group[] = [];
+    const satGlows: THREE.Mesh[] = [];
+
+    const buildSatellite = (cfg: typeof satelliteConfigs[0]) => {
+      const pivot = new THREE.Group();
+      pivot.rotation.x = cfg.inclination;
+      pivot.rotation.y = cfg.startAngle;
+      scene.add(pivot);
+      satPivots.push(pivot);
+
+      // ---- Orbit ring (faint circle at this orbit radius) ----
+      const orbitRingGeo = new THREE.RingGeometry(cfg.orbitRadius - 0.001, cfg.orbitRadius + 0.001, 128);
+      const orbitRingMat = new THREE.MeshBasicMaterial({
+        color: cfg.glowColor,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.08,
+      });
+      const orbitRing = new THREE.Mesh(orbitRingGeo, orbitRingMat);
+      orbitRing.rotation.x = Math.PI / 2;
+      pivot.add(orbitRing);
+
+      // ---- Satellite group positioned on the orbit ----
+      const satGroup = new THREE.Group();
+      satGroup.position.set(cfg.orbitRadius, 0, 0);
+      pivot.add(satGroup);
+      satGroups.push(satGroup);
+
+      // Bus / body — rectangular box (main satellite bus)
+      const busGeo = new THREE.BoxGeometry(0.026, 0.016, 0.014);
+      const busMat = new THREE.MeshStandardMaterial({
+        color: cfg.bodyColor,
+        roughness: 0.25,
+        metalness: 0.85,
+        envMapIntensity: 1.0,
+      });
+      const bus = new THREE.Mesh(busGeo, busMat);
+      satGroup.add(bus);
+
+      // Solar panel wing LEFT
+      const panelGeo = new THREE.BoxGeometry(0.038, 0.002, 0.018);
+      const panelMat = new THREE.MeshStandardMaterial({
+        color: cfg.panelColor,
+        emissive: cfg.panelColor,
+        emissiveIntensity: 0.18,
+        roughness: 0.4,
+        metalness: 0.6,
+        transparent: true,
+        opacity: 0.90,
+      });
+      const panelL = new THREE.Mesh(panelGeo, panelMat);
+      panelL.position.set(0, 0, -0.030); // offset left
+      satGroup.add(panelL);
+
+      // Solar panel wing RIGHT
+      const panelR = new THREE.Mesh(panelGeo, panelMat);
+      panelR.position.set(0, 0, 0.030);  // offset right
+      satGroup.add(panelR);
+
+      // Connector strut L
+      const strutGeo = new THREE.BoxGeometry(0.002, 0.002, 0.020);
+      const strutMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.6, metalness: 0.7 });
+      const strutL = new THREE.Mesh(strutGeo, strutMat);
+      strutL.position.set(0, 0, -0.018);
+      satGroup.add(strutL);
+      const strutR = new THREE.Mesh(strutGeo, strutMat);
+      strutR.position.set(0, 0, 0.018);
+      satGroup.add(strutR);
+
+      // Dish / antenna nub on top
+      const dishGeo = new THREE.CylinderGeometry(0.004, 0.007, 0.008, 8);
+      const dishMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.3, metalness: 0.9 });
+      const dish = new THREE.Mesh(dishGeo, dishMat);
+      dish.position.set(0.010, 0.012, 0);
+      dish.rotation.z = Math.PI / 5;
+      satGroup.add(dish);
+
+      // Thruster / engine glow sphere at rear
+      const glowGeo = new THREE.SphereGeometry(0.006, 12, 12);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: cfg.glowColor,
+        transparent: true,
+        opacity: 0.85,
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.position.set(-0.018, 0, 0); // behind the bus
+      satGroup.add(glow);
+      satGlows.push(glow);
+    };
+
+    satelliteConfigs.forEach(buildSatellite);
+
+
     // Mouse Interaction
     let isDragging = false;
     let dragDistance = 0;
@@ -391,6 +495,18 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
 
       wkRingMesh.scale.set(pulseScale, pulseScale, 1);
       wkRingMat.opacity = Math.max(0.12, pulseOpacity);
+
+      // Animate satellites — each pivot rotates at its own speed
+      satelliteConfigs.forEach((cfg, i) => {
+        satPivots[i].rotation.y += cfg.speed * 0.007;
+        // Keep satellite facing direction of travel (tangent to orbit)
+        satGroups[i].rotation.y = -satPivots[i].rotation.y * 0.5;
+        // Pulsing thruster glow
+        const glowMat = satGlows[i].material as THREE.MeshBasicMaterial;
+        glowMat.opacity = 0.5 + Math.sin(elapsedTime * 5 + i * 1.8) * 0.35;
+        const glowScale = 0.85 + Math.sin(elapsedTime * 6 + i) * 0.15;
+        satGlows[i].scale.setScalar(glowScale);
+      });
 
       renderer.render(scene, camera);
     };
@@ -545,11 +661,8 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
 
         {/* Dual Red-Dot Incident Switcher */}
         <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>
-            SELECT ACTIVE SPILL BEACON:
-          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-            {incidents.map((inc) => {
+            {incidents.map((inc, idx) => {
               const isSelected = inc.id === activeIncidentId;
               return (
                 <button
@@ -567,26 +680,21 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
                     borderRadius: '8px',
                     cursor: 'pointer',
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: '2px',
+                    alignItems: 'center',
+                    gap: '6px',
                     boxShadow: isSelected ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
                     transition: 'all 0.2s',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: '#ef4444',
-                      boxShadow: isSelected ? '0 0 8px #ef4444' : 'none'
-                    }} />
-                    <span style={{ fontWeight: 800 }}>{inc.id === 'emerald' ? 'MT EMERALD' : 'MV WAKASHIO'}</span>
-                  </div>
-                  <span style={{ fontSize: '0.64rem', color: isSelected ? '#fca5a5' : '#64748b' }}>
-                    {inc.id === 'emerald' ? 'Mediterranean Sea' : 'Mauritius Lagoon'}
-                  </span>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: '#ef4444',
+                    flexShrink: 0,
+                    boxShadow: isSelected ? '0 0 8px #ef4444' : 'none'
+                  }} />
+                  <span>Spill {idx + 1}</span>
                 </button>
               );
             })}
@@ -704,35 +812,11 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           }}
         >
           <span>
-            🛰️ Inspect {isEmerald ? 'MT Emerald' : 'MV Wakashio'} Imagery ({currentIncident.lat.toFixed(2)}°, {currentIncident.lon.toFixed(2)}°) →
+            🛰️ Inspect Spill Imagery ({currentIncident.lat.toFixed(2)}°, {currentIncident.lon.toFixed(2)}°) →
           </span>
         </button>
 
-        {/* Dedicated Secondary Shortcut: Drift Forecast */}
-        <div style={{ marginBottom: '10px' }}>
-          <button
-            onClick={() => onOpenCharacterization?.(currentIncident)}
-            style={{
-              width: '100%',
-              background: 'rgba(0, 242, 254, 0.10)',
-              border: '1px solid rgba(0, 242, 254, 0.3)',
-              color: '#00f2fe',
-              borderRadius: '6px',
-              padding: '7px 10px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Waves size={13} />
-            <span>Own Drift Forecast</span>
-          </button>
-        </div>
+
 
         {/* Corridor Legend */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -790,8 +874,6 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
             areaKm2={hoveredIncident.id === 'emerald' ? 31.42 : 2.805}
             timestamp={`${hoveredIncident.date} UTC`}
             spillId={hoveredIncident.spillId}
-            badge="3D Beacon"
-            customSubtitle="🎯 Click red beacon dot to inspect incident"
           />
         </div>
       )}
