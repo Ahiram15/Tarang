@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { HistoricalIncident } from '../types';
+import { SpillTooltipCard } from './SpillTooltipCard';
 
 // Custom glowing pulsing radar dot with transparent ripple waves
 const radarPulseIcon = L.divIcon({
@@ -46,6 +47,28 @@ function MapClickHandler({ onClick }: { onClick: (lat: number, lon: number) => v
   return null;
 }
 
+// Component to dynamically track mouse moves across global map
+const MapMouseTracker: React.FC<{
+  onMouseMove: (lat: number, lon: number, x: number, y: number) => void;
+  onMouseLeave: () => void;
+}> = ({ onMouseMove, onMouseLeave }) => {
+  const lastUpdateRef = useRef<number>(0);
+  const map = useMapEvents({
+    mousemove(e) {
+      const now = performance.now();
+      if (now - lastUpdateRef.current > 30) {
+        lastUpdateRef.current = now;
+        const pt = map.latLngToContainerPoint(e.latlng);
+        onMouseMove(e.latlng.lat, e.latlng.lng, pt.x, pt.y);
+      }
+    },
+    mouseout() {
+      onMouseLeave();
+    },
+  });
+  return null;
+};
+
 export const GlobalSurveillanceMap: React.FC<GlobalMapProps> = ({
   lat,
   lon,
@@ -53,23 +76,62 @@ export const GlobalSurveillanceMap: React.FC<GlobalMapProps> = ({
   historicalList,
   onSelectIncident,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cursorState, setCursorState] = useState<{
+    lat: number;
+    lon: number;
+    x: number;
+    y: number;
+    hoveredIncident: HistoricalIncident | null;
+    isVisible: boolean;
+  }>({
+    lat,
+    lon,
+    x: 0,
+    y: 0,
+    hoveredIncident: null,
+    isVisible: false,
+  });
+
+  const handleMouseMove = (cLat: number, cLon: number, x: number, y: number) => {
+    setCursorState((prev) => ({
+      ...prev,
+      lat: cLat,
+      lon: cLon,
+      x,
+      y,
+      isVisible: true,
+    }));
+  };
+
+  const handleMouseLeave = () => {
+    setCursorState((prev) => ({
+      ...prev,
+      isVisible: false,
+      hoveredIncident: null,
+    }));
+  };
+
   return (
-    <div className="map-wrapper">
+    <div className="map-wrapper" ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <MapContainer
         center={[lat, lon]}
         zoom={3}
-        minZoom={2}
-        maxZoom={12}
+        minZoom={1}
+        maxZoom={20}
+        worldCopyJump={true}
         style={{ height: '100%', width: '100%' }}
       >
         <MapController lat={lat} lon={lon} />
         <MapClickHandler onClick={onMapClick} />
+        <MapMouseTracker onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} />
 
-        {/* ESRI Dark Gray Canvas Basemap (Free, No API Key, No Watermark) */}
+        {/* ESRI Dark Gray Canvas Basemap (maxNativeZoom={13} caps ocean tile requests at zoom 13 so scaling works seamlessly without watermarks) */}
         <TileLayer
           attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
           url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-          maxZoom={16}
+          maxZoom={20}
+          maxNativeZoom={13}
         />
 
         {/* Real Single Incident (Pulsing Red Marker Dot with Transparent Waves) */}
@@ -80,16 +142,10 @@ export const GlobalSurveillanceMap: React.FC<GlobalMapProps> = ({
             icon={radarPulseIcon}
             eventHandlers={{
               click: () => onSelectIncident(inc.lat, inc.lon, inc.date),
+              mouseover: () => setCursorState((prev) => ({ ...prev, hoveredIncident: inc })),
+              mouseout: () => setCursorState((prev) => ({ ...prev, hoveredIncident: null })),
             }}
           >
-            <Tooltip direction="top" offset={[0, -18]} opacity={1}>
-              <div style={{ background: '#070a13', color: '#fff', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', border: '1px solid #ef4444', boxShadow: '0 0 15px rgba(239, 68, 68, 0.4)' }}>
-                <strong style={{ color: '#ef4444' }}>🚨 {inc.shortName}</strong>
-                <div style={{ color: '#94a3b8', fontSize: '10px' }}>Date: {inc.date}</div>
-                <div style={{ color: '#f1f5f9', fontWeight: 600 }}>Est. Slick: ~{inc.area_km2} km²</div>
-                <div style={{ color: '#00f2fe', fontSize: '10px', marginTop: '2px' }}>👉 Click to Inspect Incident</div>
-              </div>
-            </Tooltip>
             <Popup>
               <div style={{ color: '#070a13', fontSize: '12px', minWidth: '200px' }}>
                 <h4 style={{ margin: '0 0 4px 0', color: '#b91c1c' }}>🚨 {inc.name}</h4>
@@ -111,14 +167,39 @@ export const GlobalSurveillanceMap: React.FC<GlobalMapProps> = ({
                     boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
                   }}
                 >
-                  🔍 Inspect Incident & Launch AI →
+                  Inspect Telemetry
                 </button>
               </div>
             </Popup>
           </Marker>
         ))}
       </MapContainer>
+
+      {/* Dynamic Mouse Cursor Tracking Card Overlay */}
+      {cursorState.isVisible && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${Math.min(cursorState.x + 18, (containerRef.current?.clientWidth || 800) - 320)}px`,
+            top: `${Math.max(12, Math.min(cursorState.y - 10, (containerRef.current?.clientHeight || 600) - 210))}px`,
+            pointerEvents: 'none',
+            zIndex: 1000,
+            transition: 'left 0.03s ease-out, top 0.03s ease-out',
+          }}
+        >
+          <SpillTooltipCard
+            mode={cursorState.hoveredIncident ? 'spill' : 'inspector'}
+            title={cursorState.hoveredIncident ? `🚨 ${cursorState.hoveredIncident.shortName}` : undefined}
+            lat={cursorState.lat}
+            lon={cursorState.lon}
+            areaKm2={cursorState.hoveredIncident?.area_km2}
+            timestamp={cursorState.hoveredIncident ? `${cursorState.hoveredIncident.date} UTC` : undefined}
+            spillId={cursorState.hoveredIncident?.id}
+            badge={cursorState.hoveredIncident ? 'Incident Marker' : 'LIVE GPS'}
+            customSubtitle={cursorState.hoveredIncident ? '👉 Click pin to inspect full telemetry' : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 };
-

@@ -257,8 +257,8 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#38bdf8' }}>🛰️ 1. Normalized SAR Tensor</span>
                 <span style={{ fontSize: '0.66rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Input: 256×256×1</span>
               </div>
-              <div style={{ width: '100%', height: '180px', background: '#04060a', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
-                <img src={rawImg || ''} alt="Input SAR Tensor" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <div style={{ width: '100%', height: '180px', background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
+                <img src={rawImg || ''} alt="Input SAR Tensor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.72rem', color: '#94a3b8' }}>
                 <div>🛰️ <b>Sensor:</b> <span style={{ color: '#f1f5f9' }}>Sentinel-1 C-Band SAR (VV)</span></div>
@@ -286,8 +286,8 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f43f5e' }}>🔥 2. AI Probability Heatmap</span>
                 <span style={{ fontSize: '0.66rem', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>P(Spill | X)</span>
               </div>
-              <div style={{ width: '100%', height: '180px', background: '#04060a', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(239, 68, 68, 0.3)', marginBottom: '10px', position: 'relative' }}>
-                <img src={heatmapImg || polygonImg || ''} alt="Probability Heatmap" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <div style={{ width: '100%', height: '180px', background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(239, 68, 68, 0.3)', marginBottom: '10px', position: 'relative' }}>
+                <img src={heatmapImg || polygonImg || ''} alt="Probability Heatmap" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div style={{
                   position: 'absolute',
                   bottom: '6px',
@@ -331,9 +331,9 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
               </div>
               <div 
                 onClick={() => setIsZoomModalOpen(true)}
-                style={{ width: '100%', height: '180px', background: '#04060a', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(34, 197, 94, 0.3)', marginBottom: '10px', cursor: 'zoom-in', position: 'relative' }}
+                style={{ width: '100%', height: '180px', background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(34, 197, 94, 0.3)', marginBottom: '10px', cursor: 'zoom-in', position: 'relative' }}
               >
-                <img src={scanResult.visual_layers.red_overlay || polygonImg || ''} alt="Spill Overlay" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src={scanResult.visual_layers.red_overlay || polygonImg || ''} alt="Spill Overlay" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div style={{
                   position: 'absolute',
                   bottom: '6px',
@@ -390,8 +390,8 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
           </div>
 
           {/* Compact Image */}
-          <div style={{ width: '100%', height: '180px', background: '#04060a', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
-            <img src={rawImg || ''} alt="Raw SAR" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div style={{ width: '100%', height: '180px', background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
+            <img src={rawImg || ''} alt="Raw SAR" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
           {/* Acquisition Details */}
@@ -422,8 +422,8 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
           </div>
 
           {/* Compact Image */}
-          <div style={{ width: '100%', height: '180px', background: '#04060a', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
-            <img src={scanResult.visual_layers.enhanced_sar || enhancedImg || ''} alt="Enhanced SAR" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div style={{ width: '100%', height: '180px', background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
+            <img src={scanResult.visual_layers.enhanced_sar || enhancedImg || ''} alt="Enhanced SAR" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
           {/* Acquisition Details */}
@@ -454,8 +454,8 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
           </div>
 
           {/* Compact Image */}
-          <div style={{ width: '100%', height: '180px', background: '#04060a', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
-            <img src={opticalImg || ''} alt="Optical" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div style={{ width: '100%', height: '180px', background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '10px' }}>
+            <img src={opticalImg || ''} alt="Optical" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
           {/* Acquisition Details */}
@@ -510,7 +510,7 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
             style={{ 
               width: '100%', 
               height: '180px', 
-              background: '#04060a', 
+              background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', 
               borderRadius: '6px', 
               overflow: 'hidden', 
               border: '1px solid rgba(0, 242, 254, 0.3)', 
@@ -519,7 +519,7 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
               position: 'relative'
             }}
           >
-            <img src={polygonImg || ''} alt="Zoomed Polygon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src={polygonImg || ''} alt="Zoomed Polygon" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             
             <div style={{
               position: 'absolute',
@@ -671,7 +671,7 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
             
             {/* Big Zoomed Image Canvas */}
             <div style={{
-              background: '#020408',
+              background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e',
               border: '2px solid rgba(0, 242, 254, 0.4)',
               borderRadius: '12px',
               overflow: 'hidden',
@@ -687,7 +687,7 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
                 style={{
                   width: `${100 * zoomLevel}%`,
                   height: `${100 * zoomLevel}%`,
-                  objectFit: 'contain',
+                  objectFit: 'cover',
                   transition: 'all 0.3s ease-out',
                 }}
               />

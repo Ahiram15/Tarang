@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
@@ -8,10 +8,12 @@ import {
   Popup, 
   Polyline, 
   Tooltip, 
-  useMap 
+  useMap,
+  useMapEvents 
 } from 'react-leaflet';
 import L from 'leaflet';
 import { SpillAnalysis } from '../types';
+import { SpillTooltipCard } from './SpillTooltipCard';
 import { 
   ArrowLeft, 
   Compass, 
@@ -86,14 +88,16 @@ const MapCameraController: React.FC<{
   focusTrigger: number;
 }> = ({ bounds, activeLat, activeLon, isPlaying, focusTrigger }) => {
   const map = useMap();
+  const hasInitialFit = useRef(false);
 
   // Initial auto-zoom and explicit focus on the spill boundary
   useEffect(() => {
-    if (bounds.length > 0) {
+    if (bounds.length > 0 && (!hasInitialFit.current || focusTrigger > 0)) {
       const b = L.latLngBounds(bounds);
       map.fitBounds(b, { padding: [50, 50], maxZoom: 16, animate: true });
+      hasInitialFit.current = true;
     }
-  }, [focusTrigger, bounds, map]);
+  }, [focusTrigger, map]);
 
   // Smoothly pan as the forecast simulation steps forward
   useEffect(() => {
@@ -105,6 +109,29 @@ const MapCameraController: React.FC<{
   return null;
 };
 
+interface MapMouseTrackerProps {
+  onMouseMove: (lat: number, lon: number, x: number, y: number) => void;
+  onMouseLeave: () => void;
+}
+
+const MapMouseTracker: React.FC<MapMouseTrackerProps> = ({ onMouseMove, onMouseLeave }) => {
+  const lastUpdateRef = useRef<number>(0);
+  const map = useMapEvents({
+    mousemove(e) {
+      const now = performance.now();
+      if (now - lastUpdateRef.current > 30) {
+        lastUpdateRef.current = now;
+        const pt = map.latLngToContainerPoint(e.latlng);
+        onMouseMove(e.latlng.lat, e.latlng.lng, pt.x, pt.y);
+      }
+    },
+    mouseout() {
+      onMouseLeave();
+    },
+  });
+  return null;
+};
+
 export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps> = ({
   analysis,
   onBackToLab,
@@ -112,6 +139,42 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   onOpenInvestigation,
 }) => {
   const centroid = analysis.geometry.centroid;
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+
+  const [cursorState, setCursorState] = useState<{
+    lat: number;
+    lon: number;
+    x: number;
+    y: number;
+    isHoveringSpill: boolean;
+    isVisible: boolean;
+  }>({
+    lat: centroid.lat,
+    lon: centroid.lon,
+    x: 0,
+    y: 0,
+    isHoveringSpill: false,
+    isVisible: false,
+  });
+
+  const handleMapMouseMove = (lat: number, lon: number, x: number, y: number) => {
+    setCursorState((prev) => ({
+      ...prev,
+      lat,
+      lon,
+      x,
+      y,
+      isVisible: true,
+    }));
+  };
+
+  const handleMapMouseLeave = () => {
+    setCursorState((prev) => ({
+      ...prev,
+      isVisible: false,
+      isHoveringSpill: false,
+    }));
+  };
   const currentPolyPositions = useMemo(() => {
     return toLeafletPositions(analysis.geometry.boundary.geometry);
   }, [analysis]);
@@ -180,7 +243,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   const [viewMode, setViewMode] = useState<'all' | 'hindcast' | 'forecast'>('all');
 
   // Basemap and Display Toggles
-  const [basemapType, setBasemapType] = useState<'satellite' | 'dark'>('satellite');
+  const [basemapType, setBasemapType] = useState<'satellite' | 'ocean' | 'positron' | 'dark'>('satellite');
   const [showWindWaves, setShowWindWaves] = useState<boolean>(false);
   const [focusTrigger, setFocusTrigger] = useState<number>(0);
 
@@ -329,6 +392,21 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
 
   // Hindcast origin coordinates
   const hindcastOrigin = analysis.hindcast.origin;
+
+  const createObservedPinIcon = () =>
+    L.divIcon({
+      className: 'custom-observed-pin-icon',
+      html: `
+        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(239, 68, 68, 0.25); border: 1.5px solid #ef4444;"></div>
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #ef4444, #dc2626); border: 2px solid #ffffff; box-shadow: 0 0 14px rgba(239, 68, 68, 0.8); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 800; z-index: 10;">
+            📍
+          </div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
 
 
   const createOriginReticleIcon = () =>
@@ -749,9 +827,15 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
 
             {/* Basemap Toggle */}
             <button
-              onClick={() => setBasemapType(basemapType === 'satellite' ? 'dark' : 'satellite')}
+              onClick={() => {
+                const nextBasemap = 
+                  basemapType === 'satellite' ? 'ocean' :
+                  basemapType === 'ocean' ? 'positron' :
+                  basemapType === 'positron' ? 'dark' : 'satellite';
+                setBasemapType(nextBasemap);
+              }}
               className="map-hud-btn"
-              title="Toggle between Satellite Imagery and Vector Dark Canvas"
+              title="Cycle basemaps (Satellite, Ocean Blue, Positron Light, Dark Canvas)"
               style={{
                 background: 'rgba(6, 10, 20, 0.92)',
                 border: '1px solid rgba(255,255,255,0.2)',
@@ -760,7 +844,10 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 borderRadius: '8px',
               }}
             >
-              {basemapType === 'satellite' ? '🛰️ Satellite Map' : '🌑 Dark Canvas'}
+              {basemapType === 'satellite' && '🛰️ Satellite Map'}
+              {basemapType === 'ocean' && '🌊 Ocean Blue'}
+              {basemapType === 'positron' && '☀️ Positron Light'}
+              {basemapType === 'dark' && '🌑 Dark Canvas'}
             </button>
 
             {/* Wind Waves Animation Toggle */}
@@ -839,13 +926,22 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
           </div>
 
           {/* Leaflet Map */}
-          <div style={{ flex: 1, width: '100%', height: '100%' }}>
+          <div ref={mapContainerRef} style={{ flex: 1, width: '100%', height: '100%', position: 'relative' }}>
             <MapContainer
               center={[centroid.lat, centroid.lon]}
-              zoom={14}
+              zoom={13}
+              minZoom={1}
+              maxZoom={20}
+              worldCopyJump={true}
               style={{ width: '100%', height: '100%' }}
             >
-              {/* Dynamic Camera Controller: Zooms directly into spill and smoothly follows movement */}
+              {/* Live Mouse Coordinate & Spill Boundary Tracker */}
+              <MapMouseTracker
+                onMouseMove={handleMapMouseMove}
+                onMouseLeave={handleMapMouseLeave}
+              />
+
+              {/* Dynamic Camera Controller: Zooms directly into spill on demand without locking user view */}
               <MapCameraController
                 bounds={allPolyPoints}
                 activeLat={activeForecastStep.centroid.lat}
@@ -854,18 +950,37 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 focusTrigger={focusTrigger}
               />
 
-              {/* Dynamic Basemap Layer */}
-              {basemapType === 'satellite' ? (
+              {/* Dynamic Basemap Layer: maxNativeZoom={13} ensures ocean tile requests cap out at zoom 13 and scale smoothly without "Map data not yet available" watermarks */}
+              {basemapType === 'satellite' && (
                 <TileLayer
                   url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                   attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
-                  maxZoom={18}
+                  maxZoom={20}
+                  maxNativeZoom={13}
                 />
-              ) : (
+              )}
+              {basemapType === 'ocean' && (
+                <TileLayer
+                  url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
+                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, GEBCO, NOAA'
+                  maxZoom={20}
+                  maxNativeZoom={13}
+                />
+              )}
+              {basemapType === 'positron' && (
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/">CARTO</a>, &copy; OpenStreetMap'
+                  maxZoom={20}
+                  maxNativeZoom={13}
+                />
+              )}
+              {basemapType === 'dark' && (
                 <TileLayer
                   url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
                   attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
-                  maxZoom={16}
+                  maxZoom={20}
+                  maxNativeZoom={13}
                 />
               )}
 
@@ -900,31 +1015,44 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 </>
               )}
 
-              {/* 1. Current Observed Spill Boundary (T+0h Reference) */}
+              {/* 1. Current Observed Spill Boundary (T+0h Reference) & Pin Marker */}
               {showSpillPolygon && (
-                <Polygon
-                  positions={currentPolyPositions}
-                  pathOptions={{
-                    color: '#ef4444',
-                    fillColor: '#ef4444',
-                    fillOpacity: activeForecastStep.hours > 0 ? 0.10 : 0.22,
-                    weight: activeForecastStep.hours > 0 ? 3.0 : 4.0,
-                    opacity: 1.0,
-                  }}
-                >
-                  <Tooltip permanent={activeForecastStep.hours === 0} direction="top">
-                    🚨 <b>Observed Oil Spill Boundary (T+0h)</b>: ~{analysis.geometry.area_km2} km²
-                  </Tooltip>
-                  <Popup>
-                    <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
-                      <b style={{ color: '#dc2626' }}>🚨 Observed Oil Spill Slick Boundary</b><br />
-                      <b>Surface Area:</b> {analysis.geometry.area_km2} km²<br />
-                      <b>Perimeter:</b> {analysis.geometry.perimeter_km} km<br />
-                      <b>Centroid:</b> {formatLatLon(centroid.lat, centroid.lon)}<br />
-                      <b>Zone:</b> {analysis.spill_id === 'emerald' || centroid.lat > 0 ? 'Eastern Mediterranean Sea (Levantine Basin)' : "Grand Port Lagoon (Between Barrier Reef & Pointe d'Esny Coastline)"}
-                    </div>
-                  </Popup>
-                </Polygon>
+                <>
+                  <Polygon
+                    positions={currentPolyPositions}
+                    pathOptions={{
+                      color: '#ef4444',
+                      fillColor: '#ef4444',
+                      fillOpacity: activeForecastStep.hours > 0 ? 0.10 : 0.22,
+                      weight: activeForecastStep.hours > 0 ? 3.0 : 4.0,
+                      opacity: 1.0,
+                    }}
+                    eventHandlers={{
+                      mouseover: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: true })),
+                      mouseout: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: false })),
+                    }}
+                  >
+                    <Popup>
+                      <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
+                        <b style={{ color: '#dc2626' }}>🚨 Observed Oil Spill Slick Boundary</b><br />
+                        <b>Surface Area:</b> {analysis.geometry.area_km2} km²<br />
+                        <b>Perimeter:</b> {analysis.geometry.perimeter_km} km<br />
+                        <b>Centroid:</b> {formatLatLon(centroid.lat, centroid.lon)}<br />
+                        <b>Zone:</b> {analysis.spill_id === 'emerald' || centroid.lat > 0 ? 'Eastern Mediterranean Sea (Levantine Basin)' : "Grand Port Lagoon (Between Barrier Reef & Pointe d'Esny Coastline)"}
+                      </div>
+                    </Popup>
+                  </Polygon>
+
+                  {/* 📍 Observed Incident Pin Marker at Centroid */}
+                  <Marker
+                    position={[centroid.lat, centroid.lon]}
+                    icon={createObservedPinIcon()}
+                    eventHandlers={{
+                      mouseover: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: true })),
+                      mouseout: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: false })),
+                    }}
+                  />
+                </>
               )}
 
               {/* 🛢️ Active Moving Slick with Advection Ribbon (T+th) */}
@@ -1200,6 +1328,29 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 </>
               )}
             </MapContainer>
+
+            {/* Dynamic Mouse Cursor Tracking Card Overlay */}
+            {cursorState.isVisible && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${Math.min(cursorState.x + 18, (mapContainerRef.current?.clientWidth || 800) - 320)}px`,
+                  top: `${Math.max(12, Math.min(cursorState.y - 10, (mapContainerRef.current?.clientHeight || 600) - 210))}px`,
+                  pointerEvents: 'none',
+                  zIndex: 1000,
+                  transition: 'left 0.03s ease-out, top 0.03s ease-out',
+                }}
+              >
+                <SpillTooltipCard
+                  mode={cursorState.isHoveringSpill ? 'spill' : 'inspector'}
+                  lat={cursorState.lat}
+                  lon={cursorState.lon}
+                  areaKm2={analysis.geometry.area_km2}
+                  timestamp={analysis.timestamp ? new Date(analysis.timestamp).toUTCString().slice(5, 22) + ' UTC' : '05 Feb 2021 03:50 UTC'}
+                  spillId={analysis.spill_id}
+                />
+              </div>
+            )}
           </div>
 
           {/* Floating Live Map Timeline Player HUD Overlay */}

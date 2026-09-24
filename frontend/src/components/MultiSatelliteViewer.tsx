@@ -86,19 +86,26 @@ export const MultiSatelliteViewer: React.FC<MultiSatelliteViewerProps> = ({
 
             <div
               className="layer-img-container"
-              style={{ maxHeight: `${imgSize}px`, cursor: item.url ? 'pointer' : 'default', position: 'relative' }}
+              style={{
+                maxHeight: `${imgSize}px`,
+                cursor: item.url ? 'pointer' : 'default',
+                position: 'relative',
+                background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e',
+                borderRadius: '6px',
+                overflow: 'hidden',
+              }}
               onClick={() => item.url && setModalImg({ url: item.url, title: item.title })}
             >
               {item.url ? (
                 <>
-                  <img src={item.url} alt={item.title} className="layer-img" />
+                  <img src={item.url} alt={item.title} className="layer-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', padding: '3px', borderRadius: '4px' }}>
                     <Maximize2 size={12} color="#fff" />
                   </div>
                 </>
               ) : (
-                <div style={{ padding: '16px', fontSize: '0.75rem', color: '#64748b' }}>
-                  {item.fallbackText || 'Awaiting Acquisition'}
+                <div style={{ padding: '16px', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  🛰️ {item.fallbackText || 'Live Ocean Map Coverage'}
                 </div>
               )}
             </div>

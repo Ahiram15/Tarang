@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Compass, Navigation, Radio, MapPin, Layers, Waves, Radar, ArrowRight, ShieldAlert } from 'lucide-react';
+import { SpillTooltipCard } from './SpillTooltipCard';
 
 export interface IncidentLocation {
   id: string;
@@ -62,6 +63,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredIncident, setHoveredIncident] = useState<IncidentLocation | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   const [activeIncidentId, setActiveIncidentId] = useState<string>(selectedIncident?.id || 'emerald');
 
   // Keep activeIncident in sync with prop if passed
@@ -319,9 +321,11 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         const hitId = (intersects[0].object as any).incidentId;
         const matched = incidents.find(i => i.id === hitId);
         setHoveredIncident(matched || null);
+        setHoverPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
       } else {
         container.style.cursor = isDragging ? 'grabbing' : 'grab';
         setHoveredIncident(null);
+        setHoverPos(null);
       }
 
       if (isDragging) {
@@ -769,28 +773,26 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         </div>
       </div>
 
-      {/* Floating Hover Indicator Banner */}
-      {hoveredIncident && (
+      {/* Floating Hover Tooltip Pinned Directly Next to the Red Dot */}
+      {hoveredIncident && hoverPos && (
         <div style={{
           position: 'absolute',
-          bottom: '36px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(10, 15, 29, 0.95)',
-          border: '1px solid #ef4444',
-          boxShadow: '0 0 25px rgba(239, 68, 68, 0.5)',
-          borderRadius: '30px',
-          padding: '10px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
+          left: `${Math.min(hoverPos.x + 18, (containerRef.current?.clientWidth || 800) - 340)}px`,
+          top: `${Math.max(16, hoverPos.y - 20)}px`,
           pointerEvents: 'none',
           zIndex: 200,
+          transition: 'top 0.05s ease-out, left 0.05s ease-out',
         }}>
-          <span style={{ fontSize: '1rem' }}>🎯</span>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9' }}>
-            BEACON: {hoveredIncident.id === 'emerald' ? 'MT EMERALD (Mediterranean)' : 'MV WAKASHIO (Mauritius)'} — {hoveredIncident.lat.toFixed(2)}°, {hoveredIncident.lon.toFixed(2)}° (Click to Focus)
-          </span>
+          <SpillTooltipCard
+            title={`🚨 ${hoveredIncident.id === 'emerald' ? 'MT EMERALD INCIDENT' : 'MV WAKASHIO INCIDENT'}`}
+            lat={hoveredIncident.lat}
+            lon={hoveredIncident.lon}
+            areaKm2={hoveredIncident.id === 'emerald' ? 31.42 : 2.805}
+            timestamp={`${hoveredIncident.date} UTC`}
+            spillId={hoveredIncident.spillId}
+            badge="3D Beacon"
+            customSubtitle="🎯 Click red beacon dot to inspect incident"
+          />
         </div>
       )}
     </div>
