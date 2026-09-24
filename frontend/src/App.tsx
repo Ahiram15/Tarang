@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { CinematicLanding } from './components/CinematicLanding';
 import { WatchdogSimulation } from './components/WatchdogSimulation';
 import { OceanGlobe } from './components/OceanGlobe';
 import { SatelliteVisionSuite } from './components/SatelliteVisionSuite';
 import { CharacterizationDashboard } from './components/CharacterizationDashboard';
 import { MaritimeInvestigationSuite } from './components/MaritimeInvestigationSuite';
 import { ScanResponse, SpillAnalysis, InvestigationPriorityReport } from './types';
-import { Satellite, Globe2, Microscope, Waves, Radar, Radio } from 'lucide-react';
+import { Satellite, Globe2, Microscope, Waves, Radar, Radio, Sparkles } from 'lucide-react';
 
 interface IncidentLocation {
   id: string;
@@ -40,7 +41,7 @@ export const INCIDENTS: IncidentLocation[] = [
 
 export const App: React.FC = () => {
   const [selectedIncident, setSelectedIncident] = useState<IncidentLocation>(INCIDENTS[0]); // Default to MT Emerald!
-  const [view, setView] = useState<'simulation' | 'globe' | 'satellite_lab' | 'characterization' | 'investigation'>('simulation');
+  const [view, setView] = useState<'landing' | 'simulation' | 'globe' | 'satellite_lab' | 'characterization' | 'investigation'>('landing');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
   const [analysis, setAnalysis] = useState<SpillAnalysis | null>(null);
@@ -179,150 +180,188 @@ export const App: React.FC = () => {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#050811', color: '#f1f5f9', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Global Top Navigation Bar */}
-      <div style={{
-        height: '42px',
-        background: 'rgba(3, 7, 18, 0.95)',
-        borderBottom: '1px solid rgba(0, 242, 254, 0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 16px',
-        zIndex: 4000,
-        flexShrink: 0,
-        backdropFilter: 'blur(10px)',
-      }}>
-        {/* Left Title / Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
-          <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '1px', fontSize: '0.86rem' }}>TARANG</span>
-          <span style={{ color: '#64748b' }}>|</span>
-          <span style={{ color: '#64748b', fontSize: '0.68rem', letterSpacing: '0.5px' }}>OCEAN SPILL INTELLIGENCE</span>
+      {/* Global Top Navigation Bar - Only visible in active Mission Control modes */}
+      {view !== 'landing' && (
+        <div style={{
+          height: '42px',
+          background: 'rgba(3, 7, 18, 0.95)',
+          borderBottom: '1px solid rgba(0, 242, 254, 0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
+          zIndex: 4000,
+          flexShrink: 0,
+          backdropFilter: 'blur(10px)',
+        }}>
+          {/* Left Title / Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
+            <span style={{ fontWeight: 900, color: '#00f2fe', letterSpacing: '1px', fontSize: '0.86rem' }}>TARANG</span>
+            <span style={{ color: '#64748b' }}>|</span>
+            <span style={{ color: '#64748b', fontSize: '0.68rem', letterSpacing: '0.5px' }}>OCEAN SPILL INTELLIGENCE</span>
+          </div>
+
+          {/* Center 5-Stage Mission Switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={() => setView('landing')}
+              style={{
+                background: 'transparent',
+                border: '1px solid transparent',
+                color: '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Sparkles size={13} />
+              <span>Landing / Hero</span>
+            </button>
+
+            <button
+              onClick={() => setView('simulation')}
+              style={{
+                background: view === 'simulation' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: view === 'simulation' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: view === 'simulation' ? '#00f2fe' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Radio size={13} />
+              <span>0. Watchdog Sim</span>
+            </button>
+
+            <button
+              onClick={() => setView('globe')}
+              style={{
+                background: view === 'globe' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: view === 'globe' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: view === 'globe' ? '#00f2fe' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Globe2 size={13} />
+              <span>1. Globe</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (scanResult) {
+                  setView('satellite_lab');
+                } else {
+                  handleSelectIncident(targetLat, targetLon);
+                }
+              }}
+              style={{
+                background: view === 'satellite_lab' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: view === 'satellite_lab' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: view === 'satellite_lab' ? '#00f2fe' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Microscope size={13} />
+              <span>2. ML Detection & Satellite Lab</span>
+            </button>
+
+            <button
+              onClick={() => handleOpenCharacterization()}
+              style={{
+                background: view === 'characterization' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
+                border: view === 'characterization' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: view === 'characterization' ? '#00f2fe' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Waves size={13} />
+              <span>3. Characterization</span>
+            </button>
+
+            <button
+              onClick={() => handleOpenInvestigation()}
+              style={{
+                background: view === 'investigation' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                border: view === 'investigation' ? '1px solid #f59e0b' : '1px solid transparent',
+                color: view === 'investigation' ? '#f59e0b' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Radar size={13} color={view === 'investigation' ? '#f59e0b' : '#94a3b8'} />
+              <span>4. Maritime Investigation & Warning</span>
+            </button>
+          </div>
+
+          {/* Right Status Indicator */}
+          <div style={{ fontSize: '0.70rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: useLiveSat ? '#f59e0b' : '#00f2fe',
+              boxShadow: useLiveSat ? '0 0 8px #f59e0b' : '0 0 8px #00f2fe'
+            }} />
+            <span style={{ color: useLiveSat ? '#f59e0b' : '#00f2fe', fontWeight: 600 }}>
+              {useLiveSat ? 'CDSE Live Radar + GFW' : 'Instant Calibrated SAR + AI'}
+            </span>
+          </div>
         </div>
+      )}
 
-
-        {/* Center 5-Stage Mission Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <button
-            onClick={() => setView('simulation')}
-            style={{
-              background: view === 'simulation' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
-              border: view === 'simulation' ? '1px solid #00f2fe' : '1px solid transparent',
-              color: view === 'simulation' ? '#00f2fe' : '#94a3b8',
-              borderRadius: '6px',
-              padding: '3px 10px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <Radio size={13} />
-            <span>0. Watchdog Sim</span>
-          </button>
-
-          <button
-            onClick={() => setView('globe')}
-            style={{
-              background: view === 'globe' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
-              border: view === 'globe' ? '1px solid #00f2fe' : '1px solid transparent',
-              color: view === 'globe' ? '#00f2fe' : '#94a3b8',
-              borderRadius: '6px',
-              padding: '3px 10px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <Globe2 size={13} />
-            <span>1. Globe</span>
-          </button>
-
-          <button
-            onClick={() => {
+      {/* LANDING / HERO SCENE */}
+      {view === 'landing' && (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <CinematicLanding
+            onEnterMissionControl={() => setView('simulation')}
+            onNavigateToGlobe={() => setView('globe')}
+            onNavigateToLab={() => {
               if (scanResult) {
                 setView('satellite_lab');
               } else {
                 handleSelectIncident(targetLat, targetLon);
               }
             }}
-            style={{
-              background: view === 'satellite_lab' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
-              border: view === 'satellite_lab' ? '1px solid #00f2fe' : '1px solid transparent',
-              color: view === 'satellite_lab' ? '#00f2fe' : '#94a3b8',
-              borderRadius: '6px',
-              padding: '3px 10px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <Microscope size={13} />
-            <span>2. ML Detection & Satellite Lab</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenCharacterization()}
-            style={{
-              background: view === 'characterization' ? 'rgba(0, 242, 254, 0.2)' : 'transparent',
-              border: view === 'characterization' ? '1px solid #00f2fe' : '1px solid transparent',
-              color: view === 'characterization' ? '#00f2fe' : '#94a3b8',
-              borderRadius: '6px',
-              padding: '3px 10px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <Waves size={13} />
-            <span>3. Characterization</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenInvestigation()}
-            style={{
-              background: view === 'investigation' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
-              border: view === 'investigation' ? '1px solid #f59e0b' : '1px solid transparent',
-              color: view === 'investigation' ? '#f59e0b' : '#94a3b8',
-              borderRadius: '6px',
-              padding: '3px 10px',
-              fontSize: '0.72rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <Radar size={13} color={view === 'investigation' ? '#f59e0b' : '#94a3b8'} />
-            <span>4. Maritime Investigation & Warning</span>
-          </button>
+          />
         </div>
-
-        {/* Right Status Indicator */}
-        <div style={{ fontSize: '0.70rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: useLiveSat ? '#f59e0b' : '#00f2fe',
-            boxShadow: useLiveSat ? '0 0 8px #f59e0b' : '0 0 8px #00f2fe'
-          }} />
-          <span style={{ color: useLiveSat ? '#f59e0b' : '#00f2fe', fontWeight: 600 }}>
-            {useLiveSat ? 'CDSE Live Radar + GFW' : 'Instant Calibrated SAR + AI'}
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* 0. AUTONOMOUS SATELLITE WATCHDOG SIMULATION (Act 0: Scheduled Catalog Polling) */}
       {view === 'simulation' && (

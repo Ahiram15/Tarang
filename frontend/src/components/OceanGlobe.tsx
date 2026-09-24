@@ -217,6 +217,14 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
     const laneWk3 = createArc(-20.437, 57.742, -25.96, 32.58, 0xf97316); // Mauritius to Mozambique Channel
     globeGroup.add(laneWk3);
 
+    // --- CORRIDORS 3: Persian Gulf & Strait of Hormuz Tanker Chokepoint ---
+    const laneHz1 = createArc(29.50, 49.50, 26.56, 56.25, 0x00f2fe); // Northern Persian Gulf to Strait of Hormuz
+    globeGroup.add(laneHz1);
+    const laneHz2 = createArc(26.56, 56.25, 23.61, 58.54, 0x38bdf8); // Strait of Hormuz to Gulf of Oman
+    globeGroup.add(laneHz2);
+    const laneHz3 = createArc(23.61, 58.54, 18.90, 72.80, 0x4edea3); // Gulf of Oman to Arabian Sea / India Corridor
+    globeGroup.add(laneHz3);
+
     // =========================================================================
     // 6. TWO RED DOT BEACONS (EMERALD & WAKASHIO)
     // =========================================================================
