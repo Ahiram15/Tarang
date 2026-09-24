@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Polygon, Circle, Marker, Popup, Polyline, Tooltip } from 'react-leaflet';
+import React, { useState, useRef } from 'react';
+import { MapContainer, TileLayer, Polygon, Circle, Marker, Popup, Polyline, Tooltip, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { 
   SpillAnalysis, 
@@ -10,6 +10,7 @@ import {
   EmailDispatchRequest,
   EmailDispatchResponse
 } from '../types';
+import { SpillTooltipCard } from './SpillTooltipCard';
 import { 
   ArrowLeft, 
   ShieldAlert, 
@@ -102,6 +103,27 @@ interface MaritimeInvestigationSuiteProps {
   onBackToGlobe: () => void;
 }
 
+const MapMouseTracker: React.FC<{
+  onMouseMove: (lat: number, lon: number, x: number, y: number) => void;
+  onMouseLeave: () => void;
+}> = ({ onMouseMove, onMouseLeave }) => {
+  const lastUpdateRef = useRef<number>(0);
+  const map = useMapEvents({
+    mousemove(e) {
+      const now = performance.now();
+      if (now - lastUpdateRef.current > 30) {
+        lastUpdateRef.current = now;
+        const pt = map.latLngToContainerPoint(e.latlng);
+        onMouseMove(e.latlng.lat, e.latlng.lng, pt.x, pt.y);
+      }
+    },
+    mouseout() {
+      onMouseLeave();
+    },
+  });
+  return null;
+};
+
 export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProps> = ({
   analysis,
   investigationReport,
@@ -120,7 +142,7 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
 
   // Basemap & Layer toggles
-  const [basemapType, setBasemapType] = useState<'satellite' | 'ocean' | 'voyager' | 'dark'>('satellite');
+  const [basemapType, setBasemapType] = useState<'satellite' | 'ocean' | 'voyager' | 'positron' | 'dark'>('satellite');
   const [showOriginZones, setShowOriginZones] = useState<boolean>(true);
   const [showVesselTracks, setShowVesselTracks] = useState<boolean>(false);
   const [showAisGaps, setShowAisGaps] = useState<boolean>(false);
@@ -132,6 +154,42 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
   const vesselInv = investigationReport.vessel_investigation;
   const coastalWarning = investigationReport.coastal_warning;
   const centroid = originAnalysis.centroid;
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [cursorState, setCursorState] = useState<{
+    lat: number;
+    lon: number;
+    x: number;
+    y: number;
+    isHoveringSpill: boolean;
+    isVisible: boolean;
+  }>({
+    lat: centroid.lat,
+    lon: centroid.lon,
+    x: 0,
+    y: 0,
+    isHoveringSpill: false,
+    isVisible: false,
+  });
+
+  const handleMapMouseMove = (lat: number, lon: number, x: number, y: number) => {
+    setCursorState((prev) => ({
+      ...prev,
+      lat,
+      lon,
+      x,
+      y,
+      isVisible: true,
+    }));
+  };
+
+  const handleMapMouseLeave = () => {
+    setCursorState((prev) => ({
+      ...prev,
+      isVisible: false,
+      isHoveringSpill: false,
+    }));
+  };
 
   // Filter candidate vessels
   const filteredCandidates = vesselInv.candidates.filter((v) => {
@@ -957,6 +1015,22 @@ Reference ID: ${investigationReport.report_id}
               🗺️ Color Coastal
             </button>
             <button
+              onClick={() => setBasemapType('positron')}
+              style={{
+                background: basemapType === 'positron' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
+                border: basemapType === 'positron' ? '1px solid #00f2fe' : '1px solid transparent',
+                color: basemapType === 'positron' ? '#ffffff' : '#94a3b8',
+                borderRadius: '5px',
+                padding: '3px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              ☀️ Light (Positron)
+            </button>
+            <button
               onClick={() => setBasemapType('dark')}
               style={{
                 background: basemapType === 'dark' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
@@ -1059,39 +1133,55 @@ Reference ID: ${investigationReport.report_id}
           </div>
 
           {/* Leaflet Map Canvas */}
-          <div style={{ flex: 1, width: '100%', height: '100%' }}>
+          <div ref={mapContainerRef} style={{ flex: 1, width: '100%', height: '100%', position: 'relative' }}>
             <MapContainer
               center={[centroid.lat, centroid.lon]}
               zoom={11}
+              minZoom={1}
+              maxZoom={20}
+              worldCopyJump={true}
               style={{ width: '100%', height: '100%' }}
             >
-              {/* Dynamic Basemap Tiles */}
+              <MapMouseTracker onMouseMove={handleMapMouseMove} onMouseLeave={handleMapMouseLeave} />
+              {/* Dynamic Basemap Tiles: maxNativeZoom={13} ensures ocean tiles stop fetching at zoom 13 and scale smoothly without "Map data not yet available" watermarks */}
               {basemapType === 'satellite' && (
                 <TileLayer
                   url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                   attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
-                  maxZoom={18}
+                  maxZoom={20}
+                  maxNativeZoom={13}
                 />
               )}
               {basemapType === 'ocean' && (
                 <TileLayer
                   url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
                   attribution='&copy; <a href="https://www.esri.com/">Esri</a>, GEBCO, NOAA'
-                  maxZoom={16}
+                  maxZoom={20}
+                  maxNativeZoom={13}
                 />
               )}
               {basemapType === 'voyager' && (
                 <TileLayer
                   url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                   attribution='&copy; <a href="https://carto.com/">CARTO</a>, &copy; OpenStreetMap'
-                  maxZoom={19}
+                  maxZoom={20}
+                  maxNativeZoom={13}
+                />
+              )}
+              {basemapType === 'positron' && (
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/">CARTO</a>, &copy; OpenStreetMap'
+                  maxZoom={20}
+                  maxNativeZoom={13}
                 />
               )}
               {basemapType === 'dark' && (
                 <TileLayer
                   url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
                   attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
-                  maxZoom={16}
+                  maxZoom={20}
+                  maxNativeZoom={13}
                 />
               )}
 
@@ -1104,6 +1194,10 @@ Reference ID: ${investigationReport.report_id}
                       key="origin-zone-high"
                       positions={toLeafletPositions(originAnalysis.zones.high.polygon)}
                       pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.22, weight: 2 }}
+                      eventHandlers={{
+                        mouseover: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: true })),
+                        mouseout: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: false })),
+                      }}
                     >
                       <Tooltip permanent={false}>High Probability Zone (1σ Core Boundary): ±{originAnalysis.zones.high.radius_km} km</Tooltip>
                     </Polygon>
@@ -1132,7 +1226,25 @@ Reference ID: ${investigationReport.report_id}
                   )}
 
                   {/* Centroid Marker */}
-                  <Marker position={[centroid.lat, centroid.lon]} icon={createIcon('#eab308', 'Origin', 'diamond')}>
+                  <Marker
+                    position={[centroid.lat, centroid.lon]}
+                    icon={createIcon('#eab308', 'Origin', 'diamond')}
+                    eventHandlers={{
+                      mouseover: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: true })),
+                      mouseout: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: false })),
+                    }}
+                  >
+                    <Tooltip sticky={false} direction="top" offset={[0, -14]} opacity={0.98}>
+                      <SpillTooltipCard
+                        title="🎯 Probable Origin Centroid"
+                        lat={centroid.lat}
+                        lon={centroid.lon}
+                        areaKm2={analysis.geometry.area_km2}
+                        timestamp={originAnalysis.time_window.window_earliest}
+                        spillId={analysis.spill_id}
+                        badge="Reconstructed Origin"
+                      />
+                    </Tooltip>
                     <Popup>
                       <b>🎯 Probable Origin Centroid</b><br />
                       Lat: {centroid.lat.toFixed(5)}°N<br />
@@ -1346,6 +1458,30 @@ Reference ID: ${investigationReport.report_id}
                 );
               })}
             </MapContainer>
+
+            {/* Dynamic Mouse Cursor Tracking Card Overlay */}
+            {cursorState.isVisible && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${Math.min(cursorState.x + 18, (mapContainerRef.current?.clientWidth || 800) - 320)}px`,
+                  top: `${Math.max(12, Math.min(cursorState.y - 10, (mapContainerRef.current?.clientHeight || 600) - 210))}px`,
+                  pointerEvents: 'none',
+                  zIndex: 1000,
+                  transition: 'left 0.03s ease-out, top 0.03s ease-out',
+                }}
+              >
+                <SpillTooltipCard
+                  mode={cursorState.isHoveringSpill ? 'spill' : 'inspector'}
+                  title={cursorState.isHoveringSpill ? '🎯 Probable Origin Boundary' : undefined}
+                  lat={cursorState.lat}
+                  lon={cursorState.lon}
+                  areaKm2={analysis.geometry.area_km2}
+                  timestamp={originAnalysis.time_window.window_earliest}
+                  spillId={analysis.spill_id}
+                />
+              </div>
+            )}
           </div>
         </div>
 
