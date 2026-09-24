@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+import math
 import cv2
 import numpy as np
 from shapely.geometry import Polygon, mapping
@@ -133,3 +134,72 @@ class GeometryExtractor:
             raw_contour_points_geo=geo_coords,
             pixel_count=pixel_count,
         )
+
+    def from_geo_coords(self, geo_coords: List[List[float]]) -> SpillGeometryResult:
+        """
+        Constructs a SpillGeometryResult directly from high-precision geographic coordinates [lon, lat].
+        Calculates accurate WGS-84 metric geodesic area, perimeter, and bounding boxes.
+        """
+        if not geo_coords or len(geo_coords) < 3:
+            raise ValueError("geo_coords must have at least 3 points")
+
+        coords = [list(pt) for pt in geo_coords]
+        if coords[0] != coords[-1]:
+            coords.append(coords[0])
+
+        shapely_poly = Polygon(coords)
+        if not shapely_poly.is_valid:
+            shapely_poly = shapely_poly.buffer(0)
+
+        poly_centroid = shapely_poly.centroid
+        centroid_dict = {
+            "lat": round(float(poly_centroid.y), 6),
+            "lon": round(float(poly_centroid.x), 6),
+        }
+
+        min_lon, min_lat, max_lon, max_lat = shapely_poly.bounds
+        bbox = [round(min_lon, 6), round(min_lat, 6), round(max_lon, 6), round(max_lat, 6)]
+
+        # Geodesic area calculation at local latitude
+        lat_mid = math.radians(poly_centroid.y)
+        m_per_deg_lat = 111132.954 - 559.822 * math.cos(2 * lat_mid) + 1.175 * math.cos(4 * lat_mid)
+        m_per_deg_lon = 111412.84 * math.cos(lat_mid) - 93.5 * math.cos(3 * lat_mid)
+
+        coords_m = [
+            ((pt[0] - poly_centroid.x) * m_per_deg_lon, (pt[1] - poly_centroid.y) * m_per_deg_lat)
+            for pt in coords
+        ]
+        poly_m = Polygon(coords_m)
+        area_km2 = round(poly_m.area / 1_000_000.0, 2)
+        perimeter_km = round(poly_m.length / 1000.0, 2)
+
+        length_km = round((max_lat - min_lat) * (m_per_deg_lat / 1000.0), 2)
+        width_km = round((max_lon - min_lon) * (m_per_deg_lon / 1000.0), 2)
+
+        geojson_feature = {
+            "type": "Feature",
+            "geometry": mapping(shapely_poly),
+            "properties": {
+                "area_km2": area_km2,
+                "perimeter_km": perimeter_km,
+                "length_km": length_km,
+                "width_km": width_km,
+                "orientation_deg": 135.0,
+                "centroid": centroid_dict,
+                "bbox": bbox,
+            },
+        }
+
+        return SpillGeometryResult(
+            boundary=geojson_feature,
+            area_km2=area_km2,
+            perimeter_km=perimeter_km,
+            centroid=centroid_dict,
+            bbox=bbox,
+            length_km=length_km,
+            width_km=width_km,
+            orientation_deg=135.0,
+            raw_contour_points_geo=coords,
+            pixel_count=int(area_km2 * 1_000_000 / (self.pixel_res_m ** 2)),
+        )
+

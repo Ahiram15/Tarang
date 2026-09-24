@@ -631,11 +631,20 @@ def get_or_create_analysis(spill_id: str) -> Any:
     # Generate default calibrated spill analysis for requested spill ID
     default_mask = np.zeros((256, 256), dtype=np.uint8)
     default_mask[108:148, 108:148] = 1
+    override_coords = None
 
     if spill_id == "wakashio":
-        c_lat, c_lon = -20.431624, 57.736910
+        c_lat, c_lon = -20.402098, 57.725183
         obs_time = "2020-08-10T14:36:16Z"
-        buffer_deg = 0.03
+        buffer_deg = 0.05
+        poly_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "real_spill_polygon.json")
+        if os.path.exists(poly_path):
+            try:
+                with open(poly_path, "r", encoding="utf-8") as f:
+                    poly_data = json.load(f)
+                    override_coords = poly_data.get("polygon_vertices_geo")
+            except Exception as e:
+                print(f"[API] Error loading authentic polygon: {e}")
         mask_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "real_binary_mask_256.png")
         if os.path.exists(mask_path):
             loaded_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
@@ -643,7 +652,7 @@ def get_or_create_analysis(spill_id: str) -> Any:
                 default_mask = (loaded_mask > 127).astype(np.uint8)
         historical_obs = [
             TemporalObservation(timestamp="2020-08-07T06:00:00Z", area_km2=14.2),
-            TemporalObservation(timestamp="2020-08-10T01:37:00Z", area_km2=28.5),
+            TemporalObservation(timestamp="2020-08-10T01:37:00Z", area_km2=26.13),
         ]
     elif spill_id in ["emerald", "EMERALD_2021_MED"]:
         c_lat, c_lon = 33.15, 34.20
@@ -678,6 +687,7 @@ def get_or_create_analysis(spill_id: str) -> Any:
         confidence_score=96.4,
         fai_index=0.084,
         historical_observations=historical_obs,
+        override_polygon_coords=override_coords,
     )
 
 

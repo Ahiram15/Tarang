@@ -171,16 +171,20 @@ class CharacterizationEngine:
         confidence_score: float = 95.0,
         fai_index: float = 0.084,
         historical_observations: Optional[List[TemporalObservation]] = None,
+        override_polygon_coords: Optional[List[List[float]]] = None,
     ) -> SpillAnalysis:
         obs_time = observation_time or datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # 1. Geometry
-        geometry = self.geometry_extractor.extract(
-            binary_mask=binary_mask,
-            center_lat=center_lat,
-            center_lon=center_lon,
-            buffer_deg=buffer_deg,
-        )
+        if override_polygon_coords and len(override_polygon_coords) >= 3:
+            geometry = self.geometry_extractor.from_geo_coords(override_polygon_coords)
+        else:
+            geometry = self.geometry_extractor.extract(
+                binary_mask=binary_mask,
+                center_lat=center_lat,
+                center_lon=center_lon,
+                buffer_deg=buffer_deg,
+            )
         if geometry is None:
             raise ValueError(f"No significant oil spill region found in mask for spill {spill_id}.")
 
