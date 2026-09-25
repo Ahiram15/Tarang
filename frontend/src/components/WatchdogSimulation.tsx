@@ -12,6 +12,10 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react';
+import sentinel1Video from '../assets/sentinel-1.mp4';
+import sentinel2Video from '../assets/sentinel-2.mp4';
+import landsatVideo from '../assets/landsat.mp4';
+import eos06Video from '../assets/EOS-06.mp4';
 
 interface WatchdogSimulationProps {
   onProceedToGlobe: () => void;
@@ -38,336 +42,262 @@ interface SensorMetadata {
   metric3Value: string;
   orbitGeometry: string;
   inputMode: string;
+  pipeline: string;
+  clutterLabel: string;
+  slickLabel: string;
+  contrastLabel: string;
+  processingLatency: string;
+  targetConfidence: string;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   DIAGRAM 1: SENTINEL-1 C-BAND SAR ACTIVE RADAR WAVE MECHANISM
+   AUTHENTIC SATELLITE VIDEO STREAM DECK (REPLACING MOCK DIAGRAMS)
    ───────────────────────────────────────────────────────────── */
-const Sentinel1Diagram: React.FC = () => (
-  <svg style={{ width: '100%', height: '100%' }} viewBox="0 0 520 220" fill="none">
-    <defs>
-      <linearGradient id="s1RadarBeam" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.75" />
-        <stop offset="100%" stopColor="#00f2fe" stopOpacity="0.03" />
-      </linearGradient>
-      <linearGradient id="s1OceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#0369a1" stopOpacity="0.4" />
-        <stop offset="100%" stopColor="#082f49" stopOpacity="0.85" />
-      </linearGradient>
-    </defs>
+interface SatelliteVideoFeedProps {
+  sensor: SensorKey;
+}
 
-    {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
+const SATELLITE_VIDEO_METADATA: Record<SensorKey, {
+  src: string;
+  name: string;
+  agency: string;
+  band: string;
+  badgeColor: string;
+  orbit: string;
+  resolution: string;
+  payload: string;
+}> = {
+  sentinel1: {
+    src: sentinel1Video,
+    name: 'Sentinel-1A/B Constellation',
+    agency: 'ESA • Copernicus Program',
+    band: 'C-SAR Active Radar (5.405 GHz)',
+    badgeColor: '#00f2fe',
+    orbit: 'Polar Sun-Synchronous (693 km LEO)',
+    resolution: '10m GSD Dual-Pol (VV+VH)',
+    payload: 'Synthetic Aperture Radar (SAR) Active Antenna',
+  },
+  sentinel2: {
+    src: sentinel2Video,
+    name: 'Sentinel-2A/B Constellation',
+    agency: 'ESA • Copernicus Program',
+    band: 'MSI Multispectral (13 Spectral Bands)',
+    badgeColor: '#38bdf8',
+    orbit: 'Sun-Synchronous (786 km LEO)',
+    resolution: '10m - 20m VNIR/SWIR & FAI Glint Index',
+    payload: 'Multispectral Instrument (MSI) Telescopic Swath',
+  },
+  landsat: {
+    src: landsatVideo,
+    name: 'Landsat-8/9 Observatory',
+    agency: 'NASA / USGS',
+    band: 'OLI Optical + TIRS Cryogenic Thermal',
+    badgeColor: '#fbbf24',
+    orbit: 'Sun-Synchronous (705 km LEO)',
+    resolution: '15m Pan / 30m Multi / 100m Thermal SST',
+    payload: 'Thermal Infrared Sensor (TIRS-2) Split-Window',
+  },
+  eos06: {
+    src: eos06Video,
+    name: 'ISRO EOS-06 (Oceansat-3)',
+    agency: 'ISRO Earth Observation',
+    band: 'Ku-Band OSCAT Scatterometer (13.515 GHz)',
+    badgeColor: '#c084fc',
+    orbit: 'Sun-Synchronous (720 km Polar LEO)',
+    resolution: '20.5 RPM Conical Scan • 25 km Wind Vectors',
+    payload: 'Rotating Pencil-Beam Scatterometer & Ocean Colour Monitor',
+  },
+};
 
-    {/* Sentinel-1 Satellite Platform */}
-    <g transform="translate(62, 20)">
-      {/* Solar Arrays */}
-      <rect x="-44" y="-6" width="34" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
-      <line x1="-27" y1="-6" x2="-27" y2="6" stroke="#38bdf8" strokeWidth="0.8" />
-      <rect x="18" y="-6" width="34" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
-      <line x1="35" y1="-6" x2="35" y2="6" stroke="#38bdf8" strokeWidth="0.8" />
-      {/* Main Bus */}
-      <rect x="-10" y="-8" width="20" height="16" rx="2" fill="#0f172a" stroke="#00f2fe" strokeWidth="1.5" />
-      {/* SAR Antenna Array Bar */}
-      <rect x="-24" y="8" width="48" height="5" rx="1.5" fill="#38bdf8" stroke="#00f2fe" strokeWidth="1.2" />
-      <circle cx="0" cy="0" r="2.5" fill="#00f2fe" />
-      <text x="0" y="-12" fill="#00f2fe" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">SENTINEL-1A/B SAR (5.405 GHz C-BAND)</text>
-    </g>
+const SatelliteVideoFeed: React.FC<SatelliteVideoFeedProps> = ({ sensor }) => {
+  const meta = SATELLITE_VIDEO_METADATA[sensor];
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
 
-    {/* Microwave Transmission Cone (Active Pulses) */}
-    <polygon points="62,33 125,138 355,138" fill="url(#s1RadarBeam)" />
-    {/* Pulsed Wavefront Arcs */}
-    <path d="M 78 50 A 30 30 0 0 1 97 66" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.9" />
-    <path d="M 98 70 A 60 60 0 0 1 130 98" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.7" />
-    <path d="M 120 94 A 100 100 0 0 1 177 132" stroke="#00f2fe" strokeWidth="1.75" strokeLinecap="round" opacity="0.5" />
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => { });
+      setIsPlaying(true);
+    }
+  }, [sensor]);
 
-    {/* Incidence Angle Line & Text */}
-    <line x1="62" y1="33" x2="195" y2="138" stroke="rgba(0, 242, 254, 0.6)" strokeWidth="1.2" strokeDasharray="3 3" />
-    <text x="120" y="78" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">θ = 34.2° INCIDENCE</text>
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(() => { });
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
 
-    {/* Ocean Body */}
-    <rect x="0" y="138" width="520" height="82" fill="url(#s1OceanGrad)" />
+  return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+      background: '#020612',
+      borderRadius: '6px',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      {/* Authentic High-Definition Satellite Video */}
+      <video
+        ref={videoRef}
+        key={meta.src}
+        src={meta.src}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        }}
+      />
 
-    {/* ZONE A: Clean Rough Ocean Waves (Left side: 0 to 216) */}
-    <path d="M 0 138 Q 18 130, 36 138 T 72 138 T 108 138 T 144 138 T 180 138 T 216 138" stroke="#38bdf8" strokeWidth="2.2" fill="none" />
-    {/* Bragg Backscatter Echoes Returning to Satellite */}
-    <path d="M 150 138 L 74 33" stroke="#10b981" strokeWidth="1.75" strokeDasharray="5 3" />
-    <path d="M 105 138 L 64 33" stroke="#10b981" strokeWidth="1.4" strokeDasharray="5 3" opacity="0.8" />
-    <text x="105" y="155" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">ROUGH WATER (Bragg λ=4.8cm)</text>
-    <text x="105" y="171" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">BRIGHT ECHO: -14.2 dB</text>
+      {/* High-Tech Vignette & Scanline Overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at center, rgba(2, 6, 18, 0.05) 40%, rgba(2, 6, 18, 0.65) 100%)',
+        boxShadow: `inset 0 0 24px ${meta.badgeColor}22`,
+      }} />
 
-    {/* ZONE B: Oil Spill Monolayer Damping (Right side: 216 to 500) */}
-    <line x1="216" y1="138" x2="500" y2="138" stroke="#ef4444" strokeWidth="3.5" />
-    {/* Specular Reflection Bouncing Away to Space */}
-    <path d="M 285 138 L 455 48" stroke="#ef4444" strokeWidth="1.75" strokeDasharray="5 3" />
-    <text x="355" y="155" fill="#ef4444" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">OIL SLICK (CAPILLARY DAMPED)</text>
-    <text x="355" y="171" fill="#fca5a5" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">SPECULAR LOSS: -21.8 dB (NO ECHO)</text>
+      {/* Top Left: Live Orbital Telemetry Stream HUD Badge */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        background: 'rgba(3, 7, 18, 0.85)',
+        backdropFilter: 'blur(10px)',
+        border: `1px solid ${meta.badgeColor}40`,
+        borderRadius: '5px',
+        padding: '3px 8px',
+        boxShadow: `0 0 12px ${meta.badgeColor}25`,
+        pointerEvents: 'none',
+      }}>
+        <span style={{
+          width: '7px',
+          height: '7px',
+          borderRadius: '50%',
+          background: '#ef4444',
+          boxShadow: '0 0 8px #ef4444',
+        }} />
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '10px',
+          fontWeight: 800,
+          color: '#ffffff',
+          letterSpacing: '0.04em',
+        }}>
+          LIVE ORBIT FEED // {meta.name}
+        </span>
+      </div>
 
-    {/* Annotations Badge */}
-    <g transform="translate(340, 50)">
-      <rect x="0" y="0" width="172" height="30" rx="4" fill="rgba(3, 7, 18, 0.8)" stroke="rgba(239, 68, 68, 0.35)" strokeWidth="1" />
-      <text x="8" y="13" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="bold">● SPECULAR REFLECTION</text>
-      <text x="8" y="25" fill="#cbd5e1" fontFamily="'JetBrains Mono', monospace" fontSize="9.5">Radar pulse bounces away</text>
-    </g>
+      {/* Top Right: Agency & Sensor Spectrum Tag */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        right: '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: '2px',
+        background: 'rgba(3, 7, 18, 0.85)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRadius: '5px',
+        padding: '3px 8px',
+        pointerEvents: 'none',
+      }}>
+        <span style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: '10.5px',
+          fontWeight: 700,
+          color: meta.badgeColor,
+        }}>
+          {meta.agency}
+        </span>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '9px',
+          color: '#94a3b8',
+        }}>
+          {meta.band}
+        </span>
+      </div>
 
-    {/* Backscatter Power Trace Inset along bottom */}
-    <g transform="translate(10, 184)">
-      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(56, 189, 248, 0.12)" strokeWidth="1" />
-      <text x="10" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">SIGMA-0 (dB):</text>
-      <path d="M 115 14 L 210 14 Q 225 22, 245 22 L 440 22 Q 460 14, 485 14" stroke="#00f2fe" strokeWidth="1.75" fill="none" />
-      <circle cx="210" cy="14" r="2.5" fill="#10b981" />
-      <circle cx="340" cy="22" r="3" fill="#ef4444" />
-      <text x="145" y="11" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="600">-14.2 dB (Sea)</text>
-      <text x="295" y="18" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">-21.8 dB (Δ -7.6 dB DARK SPOT)</text>
-    </g>
-  </svg>
-);
+      {/* Bottom Left: Flight Dynamics & Resolution Readout */}
+      <div style={{
+        position: 'absolute',
+        bottom: '10px',
+        left: '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2px',
+        background: 'rgba(3, 7, 18, 0.82)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '5px',
+        padding: '4px 8px',
+        pointerEvents: 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>ORBIT:</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#e2e8f0', fontWeight: 600 }}>{meta.orbit}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>RESOLUTION:</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: meta.badgeColor, fontWeight: 700 }}>{meta.resolution}</span>
+        </div>
+      </div>
 
-/* ─────────────────────────────────────────────────────────────
-   DIAGRAM 2: SENTINEL-2 OPTICAL MSI MULTISPECTRAL & FAI
-   ───────────────────────────────────────────────────────────── */
-const Sentinel2Diagram: React.FC = () => (
-  <svg style={{ width: '100%', height: '100%' }} viewBox="0 0 520 220" fill="none">
-    <defs>
-      <linearGradient id="s2SunRays" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#fde047" stopOpacity="0.65" />
-        <stop offset="100%" stopColor="#fde047" stopOpacity="0.03" />
-      </linearGradient>
-      <linearGradient id="s2OceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#0284c7" stopOpacity="0.35" />
-        <stop offset="100%" stopColor="#082f49" stopOpacity="0.85" />
-      </linearGradient>
-    </defs>
-
-    {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-
-    {/* Solar Source */}
-    <g transform="translate(50, 22)">
-      <circle cx="0" cy="0" r="14" fill="#eab308" opacity="0.25" />
-      <circle cx="0" cy="0" r="9" fill="#facc15" />
-      <line x1="-15" y1="0" x2="15" y2="0" stroke="#fef08a" strokeWidth="1.2" />
-      <line x1="0" y1="-15" x2="0" y2="15" stroke="#fef08a" strokeWidth="1.2" />
-      <line x1="-11" y1="-11" x2="11" y2="11" stroke="#fef08a" strokeWidth="1" />
-      <line x1="-11" y1="11" x2="11" y2="-11" stroke="#fef08a" strokeWidth="1" />
-      <text x="0" y="-14" fill="#facc15" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">SOLAR BROADBAND FLUX (E₀)</text>
-    </g>
-
-    {/* Solar Illumination Cone */}
-    <polygon points="50,26 10,138 350,138" fill="url(#s2SunRays)" />
-    <line x1="50" y1="26" x2="160" y2="138" stroke="rgba(250, 204, 21, 0.5)" strokeWidth="1.2" strokeDasharray="3 3" />
-    <line x1="50" y1="26" x2="300" y2="138" stroke="rgba(250, 204, 21, 0.5)" strokeWidth="1.2" strokeDasharray="3 3" />
-
-    {/* Sentinel-2 Satellite Platform with Multispectral Payload */}
-    <g transform="translate(420, 20)">
-      <rect x="-42" y="-6" width="28" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
-      <rect x="-12" y="-9" width="24" height="18" rx="2" fill="#0f172a" stroke="#38bdf8" strokeWidth="1.5" />
-      <polygon points="-8,9 8,9 12,16 -12,16" fill="#38bdf8" stroke="#00f2fe" strokeWidth="1" />
-      <circle cx="0" cy="0" r="2.5" fill="#38bdf8" />
-      <text x="0" y="-12" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">SENTINEL-2 MSI TELESCOPE</text>
-
-      {/* Internal Prism / Dispersive Sensor Simulation */}
-      <g transform="translate(0, 18)">
-        <polygon points="0,0 -9,12 9,12" fill="rgba(56, 189, 248, 0.4)" stroke="#38bdf8" strokeWidth="0.8" />
-        <line x1="-4" y1="12" x2="-16" y2="24" stroke="#ef4444" strokeWidth="1.75" />
-        <line x1="0" y1="12" x2="0" y2="24" stroke="#a855f7" strokeWidth="1.75" />
-        <line x1="4" y1="12" x2="16" y2="24" stroke="#fbbf24" strokeWidth="1.75" />
-        <text x="-18" y="34" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="600">B4(665)</text>
-        <text x="0" y="34" fill="#a855f7" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="600" textAnchor="middle">B8(842)</text>
-        <text x="18" y="34" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" fontWeight="600">B11(1.6µ)</text>
-      </g>
-    </g>
-
-    {/* Ocean Body */}
-    <rect x="0" y="138" width="520" height="82" fill="url(#s2OceanGrad)" />
-
-    {/* Clean Water (Left: 0 to 210) -> NIR Absorbed */}
-    <path d="M 0 138 Q 24 133, 48 138 T 96 138 T 144 138 T 210 138" stroke="#38bdf8" strokeWidth="1.75" fill="none" />
-    <path d="M 110 138 L 110 168" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="3 2" />
-    <text x="105" y="155" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">CLEAN SEAWATER</text>
-    <text x="105" y="171" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="11" textAnchor="middle">Deep NIR Absorption (R ≈ 0.01)</text>
-
-    {/* Hydrocarbon Slick (Right: 210 to 495) -> High Sunglint & FAI */}
-    <rect x="210" y="136" width="285" height="5" rx="2.5" fill="url(#s2OceanGrad)" stroke="#f59e0b" strokeWidth="2.5" />
-    <path d="M 285 136 L 415 38" stroke="#f59e0b" strokeWidth="1.75" strokeDasharray="5 3" />
-    <path d="M 350 136 L 422 38" stroke="#a855f7" strokeWidth="1.75" strokeDasharray="5 3" />
-    <text x="350" y="155" fill="#f59e0b" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">OIL EMULSION SUNGLINT</text>
-    <text x="350" y="171" fill="#c084fc" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">FAI INDEX PEAK: +0.072 (B8 NIR)</text>
-
-    {/* Spectral Signature Profile Inset along bottom */}
-    <g transform="translate(10, 184)">
-      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(56, 189, 248, 0.12)" strokeWidth="1" />
-      <text x="10" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">SPECTRAL FAI:</text>
-      <path d="M 115 19 L 200 19 L 290 20 L 480 20" stroke="#38bdf8" strokeWidth="1.4" strokeDasharray="4 2" />
-      <path d="M 115 19 L 200 16 L 290 6 L 390 13 L 480 17" stroke="#f59e0b" strokeWidth="2" fill="none" />
-      <circle cx="290" cy="6" r="3" fill="#a855f7" />
-      <text x="135" y="12" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10.5">Water Baseline</text>
-      <text x="305" y="10" fill="#f59e0b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">Oil FAI Peak (0.084) @ 842nm B8</text>
-    </g>
-  </svg>
-);
-
-/* ─────────────────────────────────────────────────────────────
-   DIAGRAM 3: LANDSAT-8/9 TIRS THERMAL INFRARED SPLIT-WINDOW
-   ───────────────────────────────────────────────────────────── */
-const LandsatDiagram: React.FC = () => (
-  <svg style={{ width: '100%', height: '100%' }} viewBox="0 0 520 220" fill="none">
-    <defs>
-      <linearGradient id="lsThermalHeat" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#ef4444" stopOpacity="0.85" />
-        <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.45" />
-        <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
-      </linearGradient>
-      <linearGradient id="lsCoolSea" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#0369a1" stopOpacity="0.5" />
-        <stop offset="100%" stopColor="#082f49" stopOpacity="0.85" />
-      </linearGradient>
-    </defs>
-
-    {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-
-    {/* Landsat-8/9 Satellite Platform with Cryogenic TIRS */}
-    <g transform="translate(410, 20)">
-      <rect x="-46" y="-7" width="30" height="14" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
-      <rect x="-12" y="-10" width="26" height="20" rx="2" fill="#0f172a" stroke="#fbbf24" strokeWidth="1.5" />
-      <rect x="-9" y="10" width="20" height="9" rx="1.5" fill="#1e293b" stroke="#f59e0b" strokeWidth="1.2" />
-      <circle cx="1" cy="0" r="2.5" fill="#fbbf24" />
-      <text x="0" y="-13" fill="#fbbf24" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">LANDSAT TIRS (43K QWIP)</text>
-
-      {/* Split-Window Detector Array Badge */}
-      <g transform="translate(0, 22)">
-        <rect x="-42" y="2" width="84" height="17" rx="3" fill="rgba(3, 7, 18, 0.8)" stroke="rgba(251, 191, 36, 0.4)" strokeWidth="0.9" />
-        <text x="-36" y="14" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="10" fontWeight="600">B10(10.8µm)</text>
-        <text x="8" y="14" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10" fontWeight="600">B11(12.0µm)</text>
-      </g>
-    </g>
-
-    {/* Ocean Body */}
-    <rect x="0" y="138" width="520" height="82" fill="url(#lsCoolSea)" />
-
-    {/* Ambient Seawater (Left: 0 to 210) -> 19.4°C SST */}
-    <path d="M 0 138 Q 24 134, 48 138 T 96 138 T 144 138 T 210 138" stroke="#38bdf8" strokeWidth="1.75" fill="none" />
-    <path d="M 100 132 Q 105 106, 100 80 T 105 46" stroke="#38bdf8" strokeWidth="1.2" strokeDasharray="4 3" opacity="0.6" />
-    <text x="105" y="155" fill="#38bdf8" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">AMBIENT SEA SKIN: 19.4°C</text>
-    <text x="105" y="171" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="11" textAnchor="middle">Baseline Blackbody Flux (292.5 K)</text>
-
-    {/* Thick Crude Emulsion (Right: 210 to 495) -> Solar Heat Absorption -> Hotspot */}
-    <rect x="210" y="135" width="285" height="7" rx="3.5" fill="url(#lsThermalHeat)" stroke="#ef4444" strokeWidth="2.5" />
-    <path d="M 260 132 Q 265 94, 272 60 T 340 32" stroke="#ef4444" strokeWidth="2" strokeDasharray="5 3" />
-    <path d="M 330 132 Q 338 94, 350 60 T 400 32" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5 3" />
-    <path d="M 390 132 Q 396 94, 408 60 T 415 32" stroke="#ef4444" strokeWidth="1.75" strokeDasharray="5 3" />
-
-    <text x="350" y="155" fill="#ef4444" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">THICK CRUDE CORE: 20.6°C</text>
-    <text x="350" y="171" fill="#fbbf24" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold" textAnchor="middle">THERMAL ANOMALY: +1.2 K (Solar Absorber)</text>
-
-    {/* Thermal Gradient Inset along bottom */}
-    <g transform="translate(10, 184)">
-      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(251, 191, 36, 0.12)" strokeWidth="1" />
-      <text x="10" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">SST TRANSECT (°C):</text>
-      <path d="M 135 18 L 220 18 Q 245 6, 325 6 Q 405 6, 430 18 L 485 18" stroke="#fbbf24" strokeWidth="2" fill="none" />
-      <circle cx="325" cy="6" r="3" fill="#ef4444" />
-      <text x="155" y="13" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10.5">19.4°C Water</text>
-      <text x="338" y="12" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="bold">20.6°C Slick Core (+1.2 K ΔT)</text>
-    </g>
-  </svg>
-);
-
-/* ─────────────────────────────────────────────────────────────
-   DIAGRAM 4: ISRO EOS-06 SCATTEROMETER & CONICAL WIND GATING
-   ───────────────────────────────────────────────────────────── */
-const EOS06Diagram: React.FC = () => (
-  <svg style={{ width: '100%', height: '100%' }} viewBox="0 0 520 220" fill="none">
-    <defs>
-      <linearGradient id="eosInnerCone" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.45" />
-        <stop offset="100%" stopColor="#00f2fe" stopOpacity="0.03" />
-      </linearGradient>
-      <linearGradient id="eosOuterCone" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#c084fc" stopOpacity="0.45" />
-        <stop offset="100%" stopColor="#c084fc" stopOpacity="0.03" />
-      </linearGradient>
-      <linearGradient id="eosOceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#0369a1" stopOpacity="0.4" />
-        <stop offset="100%" stopColor="#082f49" stopOpacity="0.85" />
-      </linearGradient>
-    </defs>
-
-    {/* Background Grid */}
-    <line x1="0" y1="42" x2="520" y2="42" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="0" y1="138" x2="520" y2="138" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="260" y1="0" x2="260" y2="220" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="1" strokeDasharray="4 4" />
-
-    {/* ISRO EOS-06 Satellite Platform with Rotating Scatterometer Dish */}
-    <g transform="translate(260, 18)">
-      <rect x="-65" y="-6" width="34" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
-      <rect x="31" y="-6" width="34" height="12" rx="1.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="1" />
-      <rect x="-14" y="-8" width="28" height="16" rx="2" fill="#0f172a" stroke="#c084fc" strokeWidth="1.5" />
-      <ellipse cx="0" cy="13" rx="17" ry="5" fill="#1e293b" stroke="#c084fc" strokeWidth="1.5" />
-      <line x1="0" y1="8" x2="0" y2="13" stroke="#c084fc" strokeWidth="1.5" />
-      <circle cx="0" cy="0" r="2.5" fill="#c084fc" />
-      <text x="0" y="-12" fill="#c084fc" fontFamily="'Space Grotesk', sans-serif" fontSize="12" fontWeight="bold" textAnchor="middle">ISRO EOS-06 OSCAT (13.515 GHz Ku-Band)</text>
-      <text x="0" y="26" fill="#38bdf8" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="600" textAnchor="middle">⟳ 20.5 RPM CONICAL SCAN</text>
-    </g>
-
-    {/* Dual Conical Rotating Radar Beams */}
-    <polygon points="260,31 150,138 370,138" fill="url(#eosInnerCone)" />
-    <line x1="260" y1="31" x2="150" y2="138" stroke="#00f2fe" strokeWidth="1.2" strokeDasharray="4 3" />
-    <line x1="260" y1="31" x2="370" y2="138" stroke="#00f2fe" strokeWidth="1.2" strokeDasharray="4 3" />
-    <polygon points="260,31 70,138 450,138" fill="url(#eosOuterCone)" />
-    <line x1="260" y1="31" x2="70" y2="138" stroke="#c084fc" strokeWidth="1.4" strokeDasharray="5 3" />
-    <line x1="260" y1="31" x2="450" y2="138" stroke="#c084fc" strokeWidth="1.4" strokeDasharray="5 3" />
-
-    {/* Ocean Body */}
-    <rect x="0" y="138" width="520" height="82" fill="url(#eosOceanGrad)" />
-
-    {/* Conical Swath Footprint Ellipses on Ocean */}
-    <ellipse cx="260" cy="138" rx="110" ry="9" fill="none" stroke="#00f2fe" strokeWidth="1.75" />
-    <ellipse cx="260" cy="138" rx="190" ry="14" fill="none" stroke="#c084fc" strokeWidth="1.75" strokeDasharray="5 3" />
-
-    {/* 2D Wind Vector Field Grid on Sea Surface */}
-    <g transform="translate(100, 154)">
-      <line x1="14" y1="7" x2="-10" y2="-7" stroke="#38bdf8" strokeWidth="1.75" />
-      <polygon points="-10,-7 -4,-3 -7,0" fill="#38bdf8" />
-    </g>
-    <g transform="translate(220, 154)">
-      <line x1="14" y1="7" x2="-10" y2="-7" stroke="#10b981" strokeWidth="2.2" />
-      <polygon points="-10,-7 -4,-3 -7,0" fill="#10b981" />
-    </g>
-    <g transform="translate(340, 154)">
-      <line x1="14" y1="7" x2="-10" y2="-7" stroke="#10b981" strokeWidth="2.2" />
-      <polygon points="-10,-7 -4,-3 -7,0" fill="#10b981" />
-    </g>
-    <g transform="translate(430, 154)">
-      <line x1="14" y1="7" x2="-10" y2="-7" stroke="#38bdf8" strokeWidth="1.75" />
-      <polygon points="-10,-7 -4,-3 -7,0" fill="#38bdf8" />
-    </g>
-
-    <text x="260" y="167" fill="#10b981" fontFamily="'Space Grotesk', sans-serif" fontSize="11.5" fontWeight="bold" textAnchor="middle">
-      SURFACE WIND FIELD: 4.8 m/s @ 312° NW (VALIDATED GMF INVERSION)
-    </text>
-
-    {/* Wind Speed Gating Status Gauge Inset along bottom */}
-    <g transform="translate(10, 184)">
-      <rect x="0" y="0" width="500" height="28" rx="4" fill="rgba(2, 6, 18, 0.65)" stroke="rgba(192, 132, 252, 0.12)" strokeWidth="1" />
-      <text x="8" y="18" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="bold">WIND GATE:</text>
-      <rect x="90" y="5" width="80" height="18" rx="2.5" fill="rgba(239, 68, 68, 0.2)" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="1" />
-      <text x="130" y="17" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" textAnchor="middle">&lt;3m/s (Calm)</text>
-
-      <rect x="176" y="4" width="220" height="20" rx="2.5" fill="rgba(16, 185, 129, 0.25)" stroke="#10b981" strokeWidth="1.2" />
-      <text x="286" y="18" fill="#10b981" fontFamily="'JetBrains Mono', monospace" fontSize="10.5" fontWeight="bold" textAnchor="middle">● 3–12 m/s VALID OIL WINDOW [4.8 m/s NW]</text>
-
-      <rect x="402" y="5" width="90" height="18" rx="2.5" fill="rgba(100, 116, 139, 0.2)" stroke="rgba(100, 116, 139, 0.3)" strokeWidth="1" />
-      <text x="447" y="17" fill="#94a3b8" fontFamily="'JetBrains Mono', monospace" fontSize="9.5" textAnchor="middle">&gt;12m/s (Dispersion)</text>
-    </g>
-  </svg>
-);
+      {/* Bottom Right: Play/Pause Controls */}
+      <div style={{
+        position: 'absolute',
+        bottom: '10px',
+        right: '10px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+      }}>
+        <button
+          onClick={togglePlay}
+          style={{
+            background: 'rgba(3, 7, 18, 0.85)',
+            border: `1px solid ${meta.badgeColor}50`,
+            borderRadius: '4px',
+            color: meta.badgeColor,
+            padding: '3px 8px',
+            fontSize: '9.5px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            backdropFilter: 'blur(10px)',
+          }}
+          title={isPlaying ? 'Pause Video' : 'Play Video'}
+        >
+          <span>{isPlaying ? '⏸ PAUSE' : '▶ PLAY'}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   onProceedToGlobe,
@@ -397,6 +327,12 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
       metric3Value: 'VV + VH Dual-Pol',
       orbitGeometry: 'Sun-sync 693 km • 12d repeat',
       inputMode: 'Active Microwave SAR (5.405 GHz)',
+      pipeline: 'CDSE L1-GRD → 7×7 Gamma-MAP Despeckle → 2-Param CFAR',
+      clutterLabel: 'AMBIENT SEA CLUTTER',
+      slickLabel: 'SLICK SURFACE σ₀',
+      contrastLabel: 'CONTRAST RATIO (Δσ₀)',
+      processingLatency: '18m Acquisition Latency',
+      targetConfidence: '98.6% CFAR CONFIRMED',
     },
     sentinel2: {
       title: 'Sentinel-2A/B MSI Optical Multispectral',
@@ -416,6 +352,12 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
       metric3Value: '1610 nm (20m)',
       orbitGeometry: 'Sun-sync 786 km • 5d repeat',
       inputMode: 'Passive Solar Reflectance (13 Bands)',
+      pipeline: 'Copernicus L2A BOA → Glint Normalization → FAI Differential Profiler',
+      clutterLabel: 'OPEN WATER BASELINE',
+      slickLabel: 'EMULSIFIED SLICK FAI',
+      contrastLabel: 'SPECTRAL DELTA (ΔFAI)',
+      processingLatency: '24m Acquisition Latency',
+      targetConfidence: '95.2% GLINT VALIDATED',
     },
     landsat: {
       title: 'Landsat-8/9 TIRS Thermal Infrared',
@@ -435,6 +377,12 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
       metric3Value: '43 K QWIP Array',
       orbitGeometry: 'Sun-sync 705 km • 16d repeat',
       inputMode: 'Passive Thermal Blackbody Radiation',
+      pipeline: 'USGS L2-ST → Radiative Transfer Calibration → Split-Window ΔT',
+      clutterLabel: 'AMBIENT SST BASELINE',
+      slickLabel: 'CRUDE CORE TEMP',
+      contrastLabel: 'THERMAL ANOMALY (ΔT)',
+      processingLatency: '32m Acquisition Latency',
+      targetConfidence: '93.8% THERMAL ALIGNED',
     },
     eos06: {
       title: 'ISRO EOS-06 (Oceansat-3) Scatterometer',
@@ -454,6 +402,12 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
       metric3Value: '4.8 m/s (Optimal 3-12 m/s)',
       orbitGeometry: 'Sun-sync 720 km • 2d repeat',
       inputMode: 'Active Ku-Band Conical Radar',
+      pipeline: 'ISRO MOSDAC L2B → 25km Wind Vector Cell (WVC) → MLE Scatter Inversion',
+      clutterLabel: '10M WIND VELOCITY',
+      slickLabel: 'DAMPING REGIME',
+      contrastLabel: 'LOOK-ALIKE FILTER',
+      processingLatency: '14m Acquisition Latency',
+      targetConfidence: '99.1% MET-OCEAN VERIFIED',
     },
   };
 
@@ -573,7 +527,8 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
       flexDirection: 'column',
       background: 'radial-gradient(circle at 50% 0%, #08142a 0%, #030712 100%)',
       color: '#e2e8f0',
-      overflow: 'hidden',
+      overflowY: 'auto',
+      overflowX: 'hidden',
       userSelect: 'none',
       padding: '16px 22px',
       gap: '12px',
@@ -1186,91 +1141,219 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             {/* Ingestion Physics & ENLARGED Visual Diagram Grid */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1.75fr',
-              gap: '12px',
+              gridTemplateColumns: '1.3fr 1fr',
+              gap: '16px',
               alignItems: 'stretch',
               flex: 1,
               minHeight: 0,
             }}>
-              {/* Textual Physics Readout & Metric Badges */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px', minHeight: 0 }}>
+              {/* Telemetry, Radiometric Discrimination & Decision Rule Panel */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: '7px',
+                minHeight: '260px',
+                height: '100%',
+              }}>
+                {/* 1. Header: Mechanism Title, Channel & Confidence Badges */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: '#00f2fe',
-                      boxShadow: '0 0 6px #00f2fe',
-                    }} />
-                    <span style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '10.5px',
-                      color: '#00f2fe',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      fontWeight: 700,
-                    }}>
-                      {currentInspector.mechanismTitle}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: '#00f2fe',
+                        boxShadow: '0 0 8px #00f2fe',
+                      }} />
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '10.5px',
+                        color: '#00f2fe',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        fontWeight: 700,
+                      }}>
+                        {currentInspector.mechanismTitle}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{
+                        padding: '1px 6px',
+                        borderRadius: '3px',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '9px',
+                        color: '#38bdf8',
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                      }}>
+                        {currentInspector.channel}
+                      </span>
+                      <span style={{
+                        padding: '1px 6px',
+                        borderRadius: '3px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '9px',
+                        color: '#10b981',
+                        fontWeight: 700,
+                      }}>
+                        {currentInspector.targetConfidence}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Sensor Payload Specification Line */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '9.5px',
+                    color: '#94a3b8',
+                  }}>
+                    <span style={{ color: '#64748b', fontWeight: 700 }}>PAYLOAD:</span>
+                    <span>{currentInspector.spec}</span>
                   </div>
 
                   <p style={{
                     fontFamily: "'Inter', sans-serif",
-                    fontSize: '11.5px',
+                    fontSize: '11px',
                     color: '#cbd5e1',
-                    lineHeight: 1.42,
+                    lineHeight: 1.4,
                     margin: 0,
                   }}>
                     {currentInspector.summary}
                   </p>
                 </div>
 
-                {/* Physics Formula / Decision Rule Tag */}
-                <div style={{
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  background: 'rgba(3, 7, 18, 0.65)',
-                  border: '1px solid rgba(0, 242, 254, 0.15)',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '10px',
-                  color: '#8ed5ff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}>
-                  <span style={{ color: '#64748b', fontSize: '9px', fontWeight: 700 }}>RULE:</span>
-                  <span style={{ wordBreak: 'break-all' }}>{currentInspector.physicsFormula}</span>
-                </div>
-
-                {/* 3 Prominent Sensor Telemetry Metrics */}
+                {/* 2. Three-Column Radiometric Discrimination Matrix */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '5px',
+                  gap: '6px',
+                  padding: '6px 8px',
+                  borderRadius: '5px',
+                  background: 'rgba(3, 7, 18, 0.72)',
+                  border: '1px solid rgba(0, 242, 254, 0.18)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}>
+                  <div style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(15, 23, 42, 0.65)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}>
+                    <div style={{ color: '#94a3b8', fontSize: '8.5px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      {currentInspector.clutterLabel}
+                    </div>
+                    <div style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '11.5px', marginTop: '2px' }}>
+                      {currentInspector.clutter}
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '8px', marginTop: '1px' }}>Baseline Environment</div>
+                  </div>
+
+                  <div style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(15, 23, 42, 0.65)',
+                    border: '1px solid rgba(251, 191, 36, 0.22)',
+                  }}>
+                    <div style={{ color: '#fbbf24', fontSize: '8.5px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      {currentInspector.slickLabel}
+                    </div>
+                    <div style={{ color: '#fef08a', fontWeight: 700, fontSize: '11.5px', marginTop: '2px' }}>
+                      {currentInspector.slick}
+                    </div>
+                    <div style={{ color: '#d97706', fontSize: '8px', marginTop: '1px' }}>Hydrocarbon Target</div>
+                  </div>
+
+                  <div style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(0, 242, 254, 0.08)',
+                    border: '1px solid rgba(0, 242, 254, 0.35)',
+                  }}>
+                    <div style={{ color: '#00f2fe', fontSize: '8.5px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      {currentInspector.contrastLabel}
+                    </div>
+                    <div style={{ color: '#00f2fe', fontWeight: 800, fontSize: '11.5px', marginTop: '2px' }}>
+                      {currentInspector.contrast}
+                    </div>
+                    <div style={{ color: '#38bdf8', fontSize: '8px', marginTop: '1px' }}>Signal Contrast Δ</div>
+                  </div>
+                </div>
+
+                {/* 3. Physics Formula / Decision Rule Tag & Processing Pipeline */}
+                <div style={{
                   padding: '5px 8px',
-                  borderRadius: '6px',
+                  borderRadius: '4px',
+                  background: 'rgba(3, 7, 18, 0.75)',
+                  border: '1px solid rgba(0, 242, 254, 0.15)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '9.5px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: '#64748b', fontSize: '8.5px', fontWeight: 700 }}>RULE:</span>
+                    <span style={{ color: '#8ed5ff', wordBreak: 'break-all', fontWeight: 600 }}>
+                      {currentInspector.physicsFormula}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '6px',
+                    fontSize: '8.5px',
+                    color: '#94a3b8',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                    paddingTop: '3px',
+                  }}>
+                    <span style={{ color: '#c4b5fd', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#64748b', fontWeight: 700 }}>PIPE: </span>
+                      {currentInspector.pipeline}
+                    </span>
+                    <span style={{ color: '#38bdf8', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                      {currentInspector.processingLatency}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. 3 Prominent Sensor Telemetry Metrics */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '6px',
+                  padding: '6px 8px',
+                  borderRadius: '5px',
                   background: 'rgba(3, 7, 18, 0.6)',
                   border: '1px solid rgba(0, 242, 254, 0.12)',
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: '10px',
                 }}>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '9px' }}>{currentInspector.metric1Label}</div>
-                    <div style={{ color: '#8ed5ff', fontWeight: 700, fontSize: '11px', marginTop: '2px' }}>{currentInspector.metric1Value}</div>
+                    <div style={{ color: '#64748b', fontSize: '8.5px', textTransform: 'uppercase' }}>{currentInspector.metric1Label}</div>
+                    <div style={{ color: '#8ed5ff', fontWeight: 700, fontSize: '10.5px', marginTop: '2px' }}>{currentInspector.metric1Value}</div>
                   </div>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '9px' }}>{currentInspector.metric2Label}</div>
-                    <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: '11px', marginTop: '2px' }}>{currentInspector.metric2Value}</div>
+                    <div style={{ color: '#64748b', fontSize: '8.5px', textTransform: 'uppercase' }}>{currentInspector.metric2Label}</div>
+                    <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: '10.5px', marginTop: '2px' }}>{currentInspector.metric2Value}</div>
                   </div>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '9px' }}>{currentInspector.metric3Label}</div>
-                    <div style={{ color: '#10b981', fontWeight: 700, fontSize: '11px', marginTop: '2px' }}>{currentInspector.metric3Value}</div>
+                    <div style={{ color: '#64748b', fontSize: '8.5px', textTransform: 'uppercase' }}>{currentInspector.metric3Label}</div>
+                    <div style={{ color: '#10b981', fontWeight: 700, fontSize: '10.5px', marginTop: '2px' }}>{currentInspector.metric3Value}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Dynamic ENLARGED Visual Ingestion Diagram with Reduced Outer Box */}
+              {/* Authentic Satellite Video Stream Deck */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1278,16 +1361,18 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
                 padding: '2px',
                 borderRadius: '6px',
                 background: 'rgba(2, 6, 18, 0.65)',
-                border: '1px solid rgba(0, 242, 254, 0.12)',
-                height: '100%',
-                minHeight: '190px',
+                border: '1px solid rgba(0, 242, 254, 0.22)',
+                height: '280px',
+                minHeight: '260px',
+                maxHeight: '290px',
+                width: '100%',
+                maxWidth: '400px',
+                justifySelf: 'center',
                 position: 'relative',
                 overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.45)',
               }}>
-                {selectedSensor === 'sentinel1' && <Sentinel1Diagram />}
-                {selectedSensor === 'sentinel2' && <Sentinel2Diagram />}
-                {selectedSensor === 'landsat' && <LandsatDiagram />}
-                {selectedSensor === 'eos06' && <EOS06Diagram />}
+                <SatelliteVideoFeed sensor={selectedSensor} />
               </div>
             </div>
           </div>
@@ -1474,47 +1559,6 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
               <span style={{ color: '#64748b' }}>RATE: </span>
               <span style={{ color: '#8ed5ff', fontWeight: 700 }}>1.2 E/S</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION [E]: COMPACT TELEMETRY VERIFICATION FOOTER
-         ───────────────────────────────────────────────────────────── */}
-      <div style={{
-        height: '38px',
-        padding: '0 16px',
-        borderRadius: '8px',
-        background: 'rgba(9, 19, 37, 0.75)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(0, 242, 254, 0.18)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
-        flexShrink: 0,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <CheckCircle2 size={16} color="#10b981" />
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '12px', color: '#e2e8f0' }}>
-            <strong style={{ color: '#8ed5ff', fontWeight: 700 }}>Autonomous Pipeline Status:</strong> Sentinel-1 SAR anomaly confirmed with ISRO Oceansat-3 wind gating (4.8 m/s). Ready for 3D Globe &amp; Lagrangian drift modeling.
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '3px 10px',
-            borderRadius: '4px',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid rgba(16, 185, 129, 0.35)',
-          }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)' }} />
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
-              CONFIDENCE: 96.4%
-            </span>
           </div>
         </div>
       </div>
