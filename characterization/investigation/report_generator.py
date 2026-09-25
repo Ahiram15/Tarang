@@ -2,7 +2,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from .origin_zones import ProbableOriginZones
 from .ranking_engine import RankedInvestigationResult
@@ -38,6 +38,9 @@ def strip_emojis(text: str) -> str:
     return re.sub(r" +", " ", text).strip()
 
 
+from .sources_models import MultiSourceEvidenceComparison
+
+
 @dataclass
 class InvestigationPriorityReport:
     report_id: str
@@ -47,6 +50,7 @@ class InvestigationPriorityReport:
     vessel_investigation: RankedInvestigationResult
     coastal_warning: CoastalRiskAnalysis
     markdown_content: str
+    multi_source_comparison: Optional[MultiSourceEvidenceComparison] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -56,6 +60,7 @@ class InvestigationPriorityReport:
             "origin_analysis": self.origin_analysis.to_dict(),
             "vessel_investigation": self.vessel_investigation.to_dict(),
             "coastal_warning": self.coastal_warning.to_dict(),
+            "multi_source_comparison": self.multi_source_comparison.to_dict() if self.multi_source_comparison else None,
             "markdown_content": self.markdown_content,
         }
 
@@ -72,6 +77,7 @@ class InvestigationReportGenerator:
         origin_zones: ProbableOriginZones,
         vessel_results: RankedInvestigationResult,
         coastal_analysis: CoastalRiskAnalysis,
+        multi_source_comparison: Optional[MultiSourceEvidenceComparison] = None,
     ) -> InvestigationPriorityReport:
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         clean_spill = strip_emojis(spill_id).upper()
@@ -175,6 +181,7 @@ class InvestigationReportGenerator:
             vessel_investigation=vessel_results,
             coastal_warning=coastal_analysis,
             markdown_content=md_text,
+            multi_source_comparison=multi_source_comparison,
         )
 
     def generate_pdf(self, report: InvestigationPriorityReport) -> bytes:

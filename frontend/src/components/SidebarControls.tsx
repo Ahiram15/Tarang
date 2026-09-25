@@ -81,7 +81,7 @@ export const SidebarControls: React.FC<SidebarControlsProps> = ({
             onClick={() => setMode('historical')}
           >
             <Globe size={16} />
-            <span>🏛️ Real Historical Disasters</span>
+            <span>Historical Incidents</span>
           </button>
 
           <button
@@ -89,7 +89,7 @@ export const SidebarControls: React.FC<SidebarControlsProps> = ({
             onClick={() => setMode('simulated')}
           >
             <Flame size={16} />
-            <span>🧪 Simulated Spill Hotspots</span>
+            <span>Simulated Hotspots</span>
           </button>
 
           <button
@@ -97,7 +97,7 @@ export const SidebarControls: React.FC<SidebarControlsProps> = ({
             onClick={() => setMode('custom')}
           >
             <MapPin size={16} />
-            <span>🎯 Custom GPS Radar Target</span>
+            <span>Custom GPS Target</span>
           </button>
         </div>
 
@@ -217,11 +217,11 @@ export const SidebarControls: React.FC<SidebarControlsProps> = ({
             value={palette}
             onChange={(e) => setPalette(e.target.value)}
           >
-            <option value="False-Color RGB Composite (VV+VH+Ratio)">🌈 False-Color RGB (VV+VH+Ratio)</option>
-            <option value="Deep Ocean Marine Palette">🌊 Deep Ocean Marine Palette</option>
-            <option value="Turbo Thermal Radar Palette">🔥 Turbo Thermal Radar Palette</option>
-            <option value="Viridis Oceanographic Palette">🌌 Viridis Oceanographic Palette</option>
-            <option value="Classic Grayscale Radar">🔘 Classic Grayscale Radar</option>
+            <option value="False-Color RGB Composite (VV+VH+Ratio)">False-Color RGB Composite (VV+VH+Ratio)</option>
+            <option value="Deep Ocean Marine Palette">Deep Ocean Marine Palette</option>
+            <option value="Turbo Thermal Radar Palette">Turbo Thermal Radar Palette</option>
+            <option value="Viridis Oceanographic Palette">Viridis Oceanographic Palette</option>
+            <option value="Classic Grayscale Radar">Classic Grayscale Radar</option>
           </select>
         </div>
 

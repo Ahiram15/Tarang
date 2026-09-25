@@ -791,7 +791,7 @@ body {
   border: none !important;
 }
 
-/* 🌊 Animated Trajectory Ocean Wind Waves */
+/* Animated Trajectory Ocean Wind Waves */
 .custom-wind-wave-icon {
   background: transparent !important;
   border: none !important;
@@ -823,7 +823,7 @@ body {
   transform-origin: center center;
 }
 
-/* 🛢️ Dynamic Drifting Oil Slick Shimmer */
+/* Dynamic Drifting Oil Slick Shimmer */
 @keyframes slickDriftGlow {
   0%, 100% {
     filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.85)) drop-shadow(0 0 12px rgba(239, 68, 68, 0.4));
@@ -858,4 +858,103 @@ body {
   background: rgba(0, 242, 254, 0.2);
   border-color: #00f2fe;
   box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+}
+
+/* Radar Scanning Beam & Sweep Effect */
+@keyframes radarSweepBeam {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.radar-sweep-beam {
+  animation: radarSweepBeam 4s linear infinite;
+  transform-origin: center center;
+}
+
+/* Lagrangian Particle Advection Flow Animation */
+@keyframes particleAdvectionPulse {
+  0% {
+    stroke-dashoffset: 40;
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.95;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.3;
+  }
+}
+
+.particle-advection-flow {
+  animation: particleAdvectionPulse 2s linear infinite;
+}
+
+/* Multi-Ring Sonar Pulse */
+@keyframes multiRingPulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.sonar-ring-pulse {
+  animation: multiRingPulse 2.4s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+/* Metocean Wind / Current Flow Particles */
+@keyframes flowParticleTravel {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-20px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.metocean-flow-particle {
+  animation: flowParticleTravel 1.8s ease-in-out infinite;
+}
+
+/* Vector Arrow Pulse Glow */
+@keyframes vectorArrowGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px #22c55e) drop-shadow(0 0 8px rgba(34, 197, 94, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px #22c55e) drop-shadow(0 0 18px rgba(34, 197, 94, 0.8));
+  }
+}
+
+.vector-arrow-glow {
+  animation: vectorArrowGlow 2s infinite ease-in-out;
+}
+
+/* Glassmorphism Floating Map HUD */
+.glass-map-hud {
+  background: linear-gradient(135deg, rgba(6, 11, 25, 0.94) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }

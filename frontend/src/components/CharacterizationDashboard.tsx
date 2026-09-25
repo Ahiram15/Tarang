@@ -35,13 +35,30 @@ import {
   Maximize2,
   Eye,
   Crosshair,
+  Satellite,
+  Globe,
+  Sun,
+  Moon,
+  Ship,
+  Radio,
+  MapPin,
+  Activity,
+  Flame,
+  Zap,
+  Navigation,
+  Anchor,
+  Sparkles,
+  Clock,
+  Target,
+  Shield,
+  Minimize2,
 } from 'lucide-react';
 
 interface CharacterizationDashboardProps {
   analysis: SpillAnalysis;
   onBackToLab: () => void;
   onBackToGlobe: () => void;
-  onOpenInvestigation?: () => void;
+  onOpenInvestigation?: (spillId?: string) => void;
 }
 
 // Convert GeoJSON Polygon or MultiPolygon to React-Leaflet positions
@@ -86,18 +103,30 @@ const MapCameraController: React.FC<{
   activeLon: number;
   isPlaying: boolean;
   focusTrigger: number;
-}> = ({ bounds, activeLat, activeLon, isPlaying, focusTrigger }) => {
+  isMaximized?: boolean;
+}> = ({ bounds, activeLat, activeLon, isPlaying, focusTrigger, isMaximized }) => {
   const map = useMap();
-  const hasInitialFit = useRef(false);
+  const prevBoundsKey = useRef<string>('');
 
-  // Initial auto-zoom and explicit focus on the spill boundary
+  // Initial auto-zoom and explicit focus on the spill boundary when incident or trigger changes
   useEffect(() => {
-    if (bounds.length > 0 && (!hasInitialFit.current || focusTrigger > 0)) {
-      const b = L.latLngBounds(bounds);
-      map.fitBounds(b, { padding: [50, 50], maxZoom: 16, animate: true });
-      hasInitialFit.current = true;
+    if (bounds.length > 0) {
+      const boundsKey = `${bounds[0]?.[0]}_${bounds[0]?.[1]}_${bounds.length}_${focusTrigger}`;
+      if (boundsKey !== prevBoundsKey.current || focusTrigger > 0) {
+        prevBoundsKey.current = boundsKey;
+        const b = L.latLngBounds(bounds);
+        map.fitBounds(b, { padding: [50, 50], maxZoom: 16, animate: true });
+      }
     }
-  }, [focusTrigger, map]);
+  }, [bounds, focusTrigger, map]);
+
+  // When map expands to full screen or restores, invalidate size smoothly
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize({ animate: true });
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [isMaximized, map]);
 
   // Smoothly pan as the forecast simulation steps forward
   useEffect(() => {
@@ -241,19 +270,34 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   
   // View mode switcher: 'all' | 'hindcast' | 'forecast'
   const [viewMode, setViewMode] = useState<'all' | 'hindcast' | 'forecast'>('all');
+  const [isMapMaximized, setIsMapMaximized] = useState<boolean>(false);
 
   // Basemap and Display Toggles
   const [basemapType, setBasemapType] = useState<'satellite' | 'ocean' | 'positron' | 'dark'>('satellite');
-  const [showWindWaves, setShowWindWaves] = useState<boolean>(false);
+  const [showWindWaves, setShowWindWaves] = useState<boolean>(true);
+  const [showRadarSweep, setShowRadarSweep] = useState<boolean>(true);
   const [focusTrigger, setFocusTrigger] = useState<number>(0);
+  const [cameraTarget, setCameraTarget] = useState<'spill' | 'origin' | 'extent' | null>(null);
 
   // Layer toggles
   const [showSpillPolygon, setShowSpillPolygon] = useState<boolean>(true);
-  const [showDriftArrow, setShowDriftArrow] = useState<boolean>(false);
-  const [showHindcast, setShowHindcast] = useState<boolean>(false);
-  const [showForecast, setShowForecast] = useState<boolean>(false);
-  const [showUncertaintyCone, setShowUncertaintyCone] = useState<boolean>(false);
-  const [showFlowlines, setShowFlowlines] = useState<boolean>(false);
+  const [showDriftArrow, setShowDriftArrow] = useState<boolean>(true);
+  const [showHindcast, setShowHindcast] = useState<boolean>(true);
+  const [showForecast, setShowForecast] = useState<boolean>(true);
+  const [showUncertaintyCone, setShowUncertaintyCone] = useState<boolean>(true);
+  const [showFlowlines, setShowFlowlines] = useState<boolean>(true);
+  const [isLayersOpen, setIsLayersOpen] = useState<boolean>(false);
+
+  const activeLayersCount = [
+    showSpillPolygon,
+    showDriftArrow,
+    showWindWaves,
+    showRadarSweep,
+    showHindcast,
+    showForecast,
+    showUncertaintyCone,
+    showFlowlines,
+  ].filter(Boolean).length;
 
   const activeForecastStep = forecastSteps.find((s) => s.hours === selectedForecastHour) || forecastSteps[0];
 
@@ -390,39 +434,76 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
     setSelectedForecastHour(hoursList[prevIdx]);
   };
 
-  // Hindcast origin coordinates
-  const hindcastOrigin = analysis.hindcast.origin;
+  // Reconstructed Hindcast origin coordinates (aligned with Probable Origin in Investigation Suite)
+  const hindcastOrigin = useMemo(() => {
+    if ((analysis as any)?.investigation?.origin_analysis?.centroid) {
+      return (analysis as any).investigation.origin_analysis.centroid;
+    }
+    if (analysis?.hindcast?.origin) {
+      return analysis.hindcast.origin;
+    }
+    return { lat: centroid.lat, lon: centroid.lon };
+  }, [analysis, centroid]);
 
   const createObservedPinIcon = () =>
     L.divIcon({
       className: 'custom-observed-pin-icon',
       html: `
-        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-          <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(239, 68, 68, 0.25); border: 1.5px solid #ef4444;"></div>
-          <div style="width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #ef4444, #dc2626); border: 2px solid #ffffff; box-shadow: 0 0 14px rgba(239, 68, 68, 0.8); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 800; z-index: 10;">
-            📍
+        <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div class="sonar-ring-pulse" style="position: absolute; width: 34px; height: 34px; border-radius: 50%; background: rgba(239, 68, 68, 0.35); border: 1.5px solid #ef4444;"></div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #ef4444, #dc2626); border: 2px solid #ffffff; box-shadow: 0 0 16px rgba(239, 68, 68, 0.9); display: flex; align-items: center; justify-content: center; color: #fff; z-index: 10;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" stroke="#ffffff"/>
+              <circle cx="12" cy="12" r="3" fill="#ffffff"/>
+            </svg>
           </div>
         </div>
       `,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
     });
-
 
   const createOriginReticleIcon = () =>
     L.divIcon({
       className: 'custom-origin-reticle-icon',
       html: `
-        <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-          <div style="position: absolute; width: 34px; height: 34px; border-radius: 50%; border: 1.5px dashed #f59e0b; opacity: 0.85;"></div>
-          <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.28);"></div>
-          <div style="position: absolute; width: 2px; height: 30px; background: #f59e0b;"></div>
-          <div style="position: absolute; width: 30px; height: 2px; background: #f59e0b;"></div>
-          <div style="width: 8px; height: 8px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 10px #f59e0b; z-index: 10;"></div>
+        <div style="position: relative; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div class="sonar-ring-pulse" style="position: absolute; width: 38px; height: 38px; border-radius: 50%; border: 2px dashed #f59e0b; background: rgba(245, 158, 11, 0.15);"></div>
+          <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.35);"></div>
+          <div style="position: absolute; width: 2px; height: 34px; background: #f59e0b;"></div>
+          <div style="position: absolute; width: 34px; height: 2px; background: #f59e0b;"></div>
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 12px #f59e0b; z-index: 10;"></div>
         </div>
       `,
-      iconSize: [34, 34],
-      iconAnchor: [17, 17],
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+    });
+
+  const createRadarSweepOverlayIcon = () =>
+    L.divIcon({
+      className: 'custom-radar-sweep-icon',
+      html: `
+        <div style="position: relative; width: 220px; height: 220px; pointer-events: none; transform: translate(-50%, -50%);">
+          <svg viewBox="0 0 220 220" width="220" height="220" style="overflow: visible;">
+            <circle cx="110" cy="110" r="100" fill="rgba(0, 242, 254, 0.03)" stroke="rgba(0, 242, 254, 0.25)" stroke-width="1" stroke-dasharray="3, 3" />
+            <circle cx="110" cy="110" r="65" fill="none" stroke="rgba(0, 242, 254, 0.2)" stroke-width="1" stroke-dasharray="2, 4" />
+            <circle cx="110" cy="110" r="30" fill="none" stroke="rgba(0, 242, 254, 0.3)" stroke-width="1" />
+            <line x1="110" y1="5" x2="110" y2="215" stroke="rgba(0, 242, 254, 0.2)" stroke-width="1" stroke-dasharray="2, 4" />
+            <line x1="5" y1="110" x2="215" y2="110" stroke="rgba(0, 242, 254, 0.2)" stroke-width="1" stroke-dasharray="2, 4" />
+            <g class="radar-sweep-beam" style="transform-origin: 110px 110px;">
+              <path d="M 110 110 L 210 110 A 100 100 0 0 0 180 39 Z" fill="url(#radarGradient)" opacity="0.65" />
+            </g>
+            <defs>
+              <linearGradient id="radarGradient" gradientTransform="rotate(45)">
+                <stop offset="0%" stop-color="rgba(0, 242, 254, 0)" />
+                <stop offset="100%" stop-color="rgba(0, 242, 254, 0.45)" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+      `,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
     });
 
   const createWindWaveIcon = (angleDeg: number, delay: number, scale: number = 1.0) =>
@@ -447,12 +528,9 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
             justify-content: center;
           ">
             <svg viewBox="0 0 40 24" width="40" height="24" fill="none" style="overflow: visible;">
-              <!-- Primary Leading Wave Crest (concave curve surging forward in trajectory heading) -->
-              <path d="M 25,2 Q 37,12 25,22" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" opacity="0.95" />
-              <!-- Secondary Trailing Swell Ripple -->
-              <path d="M 17,5 Q 27,12 17,19" stroke="#00f2fe" stroke-width="1.6" stroke-linecap="round" opacity="0.7" />
-              <!-- Third Soft Wake Ripple -->
-              <path d="M 9,8 Q 17,12 9,16" stroke="#7dd3fc" stroke-width="1.1" stroke-linecap="round" opacity="0.45" />
+              <path d="M 4 20 Q 20 2 36 20" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round" fill="none" opacity="0.95" />
+              <path d="M 9 22 Q 20 8 31 22" stroke="#7dd3fc" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.65" />
+              <circle cx="20" cy="11" r="2" fill="#ffffff" opacity="0.9" />
             </svg>
           </div>
         </div>
@@ -465,86 +543,106 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
     L.divIcon({
       className: 'custom-milestone-icon',
       html: `
-        <div style="position: relative; width: ${isSelected ? 36 : 24}px; height: ${isSelected ? 36 : 24}px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-          ${isSelected ? `
-            <div style="position: absolute; top: 50%; left: 50%; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #a855f7; transform: translate(-50%, -50%); animation: sonarPulse 1.6s infinite cubic-bezier(0.2, 0.6, 0.3, 1);"></div>
-          ` : ''}
-          <div style="
-            background: ${isSelected ? '#a855f7' : 'rgba(15, 23, 42, 0.88)'};
-            color: ${isSelected ? '#ffffff' : '#c084fc'};
-            border: ${isSelected ? '2px solid #ffffff' : '1px solid #a855f7'};
-            border-radius: 50%;
-            width: ${isSelected ? 22 : 18}px;
-            height: ${isSelected ? 22 : 18}px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: ${isSelected ? '9px' : '8px'};
-            font-weight: 900;
-            box-shadow: ${isSelected ? '0 0 14px #a855f7' : '0 0 6px rgba(168,85,247,0.4)'};
-            transition: all 0.25s ease;
-          ">
-            +${hours}h
-          </div>
+        <div style="
+          background: ${isSelected ? '#a855f7' : 'rgba(15, 23, 42, 0.95)'};
+          border: 2px solid ${isSelected ? '#ffffff' : '#c084fc'};
+          color: ${isSelected ? '#ffffff' : '#e9d5ff'};
+          border-radius: 12px;
+          padding: 2px 6px;
+          font-size: 10px;
+          font-weight: 800;
+          box-shadow: ${isSelected ? '0 0 16px #a855f7' : '0 2px 6px rgba(0,0,0,0.6)'};
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          white-space: nowrap;
+          cursor: pointer;
+          transform: scale(${isSelected ? 1.15 : 0.95});
+          transition: transform 0.2s ease;
+        ">
+          <span>+${hours}h</span>
         </div>
       `,
-      iconSize: [isSelected ? 36 : 24, isSelected ? 36 : 24],
-      iconAnchor: [isSelected ? 18 : 12, isSelected ? 18 : 12],
+      iconSize: [40, 20],
+      iconAnchor: [20, 10],
     });
 
   const createAnimatedForecastIcon = (hours: number) =>
     L.divIcon({
-      className: 'custom-forecast-active-beacon',
+      className: 'custom-active-forecast-icon',
       html: `
-        <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-          <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(168, 85, 247, 0.45); animation: sonarPulse 1.4s infinite cubic-bezier(0.2, 0.6, 0.3, 1);"></div>
-          <div style="position: absolute; width: 28px; height: 28px; border-radius: 50%; border: 2px solid #ec4899; background: rgba(236, 72, 153, 0.35); animation: forecastPulse 2s infinite ease-in-out;"></div>
-          <div style="background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid #ffffff; box-shadow: 0 0 18px #ec4899, 0 0 8px #a855f7; display: flex; align-items: center; justify-content: center; color: white; font-size: 8.5px; font-weight: 900; z-index: 10;">
+        <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+          <div class="sonar-ring-pulse" style="position: absolute; width: 34px; height: 34px; border-radius: 50%; border: 2px solid #a855f7; background: rgba(168, 85, 247, 0.25);"></div>
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #a855f7, #7c3aed); border: 2px solid #ffffff; box-shadow: 0 0 14px #a855f7; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 900; z-index: 10;">
             +${hours}
           </div>
         </div>
       `,
-      iconSize: [44, 44],
-      iconAnchor: [22, 22],
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
     });
 
-
-  // Net Drift Vector Arrowhead Beacon
   const createDriftArrowheadIcon = (angleDeg: number) =>
     L.divIcon({
       className: 'custom-drift-arrowhead-icon',
       html: `
-        <div style="
-          width: 30px; 
-          height: 30px; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
+        <div class="vector-arrow-glow" style="
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           transform: rotate(${angleDeg}deg);
-          pointer-events: none;
         ">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="#22c55e" style="filter: drop-shadow(0 0 6px rgba(34,197,94,0.9));">
-            <polygon points="12,2 22,20 12,15 2,20" />
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none">
+            <polygon points="16,3 27,27 16,21 5,27" fill="#22c55e" stroke="#ffffff" stroke-width="2" />
           </svg>
         </div>
       `,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
     });
 
-  // Sensitive Marine Nature Reserve Marker
   const createReserveIcon = () =>
     L.divIcon({
       className: 'custom-reserve-icon',
       html: `
-        <div style="display: flex; align-items: center; gap: 4px; background: rgba(15,23,42,0.88); border: 1px solid #10b981; border-radius: 12px; padding: 2px 8px; font-size: 10px; font-weight: 700; color: #34d399; box-shadow: 0 0 8px rgba(16,185,129,0.4); white-space: nowrap;">
-          <span>🏝️</span>
-          <span>Ile aux Aigrettes</span>
+        <div style="background: rgba(16, 185, 129, 0.9); border: 2px solid #ffffff; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px rgba(16, 185, 129, 0.7);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
         </div>
       `,
-      iconSize: [110, 24],
-      iconAnchor: [55, 12],
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
     });
+
+  // Calculate full mission bounding box (Origin + Observed + 72h Forecast)
+  const fullMissionBounds = useMemo(() => {
+    const pts: [number, number][] = [
+      [centroid.lat, centroid.lon],
+      [hindcastOrigin.lat, hindcastOrigin.lon],
+      ...forecastSteps.map((s) => [s.centroid.lat, s.centroid.lon] as [number, number]),
+    ];
+    return pts;
+  }, [centroid, hindcastOrigin, forecastSteps]);
+
+  // Vector compass geometry calculations
+  const windDir = analysis.movement.wind.direction_deg;
+  const currentDir = analysis.movement.current.direction_deg;
+  const netDir = analysis.movement.direction_deg;
+
+  const windRad = ((windDir - 90) * Math.PI) / 180;
+  const currentRad = ((currentDir - 90) * Math.PI) / 180;
+  const netRad = ((netDir - 90) * Math.PI) / 180;
+
+  const compassRadius = 42;
+  const windTipX = 50 + compassRadius * 0.75 * Math.cos(windRad);
+  const windTipY = 50 + compassRadius * 0.75 * Math.sin(windRad);
+  const curTipX = 50 + compassRadius * 0.65 * Math.cos(currentRad);
+  const curTipY = 50 + compassRadius * 0.65 * Math.sin(currentRad);
+  const netTipX = 50 + compassRadius * 0.9 * Math.cos(netRad);
+  const netTipY = 50 + compassRadius * 0.9 * Math.sin(netRad);
 
   return (
     <div style={{
@@ -591,8 +689,8 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#00f2fe', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                🔬 OIL SPILL CHARACTERIZATION & MOVEMENT ENGINE
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#00f2fe', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Activity size={14} /> OIL SPILL CHARACTERIZATION & MOVEMENT ENGINE
               </span>
               <span style={{ fontSize: '0.75rem', color: '#64748b' }}>•</span>
               <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{analysis.spill_id.toUpperCase()}</span>
@@ -623,7 +721,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
           {/* Launch Investigation & Coastal Warning Button */}
           {onOpenInvestigation && (
             <button
-              onClick={onOpenInvestigation}
+              onClick={() => onOpenInvestigation(analysis.spill_id)}
               style={{
                 background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                 border: 'none',
@@ -639,7 +737,8 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 boxShadow: '0 0 15px rgba(245, 158, 11, 0.35)',
               }}
             >
-              <span>⚓ Vessel Investigation & Alerts →</span>
+              <Ship size={15} />
+              <span>Multi-Source Investigation & Alerts →</span>
             </button>
           )}
         </div>
@@ -705,24 +804,31 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
             <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Probable Origin (-48H)</span>
             {onOpenInvestigation && (
               <span
-                onClick={onOpenInvestigation}
+                onClick={() => onOpenInvestigation(analysis.spill_id)}
                 style={{ fontSize: '0.65rem', color: '#eab308', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}
               >
-                Vessel AIS →
+                Inspect Sources →
               </span>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1px 0' }}>
             <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#eab308' }}>
-              {hindcastOrigin.lat.toFixed(3)}°S, {hindcastOrigin.lon.toFixed(3)}°E
+              {formatLatLon(hindcastOrigin.lat, hindcastOrigin.lon)}
             </span>
           </div>
           <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Uncertainty: <b>±{analysis.hindcast.uncertainty_radius_km} km</b></span>
         </div>
       </div>
 
-      {/* Main Grid: Interactive Geospatial Map (70%) vs Intelligence Controls Deck (30%) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr', gap: '16px', flex: 1, minHeight: 0 }}>
+      {/* Main Grid: Interactive Geospatial Map vs Intelligence Controls Deck */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMapMaximized ? '1fr' : '1.38fr 0.62fr',
+        gap: '14px',
+        flex: 1,
+        minHeight: 0,
+        transition: 'grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}>
         
         {/* Left Map View */}
         <div style={{
@@ -734,195 +840,408 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
           flexDirection: 'column',
           position: 'relative',
         }}>
-          {/* View Mode & Camera Toolbar (Top-Left HUD) */}
+          {/* Unified Top Control Bar (Non-overlapping Flex Layout) */}
           <div style={{
             position: 'absolute',
-            top: '12px',
-            left: '12px',
+            top: '10px',
+            left: '10px',
+            right: '10px',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: '8px',
-            flexWrap: 'wrap',
+            pointerEvents: 'none',
           }}>
-            {/* View Mode Segmented Controller */}
+            {/* Left Controls: View Mode & Camera Actions */}
             <div style={{
-              background: 'rgba(6, 10, 20, 0.92)',
-              border: '1px solid rgba(0, 242, 254, 0.35)',
-              borderRadius: '8px',
-              padding: '3px',
               display: 'flex',
               alignItems: 'center',
-              gap: '3px',
-              backdropFilter: 'blur(10px)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+              gap: '6px',
+              pointerEvents: 'auto',
+              flexWrap: 'nowrap',
             }}>
+              {/* View Mode Segmented Controller */}
+              <div style={{
+                background: 'rgba(6, 10, 20, 0.94)',
+                border: '1px solid rgba(0, 242, 254, 0.35)',
+                borderRadius: '8px',
+                padding: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+              }}>
+                <button
+                  onClick={() => setViewMode('all')}
+                  style={{
+                    background: viewMode === 'all' ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)' : 'transparent',
+                    color: viewMode === 'all' ? '#030712' : '#94a3b8',
+                    border: 'none',
+                    borderRadius: '5px',
+                    padding: '4px 8px',
+                    fontSize: '0.70rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Globe size={12} />
+                  <span>Overview</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('hindcast')}
+                  style={{
+                    background: viewMode === 'hindcast' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'transparent',
+                    color: viewMode === 'hindcast' ? '#030712' : '#94a3b8',
+                    border: 'none',
+                    borderRadius: '5px',
+                    padding: '4px 8px',
+                    fontSize: '0.70rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <History size={12} />
+                  <span>Hindcast</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('forecast')}
+                  style={{
+                    background: viewMode === 'forecast' ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' : 'transparent',
+                    color: viewMode === 'forecast' ? '#ffffff' : '#94a3b8',
+                    border: 'none',
+                    borderRadius: '5px',
+                    padding: '4px 8px',
+                    fontSize: '0.70rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <TrendingUp size={12} />
+                  <span>Forecast</span>
+                </button>
+              </div>
+
+              {/* Quick Action: Focus Camera on Spill */}
               <button
-                onClick={() => setViewMode('all')}
+                onClick={() => {
+                  setCameraTarget('spill');
+                  setFocusTrigger((prev) => prev + 1);
+                }}
+                className="map-hud-btn"
+                title="Auto-center camera directly onto the observed oil spill"
                 style={{
-                  background: viewMode === 'all' ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)' : 'transparent',
-                  color: viewMode === 'all' ? '#030712' : '#94a3b8',
-                  border: 'none',
-                  borderRadius: '5px',
-                  padding: '5px 10px',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
+                  background: 'rgba(6, 10, 20, 0.94)',
+                  border: '1px solid #00f2fe',
+                  color: '#00f2fe',
+                  padding: '5px 9px',
+                  borderRadius: '8px',
+                  fontSize: '0.70rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  backdropFilter: 'blur(8px)',
                 }}
               >
-                🌐 Mission Overview
+                <Crosshair size={12} />
+                <span>Spill</span>
               </button>
+
+              {/* Quick Action: Focus Camera on Reconstructed Origin */}
               <button
-                onClick={() => setViewMode('hindcast')}
+                onClick={() => {
+                  setCameraTarget('origin');
+                  setFocusTrigger((prev) => prev + 1);
+                }}
+                className="map-hud-btn"
+                title="Focus camera on reconstructed probable origin"
                 style={{
-                  background: viewMode === 'hindcast' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'transparent',
-                  color: viewMode === 'hindcast' ? '#030712' : '#94a3b8',
-                  border: 'none',
-                  borderRadius: '5px',
-                  padding: '5px 10px',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
+                  background: 'rgba(6, 10, 20, 0.94)',
+                  border: '1px solid #f59e0b',
+                  color: '#f59e0b',
+                  padding: '5px 9px',
+                  borderRadius: '8px',
+                  fontSize: '0.70rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  backdropFilter: 'blur(8px)',
                 }}
               >
-                ⏪ Hindcast (-48h)
+                <History size={12} />
+                <span>Origin</span>
               </button>
+
+              {/* Quick Action: Fit Full Mission Extent */}
               <button
-                onClick={() => setViewMode('forecast')}
+                onClick={() => {
+                  setCameraTarget('extent');
+                  setFocusTrigger((prev) => prev + 1);
+                }}
+                className="map-hud-btn"
+                title="Fit map extent to cover entire trajectory (Origin to +72h)"
                 style={{
-                  background: viewMode === 'forecast' ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' : 'transparent',
-                  color: viewMode === 'forecast' ? '#ffffff' : '#94a3b8',
-                  border: 'none',
-                  borderRadius: '5px',
-                  padding: '5px 10px',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
+                  background: 'rgba(6, 10, 20, 0.94)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  color: '#f1f5f9',
+                  padding: '5px 9px',
+                  borderRadius: '8px',
+                  fontSize: '0.70rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  backdropFilter: 'blur(8px)',
                 }}
               >
-                ⏩ Forecast (+72h)
+                <Maximize2 size={12} />
+                <span>Fit</span>
               </button>
             </div>
 
-            {/* Quick Action: Focus Camera Directly on Spill */}
-            <button
-              onClick={() => setFocusTrigger((prev) => prev + 1)}
-              className="map-hud-btn"
-              title="Auto-center and zoom camera directly onto the oil spill boundary"
-              style={{
-                background: 'rgba(6, 10, 20, 0.92)',
-                border: '1px solid #00f2fe',
-                color: '#00f2fe',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                boxShadow: '0 0 14px rgba(0, 242, 254, 0.35)',
-              }}
-            >
-              <Crosshair size={14} />
-              <span>🎯 Focus Spill (Zoom 100%)</span>
-            </button>
-
-            {/* Basemap Toggle */}
-            <button
-              onClick={() => {
-                const nextBasemap = 
-                  basemapType === 'satellite' ? 'ocean' :
-                  basemapType === 'ocean' ? 'positron' :
-                  basemapType === 'positron' ? 'dark' : 'satellite';
-                setBasemapType(nextBasemap);
-              }}
-              className="map-hud-btn"
-              title="Cycle basemaps (Satellite, Ocean Blue, Positron Light, Dark Canvas)"
-              style={{
-                background: 'rgba(6, 10, 20, 0.92)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: '#f1f5f9',
-                padding: '6px 10px',
-                borderRadius: '8px',
-              }}
-            >
-              {basemapType === 'satellite' && '🛰️ Satellite Map'}
-              {basemapType === 'ocean' && '🌊 Ocean Blue'}
-              {basemapType === 'positron' && '☀️ Positron Light'}
-              {basemapType === 'dark' && '🌑 Dark Canvas'}
-            </button>
-
-            {/* Wind Waves Animation Toggle */}
-            <button
-              onClick={() => setShowWindWaves(!showWindWaves)}
-              className="map-hud-btn"
-              title="Toggle animated ocean wind waves"
-              style={{
-                background: showWindWaves ? 'rgba(56, 189, 248, 0.2)' : 'rgba(6, 10, 20, 0.92)',
-                border: showWindWaves ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.2)',
-                color: showWindWaves ? '#38bdf8' : '#94a3b8',
-                padding: '6px 10px',
-                borderRadius: '8px',
-              }}
-            >
-              <Waves size={14} />
-              <span>🌊 Wind Waves: {showWindWaves ? 'ON' : 'OFF'}</span>
-            </button>
-          </div>
-
-          {/* Map Layer Toolbar (Top-Right HUD) */}
-          <div style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            zIndex: 1000,
-            background: 'rgba(6, 10, 20, 0.92)',
-            border: '1px solid rgba(0, 242, 254, 0.3)',
-            borderRadius: '8px',
-            padding: '10px 14px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-            fontSize: '0.74rem',
-            backdropFilter: 'blur(10px)',
-          }}>
-            <div style={{ fontWeight: 800, color: '#00f2fe', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layers size={14} />
-              <span>MAP LAYERS</span>
+            {/* Center Live Coordinates & Status Pill */}
+            <div style={{
+              background: 'rgba(6, 11, 25, 0.94)',
+              border: '1px solid rgba(0, 242, 254, 0.35)',
+              borderRadius: '20px',
+              padding: '4px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+              fontSize: '0.70rem',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="badge-pulse-dot" style={{ backgroundColor: '#00f2fe' }}></span>
+                <span style={{ color: '#00f2fe', fontWeight: 800 }}>POS:</span>
+                <span style={{ color: '#f1f5f9', fontFamily: 'var(--font-mono)' }}>
+                  {cursorState.isVisible ? formatLatLon(cursorState.lat, cursorState.lon) : formatLatLon(centroid.lat, centroid.lon)}
+                </span>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <span style={{ color: '#94a3b8' }}>SPEED:</span>
+                <span style={{ color: '#22c55e', fontWeight: 800 }}>{analysis.movement.speed_mps} m/s</span>
+              </div>
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showSpillPolygon} onChange={(e) => setShowSpillPolygon(e.target.checked)} />
-              <span style={{ color: '#ef4444' }}>🔴 Drifting Spill Boundary</span>
-            </label>
+            {/* Right Controls: Basemap, Layers Popover Toggle & Maximize */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              pointerEvents: 'auto',
+              position: 'relative',
+            }}>
+              {/* Basemap Toggle */}
+              <button
+                onClick={() => {
+                  const nextBasemap = 
+                    basemapType === 'satellite' ? 'ocean' :
+                    basemapType === 'ocean' ? 'positron' :
+                    basemapType === 'positron' ? 'dark' : 'satellite';
+                  setBasemapType(nextBasemap);
+                }}
+                className="map-hud-btn"
+                title="Cycle basemaps"
+                style={{
+                  background: 'rgba(6, 10, 20, 0.94)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#f1f5f9',
+                  padding: '5px 9px',
+                  borderRadius: '8px',
+                  fontSize: '0.70rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                {basemapType === 'satellite' && <><Satellite size={12} /> <span>Satellite</span></>}
+                {basemapType === 'ocean' && <><Waves size={12} /> <span>Ocean</span></>}
+                {basemapType === 'positron' && <><Sun size={12} /> <span>Positron</span></>}
+                {basemapType === 'dark' && <><Moon size={12} /> <span>Dark</span></>}
+              </button>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showDriftArrow} onChange={(e) => setShowDriftArrow(e.target.checked)} />
-              <span style={{ color: '#22c55e' }}>🧭 Movement Drift Vector</span>
-            </label>
+              {/* Collapsible Layers Menu Button */}
+              <button
+                onClick={() => setIsLayersOpen((prev) => !prev)}
+                className="map-hud-btn"
+                title="Toggle layer visibility menu"
+                style={{
+                  background: isLayersOpen ? 'rgba(0, 242, 254, 0.25)' : 'rgba(6, 10, 20, 0.94)',
+                  border: isLayersOpen ? '1.5px solid #00f2fe' : '1px solid rgba(0, 242, 254, 0.35)',
+                  color: isLayersOpen ? '#00f2fe' : '#f1f5f9',
+                  padding: '5px 9px',
+                  borderRadius: '8px',
+                  fontSize: '0.70rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: isLayersOpen ? '0 0 12px rgba(0, 242, 254, 0.4)' : 'none',
+                }}
+              >
+                <Layers size={12} />
+                <span>Layers ({activeLayersCount})</span>
+              </button>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showWindWaves} onChange={(e) => setShowWindWaves(e.target.checked)} />
-              <span style={{ color: '#38bdf8' }}>🌊 Animated Wind Waves</span>
-            </label>
+              {/* Maximize Map Toggle */}
+              <button
+                onClick={() => setIsMapMaximized((prev) => !prev)}
+                className="map-hud-btn"
+                title={isMapMaximized ? "Restore split dashboard view" : "Maximize map screen size"}
+                style={{
+                  background: isMapMaximized ? 'rgba(0, 242, 254, 0.25)' : 'rgba(6, 10, 20, 0.94)',
+                  border: isMapMaximized ? '1.5px solid #00f2fe' : '1px solid rgba(0, 242, 254, 0.4)',
+                  color: isMapMaximized ? '#00f2fe' : '#f1f5f9',
+                  padding: '5px 9px',
+                  borderRadius: '8px',
+                  fontSize: '0.70rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: isMapMaximized ? '0 0 12px rgba(0, 242, 254, 0.5)' : 'none',
+                }}
+              >
+                {isMapMaximized ? (
+                  <>
+                    <Minimize2 size={12} color="#00f2fe" />
+                    <span>Restore</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 size={12} color="#00f2fe" />
+                    <span>Maximize</span>
+                  </>
+                )}
+              </button>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showHindcast} onChange={(e) => setShowHindcast(e.target.checked)} />
-              <span style={{ color: '#eab308' }}>⏪ Hindcast Origin Reticle</span>
-            </label>
+              {/* Clean Floating Layers Dropdown Popover */}
+              {isLayersOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '38px',
+                  right: '0px',
+                  width: '210px',
+                  zIndex: 1100,
+                  background: 'rgba(6, 10, 22, 0.97)',
+                  border: '1px solid rgba(0, 242, 254, 0.4)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  fontSize: '0.72rem',
+                  backdropFilter: 'blur(16px)',
+                  boxShadow: '0 12px 36px rgba(0,0,0,0.8), 0 0 20px rgba(0, 242, 254, 0.2)',
+                  animation: 'fadeIn 0.15s ease-out',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '2px' }}>
+                    <div style={{ fontWeight: 800, color: '#00f2fe', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Layers size={13} />
+                      <span>MAP LAYERS</span>
+                    </div>
+                    <button
+                      onClick={() => setIsLayersOpen(false)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        fontSize: '0.65rem',
+                        padding: '2px',
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showForecast} onChange={(e) => setShowForecast(e.target.checked)} />
-              <span style={{ color: '#a855f7' }}>⏩ Forecast Drift & Milestones</span>
-            </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showSpillPolygon} onChange={(e) => setShowSpillPolygon(e.target.checked)} />
+                    <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Crosshair size={12} /> Observed Spill
+                    </span>
+                  </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showUncertaintyCone} onChange={(e) => setShowUncertaintyCone(e.target.checked)} />
-              <span style={{ color: '#ec4899' }}>📐 NOAA Uncertainty Cone</span>
-            </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showDriftArrow} onChange={(e) => setShowDriftArrow(e.target.checked)} />
+                    <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Compass size={12} /> Movement Vector
+                    </span>
+                  </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '5px', marginTop: '2px' }}>
-              <input type="checkbox" checked={showFlowlines} onChange={(e) => setShowFlowlines(e.target.checked)} />
-              <span style={{ color: '#94a3b8' }}>🌊 Streamlines (40 paths)</span>
-            </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showWindWaves} onChange={(e) => setShowWindWaves(e.target.checked)} />
+                    <span style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Waves size={12} /> Ocean Waves
+                    </span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showRadarSweep} onChange={(e) => setShowRadarSweep(e.target.checked)} />
+                    <span style={{ color: '#00f2fe', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Radio size={12} /> Radar Sweep
+                    </span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showHindcast} onChange={(e) => setShowHindcast(e.target.checked)} />
+                    <span style={{ color: '#eab308', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <History size={12} /> Hindcast Reticle
+                    </span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showForecast} onChange={(e) => setShowForecast(e.target.checked)} />
+                    <span style={{ color: '#a855f7', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <TrendingUp size={12} /> Forecast (+72h)
+                    </span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showUncertaintyCone} onChange={(e) => setShowUncertaintyCone(e.target.checked)} />
+                    <span style={{ color: '#ec4899', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <ShieldAlert size={12} /> Uncertainty Cone
+                    </span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
+                    <input type="checkbox" checked={showFlowlines} onChange={(e) => setShowFlowlines(e.target.checked)} />
+                    <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Waves size={12} /> Streamlines (40)
+                    </span>
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Leaflet Map */}
@@ -943,14 +1262,21 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
 
               {/* Dynamic Camera Controller: Zooms directly into spill on demand without locking user view */}
               <MapCameraController
-                bounds={allPolyPoints}
+                bounds={
+                  cameraTarget === 'origin'
+                    ? [[hindcastOrigin.lat, hindcastOrigin.lon]]
+                    : cameraTarget === 'extent'
+                    ? fullMissionBounds
+                    : allPolyPoints
+                }
                 activeLat={activeForecastStep.centroid.lat}
                 activeLon={activeForecastStep.centroid.lon}
                 isPlaying={isPlayingForecast}
                 focusTrigger={focusTrigger}
+                isMaximized={isMapMaximized}
               />
 
-              {/* Dynamic Basemap Layer: maxNativeZoom={13} ensures ocean tile requests cap out at zoom 13 and scale smoothly without "Map data not yet available" watermarks */}
+              {/* Dynamic Basemap Layer */}
               {basemapType === 'satellite' && (
                 <TileLayer
                   url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -984,10 +1310,18 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 />
               )}
 
+              {/* 📡 Radar Scanning Sweep Overlay around Centroid */}
+              {showRadarSweep && (
+                <Marker
+                  position={[centroid.lat, centroid.lon]}
+                  icon={createRadarSweepOverlayIcon()}
+                  interactive={false}
+                />
+              )}
+
               {/* 🌊 Ocean Wind & Swell Waves Flowing Directly Along the Drift Trajectory */}
               {showWindWaves && (
                 <>
-                  {/* Subtle Advection Flow Guideline along Trajectory */}
                   {forecastSteps.length >= 2 && (
                     <Polyline
                       positions={[
@@ -999,11 +1333,11 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                         weight: 2,
                         dashArray: '4, 8',
                         opacity: 0.5,
+                        className: 'particle-advection-flow',
                       }}
                     />
                   )}
 
-                  {/* Trajectory Wave Crests Rolling in Direction of Drift */}
                   {trajectoryWaveData.map((wave, idx) => (
                     <Marker
                       key={`traj-wave-${idx}`}
@@ -1023,8 +1357,8 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     pathOptions={{
                       color: '#ef4444',
                       fillColor: '#ef4444',
-                      fillOpacity: activeForecastStep.hours > 0 ? 0.10 : 0.22,
-                      weight: activeForecastStep.hours > 0 ? 3.0 : 4.0,
+                      fillOpacity: activeForecastStep.hours > 0 ? 0.12 : 0.28,
+                      weight: activeForecastStep.hours > 0 ? 2.5 : 3.8,
                       opacity: 1.0,
                     }}
                     eventHandlers={{
@@ -1034,7 +1368,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                   >
                     <Popup>
                       <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
-                        <b style={{ color: '#dc2626' }}>🚨 Observed Oil Spill Slick Boundary</b><br />
+                        <b style={{ color: '#dc2626' }}>Observed Oil Spill Slick Boundary</b><br />
                         <b>Surface Area:</b> {analysis.geometry.area_km2} km²<br />
                         <b>Perimeter:</b> {analysis.geometry.perimeter_km} km<br />
                         <b>Centroid:</b> {formatLatLon(centroid.lat, centroid.lon)}<br />
@@ -1043,7 +1377,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     </Popup>
                   </Polygon>
 
-                  {/* 📍 Observed Incident Pin Marker at Centroid */}
                   <Marker
                     position={[centroid.lat, centroid.lon]}
                     icon={createObservedPinIcon()}
@@ -1055,10 +1388,9 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 </>
               )}
 
-              {/* 🛢️ Active Moving Slick with Advection Ribbon (T+th) */}
+              {/* Active Moving Slick with Advection Ribbon (T+th) */}
               {showSpillPolygon && activeForecastStep.hours > 0 && (
                 <>
-                  {/* Dynamic Motion Ribbon connecting T0 to Active Centroid */}
                   <Polyline
                     positions={[
                       [centroid.lat, centroid.lon],
@@ -1076,22 +1408,21 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     </Tooltip>
                   </Polyline>
 
-                  {/* Active Drifting Slick Boundary */}
                   <Polygon
                     positions={driftingSlickPositions}
                     pathOptions={{
                       color: '#f43f5e',
                       fillColor: '#f43f5e',
-                      fillOpacity: 0.18,
-                      weight: 4.0,
+                      fillOpacity: 0.22,
+                      weight: 3.5,
                       className: 'slick-drifting-boundary',
                     }}
                   >
                     <Tooltip permanent direction="top" offset={[0, -10]}>
-                      🚨 Active Moving Slick (+{activeForecastStep.hours}h)
+                      Active Moving Slick (+{activeForecastStep.hours}h)
                     </Tooltip>
                     <Popup>
-                      <b>🚨 Predicted Moving Slick (+{activeForecastStep.hours}h)</b><br />
+                      <b>Predicted Moving Slick (+{activeForecastStep.hours}h)</b><br />
                       Valid Time: {activeForecastStep.valid_time}<br />
                       Predicted Centroid: {formatLatLon(activeForecastStep.centroid.lat, activeForecastStep.centroid.lon)}<br />
                       Predicted Area: ~{(analysis.geometry.area_km2 * (1 + (activeForecastStep.hours / 72) * 0.35)).toFixed(3)} km²<br />
@@ -1113,20 +1444,19 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     </Tooltip>
                   </Polyline>
 
-                  {/* Directional Arrowhead / Waterline Intercept Beacon */}
                   {driftCoords.length >= 2 && (
                     <Marker
                       position={driftCoords[1]}
                       icon={createDriftArrowheadIcon(analysis.movement.direction_deg)}
                     >
                       <Tooltip permanent={false} direction="top">
-                        <b>🧭 Shoreline Contact Point</b><br />
+                        <b>Shoreline Contact Point</b><br />
                         Heading: {analysis.movement.direction} ({analysis.movement.direction_deg}°)<br />
                         {analysis.spill_id === 'emerald' || centroid.lat > 0 ? 'Levantine Coastal Intercept' : "Lagoon Water Edge (Pointe d'Esny)"}
                       </Tooltip>
                       <Popup>
                         <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
-                          <b style={{ color: '#16a34a' }}>🧭 Net Drift Vector Terminal</b><br />
+                          <b style={{ color: '#16a34a' }}>Net Drift Vector Terminal</b><br />
                           <b>Location:</b> {analysis.spill_id === 'emerald' || centroid.lat > 0 ? 'Levantine Coastal Waterline' : "Lagoon Waterline Intercept (Pointe d'Esny Coast)"}<br />
                           <b>Velocity:</b> {analysis.movement.speed_mps} m/s ({analysis.movement.speed_kmh} km/h)<br />
                           <b>Drift Heading:</b> {analysis.movement.direction} ({analysis.movement.direction_deg}°)<br />
@@ -1139,19 +1469,19 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 </>
               )}
 
-              {/* 🏝️ Sensitive Nature Reserves */}
+              {/* Sensitive Nature Reserves */}
               {(analysis.spill_id === 'wakashio' || centroid.lat < 0) && (
                 <Marker
                   position={[-20.4202, 57.7303]}
                   icon={createReserveIcon()}
                 >
                   <Tooltip direction="top" offset={[0, -12]}>
-                    <b>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
+                    <b>Ile aux Aigrettes Nature Reserve</b><br />
                     Endangered endemic fauna & coastal mangrove sanctuary
                   </Tooltip>
                   <Popup>
                     <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
-                      <b style={{ color: '#059669' }}>🏝️ Ile aux Aigrettes Nature Reserve</b><br />
+                      <b style={{ color: '#059669' }}>Ile aux Aigrettes Nature Reserve</b><br />
                       <b>Ecological Status:</b> High-Priority Conservation Sanctuary<br />
                       <b>Key Risk:</b> Oil slick advection entering the northern lagoon channels
                     </div>
@@ -1165,12 +1495,12 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                   icon={createReserveIcon()}
                 >
                   <Tooltip direction="top" offset={[0, -12]}>
-                    <b>🏝️ Rosh HaNikra & Achziv Marine Reserves</b><br />
+                    <b>Rosh HaNikra & Achziv Marine Reserves</b><br />
                     Protected Mediterranean marine canyon & turtle nesting sanctuary
                   </Tooltip>
                   <Popup>
                     <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
-                      <b style={{ color: '#059669' }}>🏝️ Mediterranean Coastal Sanctuaries</b><br />
+                      <b style={{ color: '#059669' }}>Mediterranean Coastal Sanctuaries</b><br />
                       <b>Ecological Status:</b> High-Priority Marine Protected Area<br />
                       <b>Key Risk:</b> Heavy crude slick shoreline washup along coastal belt
                     </div>
@@ -1181,7 +1511,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               {/* 3. Backward Hindcast (Probable Origin -48h) */}
               {showHindcast && viewMode !== 'forecast' && (
                 <>
-                  {/* Backward Central Drift Spine */}
                   <Polyline
                     positions={[
                       [hindcastOrigin.lat, hindcastOrigin.lon],
@@ -1194,7 +1523,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     </Tooltip>
                   </Polyline>
 
-                  {/* Optional Delicate Streamline Fibers */}
                   {showFlowlines && analysis.hindcast.trajectories.map((traj, idx) => (
                     <Polyline
                       key={`hind-traj-${idx}`}
@@ -1203,14 +1531,13 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     />
                   ))}
 
-                  {/* Precision Reticle Marker at Probable Origin */}
                   <Marker position={[hindcastOrigin.lat, hindcastOrigin.lon]} icon={createOriginReticleIcon()}>
                     <Tooltip direction="top" offset={[0, -18]}>
-                      <b>🎯 Grounding / Origin Zone (-48h)</b><br />
+                      <b>Grounding / Origin Zone (-48h)</b><br />
                       {analysis.hindcast.origin_time_window.estimated_origin_time}
                     </Tooltip>
                     <Popup>
-                      <b>🎯 Reconstructed Probable Origin (-48h)</b><br />
+                      <b>Reconstructed Probable Origin (-48h)</b><br />
                       Estimated Event: {analysis.hindcast.origin_time_window.estimated_origin_time}<br />
                       Coordinates: {formatLatLon(hindcastOrigin.lat, hindcastOrigin.lon)}<br />
                       Uncertainty: ±{analysis.hindcast.uncertainty_radius_km} km<br />
@@ -1218,14 +1545,21 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     </Popup>
                   </Marker>
 
-                  {/* 1-Sigma Inner Confidence Boundary (68% CI) */}
+                  {/* 5 km Distance Ring */}
+                  <Circle
+                    center={[hindcastOrigin.lat, hindcastOrigin.lon]}
+                    radius={5000}
+                    pathOptions={{ color: '#f59e0b', fillColor: 'rgba(245, 158, 11, 0.04)', fillOpacity: 0.04, weight: 1, dashArray: '4, 4' }}
+                  />
+
+                  {/* 1-Sigma Confidence Boundary */}
                   <Circle
                     center={[hindcastOrigin.lat, hindcastOrigin.lon]}
                     radius={Math.max(400, (analysis.hindcast.uncertainty_radius_km * 0.6) * 1000)}
                     pathOptions={{ color: '#f59e0b', fillColor: 'transparent', fillOpacity: 0, weight: 1.5, dashArray: '4, 4' }}
                   />
 
-                  {/* 2-Sigma Outer Confidence Boundary (95% CI) */}
+                  {/* 2-Sigma Confidence Boundary */}
                   <Circle
                     center={[hindcastOrigin.lat, hindcastOrigin.lon]}
                     radius={Math.max(700, analysis.hindcast.uncertainty_radius_km * 1000)}
@@ -1234,7 +1568,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 </>
               )}
 
-              {/* 4. Expanding Uncertainty Cone (NOAA NHC style boundary) */}
+              {/* 4. Expanding Uncertainty Cone */}
               {showUncertaintyCone && viewMode !== 'hindcast' && analysis.forecast.uncertainty_cone && (
                 <Polygon
                   key="forecast-uncertainty-cone"
@@ -1248,7 +1582,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               {/* 5. Forward Forecast Trajectory & Active Horizon */}
               {showForecast && viewMode !== 'hindcast' && (
                 <>
-                  {/* Connecting Central Trajectory Spine */}
                   {forecastSteps.length >= 2 && (
                     <Polyline
                       positions={[
@@ -1259,7 +1592,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     />
                   )}
 
-                  {/* Optional Delicate Streamline Fibers */}
                   {showFlowlines && analysis.forecast.trajectories.map((traj, idx) => (
                     <Polyline
                       key={`fore-traj-${idx}`}
@@ -1268,7 +1600,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     />
                   ))}
 
-                  {/* Milestone Markers along the forecast path */}
                   {forecastSteps.map((step) => {
                     const isSelected = step.hours === activeForecastStep.hours;
                     return (
@@ -1287,7 +1618,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                           +{step.hours}h ({step.valid_time})
                         </Tooltip>
                         <Popup>
-                          <b>🎯 Predicted Horizon: +{step.hours} Hours</b><br />
+                          <b>Predicted Horizon: +{step.hours} Hours</b><br />
                           Valid Time: {step.valid_time}<br />
                           Centroid: {formatLatLon(step.centroid.lat, step.centroid.lon)}<br />
                           Uncertainty: ±{step.uncertainty_radius_km} km<br />
@@ -1297,7 +1628,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     );
                   })}
 
-                  {/* Active Animated Beacon Marker at Current Forecast Point */}
                   <Marker
                     key={`forecast-active-beacon-${activeForecastStep.hours}`}
                     position={[activeForecastStep.centroid.lat, activeForecastStep.centroid.lon]}
@@ -1305,7 +1635,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     zIndexOffset={1000}
                   />
 
-                  {/* Active Selected Forecast Step Boundary Outline (No Covering Fill) */}
                   {activeForecastStep.polygon && (
                     <Polygon
                       key={`forecast-poly-step-${activeForecastStep.hours}`}
@@ -1318,7 +1647,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     </Polygon>
                   )}
 
-                  {/* Active Selected Forecast Uncertainty Area */}
                   <Circle
                     key={`forecast-circle-step-${activeForecastStep.hours}`}
                     center={[activeForecastStep.centroid.lat, activeForecastStep.centroid.lon]}
@@ -1329,12 +1657,12 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               )}
             </MapContainer>
 
-            {/* Bottom-Left Live Maritime Telemetry HUD Card (Elevated cleanly above timeline bar) */}
+            {/* Bottom-Left Live Maritime Telemetry HUD Card */}
             {cursorState.isVisible && (
               <div
                 style={{
                   position: 'absolute',
-                  bottom: '5.2rem',
+                  bottom: '4.8rem',
                   left: '1rem',
                   zIndex: 1000,
                   margin: 0,
@@ -1346,7 +1674,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               >
                 <SpillTooltipCard
                   mode={cursorState.isHoveringSpill ? 'spill' : 'inspector'}
-                  title={cursorState.isHoveringSpill ? '🚨 Active Spill Target (+0h)' : '🌐 Live Maritime Telemetry'}
+                  title={cursorState.isHoveringSpill ? 'Active Spill Target (+0h)' : 'Live Maritime Telemetry'}
                   lat={cursorState.lat}
                   lon={cursorState.lon}
                   areaKm2={analysis.geometry.area_km2}
@@ -1360,12 +1688,12 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
             <div
               style={{
                 position: 'absolute',
-                bottom: '1rem',
-                right: '1rem',
+                bottom: '10px',
+                right: '10px',
                 zIndex: 1000,
                 margin: 0,
                 transform: 'none',
-                maxWidth: 'calc(100% - 350px)',
+                maxWidth: 'calc(100% - 320px)',
                 boxSizing: 'border-box',
                 pointerEvents: 'auto',
                 background: 'rgba(6, 10, 20, 0.94)',
@@ -1472,23 +1800,28 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               </div>
 
               {/* Active Status Info */}
-              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '10px', marginLeft: '6px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '8px', marginLeft: '4px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.7rem', fontWeight: 800 }}>
-                  <span style={{ color: isPlayingForecast ? '#22c55e' : '#a855f7', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    {isPlayingForecast ? '🟢 ANIMATING' : 'FORECAST HORIZON'}
+                  <span style={{ color: isPlayingForecast ? '#22c55e' : '#a855f7', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {isPlayingForecast ? (
+                      <>
+                        <span className="badge-pulse-dot" style={{ backgroundColor: '#22c55e' }}></span>
+                        LIVE SIM
+                      </>
+                    ) : 'HORIZON'}
                   </span>
                   <span style={{ color: '#ffffff', background: 'rgba(168,85,247,0.35)', padding: '1px 5px', borderRadius: '4px' }}>
-                    +{activeForecastStep.hours} Hours
+                    +{activeForecastStep.hours}h
                   </span>
                 </div>
-                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
-                  {activeForecastStep.valid_time} • ±{activeForecastStep.uncertainty_radius_km} km
+                <div style={{ fontSize: '0.62rem', color: '#94a3b8' }}>
+                  {activeForecastStep.valid_time}
                 </div>
               </div>
 
               {/* Speed Toggle */}
               <button
-                onClick={() => setPlaybackSpeedMs((prev) => (prev === 1200 ? 600 : prev === 600 ? 350 : 1200))}
+                onClick={() => setPlaybackSpeedMs((prev) => (prev === 1200 ? 600 : prev === 600 ? 300 : prev === 300 ? 150 : 1200))}
                 title="Toggle playback speed"
                 style={{
                   background: 'rgba(255,255,255,0.08)',
@@ -1502,50 +1835,108 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                   flexShrink: 0,
                 }}
               >
-                {playbackSpeedMs === 350 ? '3x' : playbackSpeedMs === 600 ? '2x' : '1x'}
+                {playbackSpeedMs === 150 ? '8x' : playbackSpeedMs === 300 ? '4x' : playbackSpeedMs === 600 ? '2x' : '1x'}
               </button>
             </div>
           </div>
         </div>
 
         {/* Right Intelligence & Forecast Controls Deck */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px',
-          overflowY: 'auto',
-        }}>
+        {!isMapMaximized && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            overflowY: 'auto',
+          }}>
+          {/* Interactive Drift Physics Vector Compass Widget */}
+          <div style={{
+            background: 'rgba(10, 15, 29, 0.90)',
+            border: '1px solid rgba(0, 242, 254, 0.35)',
+            borderRadius: '10px',
+            padding: '12px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.80rem', fontWeight: 800, color: '#00f2fe', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Compass size={15} />
+                <span>DRIFT PHYSICS VECTOR ADDITION</span>
+              </span>
+              <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700 }}>LAGRANGIAN ENGINE</span>
+            </div>
+
+            {/* Compass Vector Diagram */}
+            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px', alignItems: 'center' }}>
+              {/* Polar Compass SVG */}
+              <div style={{ width: '100px', height: '100px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg viewBox="0 0 100 100" width="100" height="100" style={{ overflow: 'visible' }}>
+                  {/* Compass Outer Ring */}
+                  <circle cx="50" cy="50" r="44" fill="rgba(6, 11, 25, 0.85)" stroke="rgba(0, 242, 254, 0.3)" strokeWidth="1.5" />
+                  <circle cx="50" cy="50" r="28" fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="1" strokeDasharray="2, 2" />
+                  <circle cx="50" cy="50" r="14" fill="none" stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" />
+                  
+                  {/* Cardinal Compass Labels */}
+                  <text x="50" y="12" textAnchor="middle" fill="#f87171" fontSize="7" fontWeight="bold">N</text>
+                  <text x="90" y="52.5" textAnchor="middle" fill="#94a3b8" fontSize="6.5" fontWeight="bold">E</text>
+                  <text x="50" y="93" textAnchor="middle" fill="#94a3b8" fontSize="6.5" fontWeight="bold">S</text>
+                  <text x="10" y="52.5" textAnchor="middle" fill="#94a3b8" fontSize="6.5" fontWeight="bold">W</text>
+
+                  {/* Wind Vector (Blue) */}
+                  <line x1="50" y1="50" x2={windTipX} y2={windTipY} stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx={windTipX} cy={windTipY} r="2.5" fill="#38bdf8" />
+
+                  {/* Current Vector (Green) */}
+                  <line x1="50" y1="50" x2={curTipX} y2={curTipY} stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx={curTipX} cy={curTipY} r="2.5" fill="#22c55e" />
+
+                  {/* Resultant Net Drift Vector (Neon Cyan Glowing) */}
+                  <line x1="50" y1="50" x2={netTipX} y2={netTipY} stroke="#00f2fe" strokeWidth="3" strokeLinecap="round" strokeDasharray="3, 1" />
+                  <circle cx={netTipX} cy={netTipY} r="3.5" fill="#00f2fe" stroke="#ffffff" strokeWidth="1" />
+
+                  {/* Center origin dot */}
+                  <circle cx="50" cy="50" r="2.5" fill="#ffffff" />
+                </svg>
+              </div>
+
+              {/* Vector Stats & Equations */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.70rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(56, 189, 248, 0.1)', padding: '3px 6px', borderRadius: '4px', borderLeft: '2px solid #38bdf8' }}>
+                  <span style={{ color: '#38bdf8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Wind size={12} /> Wind (3% Leeway):
+                  </span>
+                  <span style={{ color: '#f1f5f9', fontWeight: 800 }}>{(analysis.movement.wind.speed_mps * 0.03).toFixed(2)} m/s @ {analysis.movement.wind.direction_deg}°</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(34, 197, 94, 0.1)', padding: '3px 6px', borderRadius: '4px', borderLeft: '2px solid #22c55e' }}>
+                  <span style={{ color: '#22c55e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Waves size={12} /> Current Advection:
+                  </span>
+                  <span style={{ color: '#f1f5f9', fontWeight: 800 }}>{analysis.movement.current.speed_mps} m/s @ {analysis.movement.current.direction_deg}°</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0, 242, 254, 0.15)', padding: '3px 6px', borderRadius: '4px', borderLeft: '2px solid #00f2fe' }}>
+                  <span style={{ color: '#00f2fe', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Compass size={12} /> Resultant Net Drift:
+                  </span>
+                  <span style={{ color: '#00f2fe', fontWeight: 800 }}>{analysis.movement.speed_mps} m/s @ {analysis.movement.direction_deg}°</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Forecast Horizon Timeline Controller */}
           <div style={{
             background: 'rgba(10, 15, 29, 0.85)',
             border: '1px solid rgba(0, 242, 254, 0.3)',
             borderRadius: '10px',
-            padding: '14px',
+            padding: '12px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#a855f7', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <TrendingUp size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.80rem', fontWeight: 800, color: '#a855f7', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <TrendingUp size={15} />
                 <span>PREDICTIVE FORECAST TIMELINE</span>
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {/* Speed toggle */}
-                <button
-                  onClick={() => setPlaybackSpeedMs((prev) => (prev === 1200 ? 600 : 1200))}
-                  title="Toggle animation playback speed"
-                  style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#94a3b8',
-                    borderRadius: '4px',
-                    padding: '3px 6px',
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {playbackSpeedMs === 600 ? '2x Fast' : '1x Normal'}
-                </button>
-                {/* Play / Pause button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <button
                   onClick={() => setIsPlayingForecast(!isPlayingForecast)}
                   style={{
@@ -1554,23 +1945,22 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     color: isPlayingForecast ? '#ef4444' : '#a855f7',
                     borderRadius: '4px',
                     padding: '3px 8px',
-                    fontSize: '0.72rem',
+                    fontSize: '0.70rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    boxShadow: isPlayingForecast ? '0 0 10px rgba(239,68,68,0.3)' : '0 0 10px rgba(168,85,247,0.3)',
                   }}
                 >
-                  {isPlayingForecast ? <Pause size={12} /> : <Play size={12} />}
-                  <span>{isPlayingForecast ? 'Pause' : 'Play Animation'}</span>
+                  {isPlayingForecast ? <Pause size={11} /> : <Play size={11} />}
+                  <span>{isPlayingForecast ? 'Pause' : 'Play'}</span>
                 </button>
               </div>
             </div>
 
             {/* Stepper buttons & Milestone Pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
               <button
                 onClick={handleStepBackward}
                 title="Previous forecast milestone"
@@ -1579,17 +1969,17 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                   border: '1px solid rgba(255,255,255,0.1)',
                   color: '#94a3b8',
                   borderRadius: '4px',
-                  padding: '6px 4px',
+                  padding: '5px 4px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <SkipBack size={12} />
+                <SkipBack size={11} />
               </button>
 
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecastSteps.length}, 1fr)`, gap: '4px', flex: 1 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecastSteps.length}, 1fr)`, gap: '3px', flex: 1 }}>
                 {forecastSteps.map((step) => {
                   const isActive = selectedForecastHour === step.hours;
                   return (
@@ -1600,15 +1990,14 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                         setSelectedForecastHour(step.hours);
                       }}
                       style={{
-                        padding: '6px 2px',
-                        borderRadius: '6px',
+                        padding: '5px 2px',
+                        borderRadius: '5px',
                         border: isActive ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
                         background: isActive ? 'rgba(168, 85, 247, 0.35)' : 'rgba(0,0,0,0.3)',
                         color: isActive ? '#fff' : '#94a3b8',
-                        fontSize: '0.75rem',
+                        fontSize: '0.72rem',
                         fontWeight: 800,
                         cursor: 'pointer',
-                        boxShadow: isActive ? '0 0 10px rgba(168, 85, 247, 0.4)' : 'none',
                         transition: 'all 0.2s ease',
                       }}
                     >
@@ -1626,19 +2015,19 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                   border: '1px solid rgba(255,255,255,0.1)',
                   color: '#94a3b8',
                   borderRadius: '4px',
-                  padding: '6px 4px',
+                  padding: '5px 4px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <SkipForward size={12} />
+                <SkipForward size={11} />
               </button>
             </div>
 
             {/* Selected Horizon Status */}
-            <div style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ background: 'rgba(0,0,0,0.4)', padding: '8px 10px', borderRadius: '6px', fontSize: '0.72rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#64748b' }}>Forecast Horizon:</span>
                 <span style={{ color: '#a855f7', fontWeight: 800 }}>+{activeForecastStep.hours} Hours</span>
@@ -1663,28 +2052,28 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
             background: 'rgba(10, 15, 29, 0.85)',
             border: '1px solid rgba(0, 242, 254, 0.25)',
             borderRadius: '10px',
-            padding: '14px',
+            padding: '12px',
           }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#38bdf8', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Wind size={16} />
+            <div style={{ fontSize: '0.80rem', fontWeight: 800, color: '#38bdf8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Wind size={15} />
               <span>HYDRODYNAMIC FORCING VECTORS</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>WIND VELOCITY</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#38bdf8' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>WIND VELOCITY</div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8' }}>
                   {analysis.movement.wind.speed_mps} m/s ({analysis.movement.wind.cardinal})
                 </div>
-                <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{analysis.movement.wind.direction_deg}° • 3% Leeway</div>
+                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{analysis.movement.wind.direction_deg}° • 3% Leeway</div>
               </div>
 
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>OCEAN CURRENT</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#22c55e' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>OCEAN CURRENT</div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#22c55e' }}>
                   {analysis.movement.current.speed_mps} m/s ({analysis.movement.current.cardinal})
                 </div>
-                <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{analysis.movement.current.direction_deg}° • Advection</div>
+                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{analysis.movement.current.direction_deg}° • Advection</div>
               </div>
             </div>
           </div>
@@ -1694,15 +2083,15 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
             background: 'rgba(10, 15, 29, 0.85)',
             border: '1px solid rgba(0, 242, 254, 0.25)',
             borderRadius: '10px',
-            padding: '14px',
+            padding: '12px',
           }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#f97316', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <History size={16} />
+            <div style={{ fontSize: '0.80rem', fontWeight: 800, color: '#f97316', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <History size={15} />
               <span>MULTI-TEMPORAL OBSERVATION SERIES</span>
             </div>
 
             {analysis.spreading.observations?.map((obs, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <span style={{ color: '#94a3b8' }}>Pass #{idx + 1} ({obs.timestamp.split('T')[0]}):</span>
                 <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{obs.area_km2} km²</span>
               </div>
@@ -1710,6 +2099,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
           </div>
 
         </div>
+        )}
 
       </div>
     </div>

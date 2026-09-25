@@ -148,7 +148,7 @@ export const GlobalSurveillanceMap: React.FC<GlobalMapProps> = ({
           >
             <Popup>
               <div style={{ color: '#070a13', fontSize: '12px', minWidth: '200px' }}>
-                <h4 style={{ margin: '0 0 4px 0', color: '#b91c1c' }}>🚨 {inc.name}</h4>
+                <h4 style={{ margin: '0 0 4px 0', color: '#b91c1c' }}>{inc.name}</h4>
                 <p style={{ margin: '0 0 4px 0' }}><b>Date:</b> {inc.date}</p>
                 <p style={{ margin: '0 0 4px 0' }}><b>Contaminated Area:</b> ~{inc.area_km2} km²</p>
                 <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#444' }}>{inc.desc}</p>
@@ -192,14 +192,14 @@ export const GlobalSurveillanceMap: React.FC<GlobalMapProps> = ({
         >
           <SpillTooltipCard
             mode={cursorState.hoveredIncident ? 'spill' : 'inspector'}
-            title={cursorState.hoveredIncident ? `🚨 Active Spill Target (+0h)` : '🌐 Live Maritime Telemetry'}
+            title={cursorState.hoveredIncident ? `Active Spill Target (+0h)` : 'Live Maritime Telemetry'}
             lat={cursorState.lat}
             lon={cursorState.lon}
             areaKm2={cursorState.hoveredIncident?.area_km2}
             timestamp={cursorState.hoveredIncident ? `${cursorState.hoveredIncident.date} UTC` : undefined}
             spillId={cursorState.hoveredIncident?.id}
             badge={cursorState.hoveredIncident ? 'SAR S1/S2' : 'LIVE GPS'}
-            customSubtitle={cursorState.hoveredIncident ? '👉 Click pin to inspect full telemetry' : undefined}
+            customSubtitle={cursorState.hoveredIncident ? 'Click pin to inspect full telemetry' : undefined}
           />
         </div>
       )}
