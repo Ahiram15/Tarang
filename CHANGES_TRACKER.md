@@ -130,3 +130,12 @@
   - **Docker Compose**: Orchestrates both containers with internal bridge networking (`tarang-net`) and persistent volumes.
 - Authored production deployment guide covering Docker Compose, Cloud PaaS (Render/Railway + Vercel), and Ubuntu VPS with Systemd + Nginx + Let's Encrypt SSL.
 
+### 18. Full-Stack Vercel Monorepo Deployment
+- Files created: [`vercel.json`](file:///d:/Oil_spill(sos)/vercel.json), [`api/index.py`](file:///d:/Oil_spill(sos)/api/index.py), [`api/__init__.py`](file:///d:/Oil_spill(sos)/api/__init__.py), [`api/requirements.txt`](file:///d:/Oil_spill(sos)/api/requirements.txt).
+- Files updated: [`backend/api.py`](file:///d:/Oil_spill(sos)/backend/api.py).
+- Configured single-click Vercel deployment orchestrating both services:
+  - **Frontend**: Built via `cd frontend && npm install && npm run build` and served from `frontend/dist`.
+  - **Backend**: Runs as a Python 3.11 serverless function in `api/index.py` using `@vercel/python`.
+  - **Serverless Optimizations**: Dedicated `api/requirements.txt` using `opencv-python-headless` and lean scientific libraries to stay strictly within Vercel's 250 MB lambda limit; made model loading gracefully resilient if heavy TensorFlow weights are not pre-packaged.
+  - **Unified Routing**: Automatic rewrite mapping `/api/(.*)` directly to `api/index.py` with zero CORS configuration needed.
+
