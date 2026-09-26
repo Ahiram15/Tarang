@@ -11,7 +11,13 @@ if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 
 import numpy as np
-import cv2
+# cv2 is optional — only used if available (not needed for serverless Vercel deployment)
+try:
+    import cv2
+    _CV2_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    _CV2_AVAILABLE = False
 from PIL import Image
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response
@@ -126,13 +132,157 @@ HISTORICAL_INCIDENTS = [
 SIMULATED_HOTSPOTS = []
 
 
+# ---------------------------------------------------------------------------
+# Pure numpy/pillow colour-map LUTs (replaces opencv colormaps)
+# ---------------------------------------------------------------------------
+
+def _make_jet_lut() -> np.ndarray:
+    """Build a 256×3 uint8 JET colormap LUT."""
+    lut = np.zeros((256, 3), dtype=np.uint8)
+    for i in range(256):
+        t = i / 255.0
+        r = np.clip(1.5 - abs(4*t - 3), 0, 1)
+        g = np.clip(1.5 - abs(4*t - 2), 0, 1)
+        b = np.clip(1.5 - abs(4*t - 1), 0, 1)
+        lut[i] = [int(r*255), int(g*255), int(b*255)]
+    return lut
+
+def _make_ocean_lut() -> np.ndarray:
+    lut = np.zeros((256, 3), dtype=np.uint8)
+    for i in range(256):
+        t = i / 255.0
+        lut[i] = [int(t*0*255), int(t*0.5*255), int((0.2+0.8*t)*255)]
+    return lut
+
+def _make_viridis_lut() -> np.ndarray:
+    # Approximate viridis with known control points
+    cps = np.array([
+        [68, 1, 84], [59, 82, 139], [33, 145, 140],
+        [94, 201, 98], [253, 231, 37]
+    ], dtype=np.float32)
+    lut = np.zeros((256, 3), dtype=np.uint8)
+    for i in range(256):
+        t = i / 255.0 * (len(cps) - 1)
+        lo, hi = int(t), min(int(t)+1, len(cps)-1)
+        f = t - lo
+        lut[i] = np.clip(cps[lo] * (1-f) + cps[hi] * f, 0, 255).astype(np.uint8)
+    return lut
+
+_JET_LUT = _make_jet_lut()
+_OCEAN_LUT = _make_ocean_lut()
+_VIRIDIS_LUT = _make_viridis_lut()
+
+
+def _apply_lut(gray_uint8: np.ndarray, lut: np.ndarray) -> np.ndarray:
+    """Map a grayscale image through a 256×3 LUT to produce an RGB image."""
+    return lut[gray_uint8]
+
+
+def _gray2rgb(gray: np.ndarray) -> np.ndarray:
+    if gray.ndim == 2:
+        return np.stack([gray]*3, axis=-1)
+    return gray
+
+
+def _resize_np(img: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
+    """Resize a numpy image array using PIL BICUBIC."""
+    mode = "L" if img.ndim == 2 else "RGB"
+    pil = Image.fromarray(img.astype(np.uint8), mode=mode)
+    pil = pil.resize((out_w, out_h), Image.BICUBIC)
+    return np.array(pil)
+
+
+def _load_image_rgb(path: str) -> Optional[np.ndarray]:
+    """Load an image file as a numpy RGB array (returns None if missing)."""
+    if not os.path.exists(path):
+        return None
+    try:
+        pil = Image.open(path).convert("RGB")
+        return np.array(pil)
+    except Exception:
+        return None
+
+
+def _load_image_gray(path: str) -> Optional[np.ndarray]:
+    """Load an image file as a numpy grayscale array (returns None if missing)."""
+    if not os.path.exists(path):
+        return None
+    try:
+        pil = Image.open(path).convert("L")
+        return np.array(pil)
+    except Exception:
+        return None
+
+
+def _find_contours_numpy(binary_mask: np.ndarray):
+    """
+    Simple contour finder using scipy/numpy (no cv2).
+    Returns a list of (N,2) int arrays [row, col] for each connected component boundary.
+    Uses a fast edge-detection approach: erode and XOR to get boundary pixels,
+    then returns approximate polygon vertices per connected blob.
+    """
+    from PIL import ImageFilter
+    # Label connected components via flood-fill through PIL
+    mask_pil = Image.fromarray((binary_mask * 255).astype(np.uint8), "L")
+    # Erode to find interior, boundary = mask XOR eroded
+    eroded = np.array(mask_pil.filter(ImageFilter.MinFilter(3))) > 127
+    boundary = binary_mask.astype(bool) & ~eroded
+    # Find bounding box of the largest blob (approximate single-contour)
+    rows = np.where(binary_mask.any(axis=1))[0]
+    cols = np.where(binary_mask.any(axis=0))[0]
+    if len(rows) == 0 or len(cols) == 0:
+        return []
+    r0, r1, c0, c1 = rows[0], rows[-1], cols[0], cols[-1]
+    # Build approximate convex polygon around the blob
+    try:
+        from shapely.geometry import MultiPoint
+        pts = np.column_stack(np.where(boundary))
+        if len(pts) < 4:
+            return []
+        hull = MultiPoint(pts[:, ::-1]).convex_hull  # xy order
+        if hull.geom_type == 'Polygon':
+            coords = np.array(hull.exterior.coords, dtype=np.int32)  # (N,2) [x,y]
+            return [coords]
+        return []
+    except Exception:
+        # Fallback: rectangular approximation
+        rect = np.array([[c0,r0],[c1,r0],[c1,r1],[c0,r1]], dtype=np.int32)
+        return [rect]
+
+
+def _draw_polygon_on_image(img: np.ndarray, pts: np.ndarray, color=(0,242,254), thickness=2, fill_color=None, fill_alpha=0.35) -> np.ndarray:
+    """Draw a polygon outline (and optional fill) on a numpy RGB image using PIL."""
+    pil = Image.fromarray(img.astype(np.uint8), "RGB")
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(pil, "RGBA")
+    xy = [(int(p[0]), int(p[1])) for p in pts]
+    if fill_color is not None:
+        fa = int(fill_alpha * 255)
+        draw.polygon(xy, fill=(*fill_color, fa))
+    # Draw outline
+    if len(xy) >= 2:
+        draw.line(xy + [xy[0]], fill=(*color, 255), width=thickness)
+    return np.array(pil.convert("RGB"))
+
+
+def _sharpen_np(img: np.ndarray) -> np.ndarray:
+    """Apply an unsharp-mask sharpening pass via PIL."""
+    pil = Image.fromarray(img.astype(np.uint8), "RGB")
+    from PIL import ImageFilter
+    pil = pil.filter(ImageFilter.UnsharpMask(radius=1, percent=120, threshold=3))
+    return np.array(pil)
+
+
+# ---------------------------------------------------------------------------
+# Public image helper API (cv2-compatible surface)
+# ---------------------------------------------------------------------------
+
 def image_to_base64(img_array: np.ndarray, format="PNG") -> str:
     """Converts a numpy image array (uint8) to a base64 data URL string."""
     if img_array is None:
         return None
     if img_array.dtype != np.uint8:
         img_array = np.clip(img_array, 0, 255).astype(np.uint8)
-    
     pil_img = Image.fromarray(img_array)
     buf = io.BytesIO()
     pil_img.save(buf, format=format)
@@ -141,21 +291,28 @@ def image_to_base64(img_array: np.ndarray, format="PNG") -> str:
 
 
 def enhance_visual_quality(img: np.ndarray) -> np.ndarray:
-    """Bilateral edge-preserving filter + CLAHE contrast enhancement."""
+    """Edge-preserving contrast enhancement (CLAHE-like) via PIL."""
     if img is None:
         return img
-    if img.ndim == 3:
-        lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
-        l, a, b = cv2.split(lab)
-        l_filtered = cv2.bilateralFilter(l, d=5, sigmaColor=30, sigmaSpace=30)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        l_enhanced = clahe.apply(l_filtered)
-        lab_enhanced = cv2.merge((l_enhanced, a, b))
-        return cv2.cvtColor(lab_enhanced, cv2.COLOR_LAB2RGB)
-    else:
-        filtered = cv2.bilateralFilter(img, d=5, sigmaColor=30, sigmaSpace=30)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        return clahe.apply(filtered)
+    if _CV2_AVAILABLE:
+        if img.ndim == 3:
+            lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+            l, a, b = cv2.split(lab)
+            l_filtered = cv2.bilateralFilter(l, d=5, sigmaColor=30, sigmaSpace=30)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            l_enhanced = clahe.apply(l_filtered)
+            return cv2.cvtColor(cv2.merge((l_enhanced, a, b)), cv2.COLOR_LAB2RGB)
+        else:
+            filtered = cv2.bilateralFilter(img, d=5, sigmaColor=30, sigmaSpace=30)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            return clahe.apply(filtered)
+    # Pillow fallback
+    from PIL import ImageFilter, ImageOps
+    mode = "L" if img.ndim == 2 else "RGB"
+    pil = Image.fromarray(img.astype(np.uint8), mode)
+    pil = pil.filter(ImageFilter.SMOOTH_MORE)
+    pil = ImageOps.autocontrast(pil, cutoff=1)
+    return np.array(pil)
 
 
 def apply_color_palette(gray_img: np.ndarray, color_rgb_img: np.ndarray, palette_choice: str, enhance: bool = True) -> np.ndarray:
@@ -164,20 +321,16 @@ def apply_color_palette(gray_img: np.ndarray, color_rgb_img: np.ndarray, palette
     base_rgb = enhance_visual_quality(color_rgb_img) if enhance else color_rgb_img
 
     if "False-Color" in palette_choice or palette_choice == "rgb":
-        return base_rgb
+        return base_rgb if base_rgb is not None else _gray2rgb(base_gray)
     elif "Deep Ocean" in palette_choice or palette_choice == "ocean":
-        colored = cv2.applyColorMap(base_gray, cv2.COLORMAP_OCEAN)
-        return cv2.cvtColor(colored, cv2.COLOR_BGR2RGB)
+        return _apply_lut(base_gray if base_gray.ndim == 2 else base_gray[:, :, 0], _OCEAN_LUT)
     elif "Turbo" in palette_choice or palette_choice == "turbo":
-        colored = cv2.applyColorMap(base_gray, cv2.COLORMAP_TURBO)
-        return cv2.cvtColor(colored, cv2.COLOR_BGR2RGB)
+        # Approximate turbo with jet LUT
+        return _apply_lut(base_gray if base_gray.ndim == 2 else base_gray[:, :, 0], _JET_LUT)
     elif "Viridis" in palette_choice or palette_choice == "viridis":
-        colored = cv2.applyColorMap(base_gray, cv2.COLORMAP_VIRIDIS)
-        return cv2.cvtColor(colored, cv2.COLOR_BGR2RGB)
+        return _apply_lut(base_gray if base_gray.ndim == 2 else base_gray[:, :, 0], _VIRIDIS_LUT)
     else:
-        if base_gray.ndim == 2:
-            return cv2.cvtColor(base_gray, cv2.COLOR_GRAY2RGB)
-        return base_gray
+        return _gray2rgb(base_gray)
 
 
 class ScanRequest(BaseModel):
@@ -273,7 +426,7 @@ def run_satellite_scan(req: ScanRequest):
         optical_img_rgb, scene_info_s2 = CDSEClient.get_mock_sentinel2_optical(incident=incident_name)
 
     # 1. Raw SAR (unfiltered microwave speckle noise tensor)
-    raw_sar_display = cv2.cvtColor(sar_img_gray, cv2.COLOR_GRAY2RGB) if sar_img_gray is not None else (sar_img_color.copy() if sar_img_color is not None else None)
+    raw_sar_display = _gray2rgb(sar_img_gray) if sar_img_gray is not None else (sar_img_color.copy() if sar_img_color is not None else None)
 
     palette_key_map = {
         "False-Color": "false_color_rgb",
@@ -301,8 +454,12 @@ def run_satellite_scan(req: ScanRequest):
     cached_pal_sr = os.path.join(benchmark_dir, f"{matched_pal_key}_super_res.png")
 
     if not is_live and os.path.exists(cached_pal_256) and os.path.exists(cached_pal_sr):
-        enhanced_sar = cv2.cvtColor(cv2.imread(cached_pal_256), cv2.COLOR_BGR2RGB)
-        super_res_sar = cv2.cvtColor(cv2.imread(cached_pal_sr), cv2.COLOR_BGR2RGB)
+        enhanced_sar = _load_image_rgb(cached_pal_256)
+        super_res_sar = _load_image_rgb(cached_pal_sr)
+        if enhanced_sar is None:
+            enhanced_sar = apply_color_palette(orig_resized_gray, sar_img_color, req.palette, enhance=True)
+        if super_res_sar is None:
+            super_res_sar = enhanced_sar
         h, w = enhanced_sar.shape[:2]
     else:
         # 3. Enhanced Despeckled SAR (DnCNN / Bilateral + CLAHE)
@@ -310,9 +467,8 @@ def run_satellite_scan(req: ScanRequest):
 
         # 4. Super-Resolution Upscaling (Real-ESRGAN / Bicubic Sub-Pixel Reconstruction)
         h, w = enhanced_sar.shape[:2]
-        super_res_sar = cv2.resize(enhanced_sar, (w * 4, h * 4), interpolation=cv2.INTER_CUBIC)
-        sharpen_k = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-        super_res_sar = cv2.filter2D(super_res_sar, -1, sharpen_k)
+        super_res_sar = _resize_np(enhanced_sar, w * 4, h * 4)
+        super_res_sar = _sharpen_np(super_res_sar)
 
     # 5. Enhanced Optical Daylight Image
     if optical_img_rgb is not None:
@@ -323,12 +479,17 @@ def run_satellite_scan(req: ScanRequest):
     # 6. Binary Mask & Spill Metrics (Calibrated with authentic benchmark mask for Wakashio ground truth)
     benchmark_mask_path = os.path.join(benchmark_dir, "real_binary_mask_256.png")
     if not is_live and os.path.exists(benchmark_mask_path):
-        loaded_bench_mask = cv2.imread(benchmark_mask_path, cv2.IMREAD_GRAYSCALE)
+        loaded_bench_mask = _load_image_gray(benchmark_mask_path)
         if loaded_bench_mask is not None:
             binary_mask = (loaded_bench_mask > 127).astype(np.uint8)
-            # Create a smooth, authentic continuous probability field aligned with the authentic mask
-            dist_inside = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
-            dist_outside = cv2.distanceTransform(1 - binary_mask, cv2.DIST_L2, 5)
+            # Create a smooth probability field aligned with the benchmark mask (no cv2 distanceTransform)
+            # Simple gradient-based approximation using cumulative distance from edges
+            from PIL import ImageFilter
+            _bm_pil = Image.fromarray((binary_mask * 255).astype(np.uint8), "L")
+            _inner = np.array(_bm_pil.filter(ImageFilter.MinFilter(9))) > 127
+            _outer = np.array(_bm_pil.filter(ImageFilter.MaxFilter(9))) > 127
+            dist_inside = _inner.astype(np.float32) * 4.0
+            dist_outside = (~_outer).astype(np.float32) * 4.0
             prob_map = 0.52 + 0.44 * (dist_inside / (dist_inside.max() + 1e-5)) - 0.48 * np.clip(dist_outside / 8.0, 0, 1.0)
             pred_prob = np.clip(prob_map, 0.02, 0.965)
             max_confidence = 0.964
@@ -342,107 +503,91 @@ def run_satellite_scan(req: ScanRequest):
     spill_pct = float((spill_pixels / total_pixels) * 100.0)
     spill_area_sq_km = round((spill_pixels * 400.0) / 1_000_000.0, 2)
 
-    # 7. Extract Exact Vector Polygon Contours & Vertex Nodes
-    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
+    # 7. Extract Exact Vector Polygon Contours & Vertex Nodes (cv2-free)
+    contours = _find_contours_numpy(binary_mask)
+
     polygon_vertices_geo = []
     polygon_vertices_px = []
     perimeter_pixels = 0.0
 
     # Create Polygon Overlay Image
-    if enhanced_sar.ndim == 2:
-        poly_img = cv2.cvtColor(enhanced_sar, cv2.COLOR_GRAY2RGB)
-    else:
-        poly_img = enhanced_sar.copy()
-
-    # Semi-transparent fill layer
-    fill_layer = poly_img.copy()
+    poly_img = _gray2rgb(enhanced_sar) if enhanced_sar.ndim == 2 else enhanced_sar.copy()
 
     # Create Zoomed In High-Resolution Crop Image
     zoomed_poly_img = None
+    approx_poly = None
 
     if len(contours) > 0:
-        # Get largest contour representing main spill slick
-        main_contour = max(contours, key=cv2.contourArea)
-        
-        # Approximate polygon boundary with smooth naturalistic resolution
-        approx_poly = cv2.approxPolyDP(main_contour, epsilon=0.8, closed=True)
-        perimeter_pixels = float(cv2.arcLength(approx_poly, closed=True))
+        # Largest contour — already in (N,2) [x,y] format from _find_contours_numpy
+        approx_poly = contours[0]  # shapely hull coords
+        xs = approx_poly[:, 0]
+        ys = approx_poly[:, 1]
 
-        for idx, pt in enumerate(approx_poly):
-            px_x, px_y = int(pt[0][0]), int(pt[0][1])
-            polygon_vertices_px.append([px_x, px_y])
+        # Perimeter approximation
+        dx = np.diff(np.append(xs, xs[0]))
+        dy = np.diff(np.append(ys, ys[0]))
+        perimeter_pixels = float(np.sum(np.sqrt(dx**2 + dy**2)))
+
+        for px_x, px_y in zip(xs.tolist(), ys.tolist()):
+            polygon_vertices_px.append([int(px_x), int(px_y)])
             pt_lon = req.lon - req.buffer + (px_x / w) * (2 * req.buffer)
             pt_lat = req.lat + req.buffer - (px_y / h) * (2 * req.buffer)
             polygon_vertices_geo.append([round(pt_lon, 6), round(pt_lat, 6)])
 
-        # Close GeoJSON polygon ring if needed
         if len(polygon_vertices_geo) > 0 and polygon_vertices_geo[0] != polygon_vertices_geo[-1]:
             polygon_vertices_geo.append(polygon_vertices_geo[0])
 
-        # Bounding box for Zoomed-In Crop centered on the slick
-        bx, by, bw, bh = cv2.boundingRect(approx_poly)
+        # Bounding box for zoomed crop
+        bx, by = int(xs.min()), int(ys.min())
+        bw, bh = int(xs.max()) - bx, int(ys.max()) - by
         pad = max(20, int(max(bw, bh) * 0.35))
         x1 = max(0, bx - pad)
         y1 = max(0, by - pad)
         x2 = min(w, bx + bw + pad)
         y2 = min(h, by + bh + pad)
 
-        # 1. Base Crop first BEFORE drawing nodes so it is rendered natively at high resolution
         crop_base = enhanced_sar[y1:y2, x1:x2].copy()
         if crop_base.size > 0:
-            zoomed_poly_img = cv2.resize(crop_base, (512, 512), interpolation=cv2.INTER_CUBIC)
+            zoomed_poly_img = _resize_np(crop_base, 512, 512)
             scale_x = 512.0 / max(1, (x2 - x1))
             scale_y = 512.0 / max(1, (y2 - y1))
+            scaled_pts = np.array(
+                [[int(round((px - x1) * scale_x)), int(round((py - y1) * scale_y))]
+                 for px, py in zip(xs, ys)], dtype=np.int32
+            )
+            zoomed_poly_img = _draw_polygon_on_image(
+                zoomed_poly_img, scaled_pts,
+                color=(0, 242, 254), thickness=2,
+                fill_color=(0, 70, 90), fill_alpha=0.35
+            )
+            # HUD annotation via PIL
+            from PIL import ImageDraw, ImageFont
+            _zpil = Image.fromarray(zoomed_poly_img)
+            _zd = ImageDraw.Draw(_zpil)
+            _zd.rectangle([(0, 0), (511, 511)], outline=(0, 242, 254), width=2)
+            _zd.text((14, 10), "4X ZOOM: OIL SLICK VECTOR PERIMETER", fill=(0, 242, 254))
+            _zd.text((14, 495), f"Perimeter: ~{round((perimeter_pixels*20)/1000, 2)} km | Area: ~{spill_area_sq_km} km2", fill=(255, 255, 255))
+            zoomed_poly_img = np.array(_zpil)
 
-            scaled_pts = []
-            for pt in approx_poly:
-                zx = int(round((pt[0][0] - x1) * scale_x))
-                zy = int(round((pt[0][1] - y1) * scale_y))
-                scaled_pts.append([zx, zy])
-
-            scaled_arr = np.array(scaled_pts, dtype=np.int32)
-            # Subtle translucent lagoon highlight fill inside the perimeter
-            fill_overlay = zoomed_poly_img.copy()
-            cv2.fillPoly(fill_overlay, [scaled_arr], (0, 70, 90))
-            cv2.addWeighted(fill_overlay, 0.35, zoomed_poly_img, 0.65, 0, zoomed_poly_img)
-            # High-resolution continuous glowing neon perimeter (zero dots)
-            cv2.polylines(zoomed_poly_img, [scaled_arr], isClosed=True, color=(0, 140, 200), thickness=3, lineType=cv2.LINE_AA)
-            cv2.polylines(zoomed_poly_img, [scaled_arr], isClosed=True, color=(0, 242, 254), thickness=2, lineType=cv2.LINE_AA)
-
-            # Subtle tactical HUD border & telemetry
-            cv2.rectangle(zoomed_poly_img, (0, 0), (511, 511), (0, 242, 254), 2)
-            cv2.putText(zoomed_poly_img, "4X ZOOM: OIL SLICK VECTOR PERIMETER", (14, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (0, 242, 254), 2, cv2.LINE_AA)
-            cv2.putText(zoomed_poly_img, f"Perimeter: ~{round((perimeter_pixels*20)/1000, 2)} km | Area: ~{spill_area_sq_km} km2", (14, 490), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
-
-        # 2. Draw clean wide vector on poly_img (Continuous smooth vector line without dots)
-        cv2.polylines(poly_img, [approx_poly], isClosed=True, color=(0, 160, 210), thickness=2, lineType=cv2.LINE_AA)
-        cv2.polylines(poly_img, [approx_poly], isClosed=True, color=(0, 242, 254), thickness=1, lineType=cv2.LINE_AA)
+        poly_img = _draw_polygon_on_image(poly_img, approx_poly, color=(0, 242, 254), thickness=2)
 
     if zoomed_poly_img is None:
-        zoomed_poly_img = cv2.resize(poly_img, (512, 512), interpolation=cv2.INTER_CUBIC)
+        zoomed_poly_img = _resize_np(poly_img, 512, 512)
 
-    # Convert perimeter to approximate kilometers (1 px ~ 20 meters)
     perimeter_km = round((perimeter_pixels * 20.0) / 1000.0, 2)
 
     # 8. Heatmap & Red Overlay
     hm_uint8 = np.clip(pred_prob * 255.0, 0, 255).astype(np.uint8)
-    hm_colored = cv2.applyColorMap(hm_uint8, cv2.COLORMAP_JET)
-    hm_rgb = cv2.cvtColor(hm_colored, cv2.COLOR_BGR2RGB)
+    hm_rgb = _apply_lut(hm_uint8, _JET_LUT)
 
-    mask_rgb = np.stack([binary_mask * 255] * 3, axis=-1)
+    mask_rgb = np.stack([binary_mask * 255] * 3, axis=-1).astype(np.uint8)
 
-    if enhanced_sar.ndim == 2:
-        overlay_base = cv2.cvtColor(enhanced_sar, cv2.COLOR_GRAY2RGB)
-    else:
-        overlay_base = enhanced_sar.copy()
-    # Smooth alpha-blended spill highlight and continuous vector boundary
+    overlay_base = _gray2rgb(enhanced_sar) if enhanced_sar.ndim == 2 else enhanced_sar.copy()
     overlay_tint = overlay_base.copy()
     overlay_tint[binary_mask == 1] = [239, 68, 68]
-    overlay_base = cv2.addWeighted(overlay_tint, 0.60, overlay_base, 0.40, 0)
-    if len(contours) > 0:
-        cv2.polylines(overlay_base, [approx_poly], isClosed=True, color=(255, 255, 255), thickness=2, lineType=cv2.LINE_AA)
-        cv2.polylines(overlay_base, [approx_poly], isClosed=True, color=(239, 68, 68), thickness=1, lineType=cv2.LINE_AA)
+    overlay_base = np.clip(overlay_tint * 0.60 + overlay_base * 0.40, 0, 255).astype(np.uint8)
+    if approx_poly is not None:
+        overlay_base = _draw_polygon_on_image(overlay_base, approx_poly, color=(239, 68, 68), thickness=2)
 
     # 9. Floating Algae/Oil Index (FAI) Confirmation
     fai_val = 0.084 if spill_pixels > 100 else 0.005
@@ -455,48 +600,25 @@ def run_satellite_scan(req: ScanRequest):
     # 4. Landsat-8 Optical (Aug 14 clean)
     # 5. EOS-06 Alternative (NASA MODIS Ocean Colour, Aug 11)
 
-    s1_sar_path = os.path.join(benchmark_dir, "sentinel1_sar_rgb_512.png")
-    s1_sar_img = None
-    if os.path.exists(s1_sar_path):
-        s1_bgr = cv2.imread(s1_sar_path)
-        if s1_bgr is not None:
-            s1_sar_img = cv2.cvtColor(s1_bgr, cv2.COLOR_BGR2RGB)
-
-    s1_pass2_path = os.path.join(benchmark_dir, "sentinel1_20200815_hull_break_sar.png")
-    s1_pass2_img = None
-    if os.path.exists(s1_pass2_path):
-        p2_bgr = cv2.imread(s1_pass2_path)
-        if p2_bgr is not None:
-            s1_pass2_img = cv2.cvtColor(p2_bgr, cv2.COLOR_BGR2RGB)
+    s1_sar_img = _load_image_rgb(os.path.join(benchmark_dir, "sentinel1_sar_rgb_512.png"))
+    s1_pass2_img = _load_image_rgb(os.path.join(benchmark_dir, "sentinel1_20200815_hull_break_sar.png"))
 
     s2_opt_path = os.path.join(benchmark_dir, "sentinel2_optical_512.png")
     if not os.path.exists(s2_opt_path):
         s2_opt_path = os.path.join(benchmark_dir, "sentinel2_true_color_512.png")
     if not os.path.exists(s2_opt_path):
         s2_opt_path = os.path.join(benchmark_dir, "original_esa_sentinel2_wakashio.jpg")
-    s2_opt_img = None
-    if os.path.exists(s2_opt_path):
-        s2_bgr = cv2.imread(s2_opt_path)
-        if s2_bgr is not None:
-            s2_opt_img = cv2.cvtColor(s2_bgr, cv2.COLOR_BGR2RGB)
+    s2_opt_img = _load_image_rgb(s2_opt_path)
 
     landsat_path = os.path.join(benchmark_dir, "landsat8_clean_512.png")
     if not os.path.exists(landsat_path):
         landsat_path = os.path.join(benchmark_dir, "landsat8_20200814_rgb_scene.png")
-    landsat_img = None
-    if os.path.exists(landsat_path):
-        l_bgr = cv2.imread(landsat_path)
-        if l_bgr is not None:
-            landsat_img = cv2.cvtColor(l_bgr, cv2.COLOR_BGR2RGB)
+    landsat_img = _load_image_rgb(landsat_path)
 
     eos_alt_path = os.path.join(benchmark_dir, "eos06_modis_alternative_512.png")
     if not os.path.exists(eos_alt_path):
         eos_alt_path = os.path.join(benchmark_dir, "modis_terra_20200811_ocean_color.jpg")
-    eos_alt_img = None
-    if os.path.exists(eos_alt_path):
-        m_bgr = cv2.imread(eos_alt_path)
-        if m_bgr is not None:
-            eos_alt_img = cv2.cvtColor(m_bgr, cv2.COLOR_BGR2RGB)
+    eos_alt_img = _load_image_rgb(eos_alt_path)
 
     return {
         "success": True,
@@ -676,7 +798,7 @@ def get_or_create_analysis(spill_id: str) -> Any:
         buffer_deg = 0.12
         mask_path = os.path.join(os.path.dirname(__file__), "data", "emerald_benchmark", "real_binary_mask_256.png")
         if os.path.exists(mask_path):
-            loaded_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            loaded_mask = _load_image_gray(mask_path)
             if loaded_mask is not None:
                 default_mask = (loaded_mask > 127).astype(np.uint8)
         else:
@@ -694,7 +816,7 @@ def get_or_create_analysis(spill_id: str) -> Any:
         buffer_deg = 0.03
         mask_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "real_binary_mask_256.png")
         if os.path.exists(mask_path):
-            loaded_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            loaded_mask = _load_image_gray(mask_path)
             if loaded_mask is not None:
                 default_mask = (loaded_mask > 127).astype(np.uint8)
         historical_obs = [
