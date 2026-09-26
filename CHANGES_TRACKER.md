@@ -107,3 +107,9 @@
 - Implemented root backwards-compatibility proxy shim (`api.py`) to support seamless local running (`uvicorn api:app`).
 - Added `tests/conftest.py` ensuring pytest passes all 25 unit and integration tests.
 - Updated [PROJECT_RULES.md](file:///d:/Oil_spill(sos)/PROJECT_RULES.md), [README.md](file:///d:/Oil_spill(sos)/README.md), and [API_INTEGRATIONS.md](file:///d:/Oil_spill(sos)/API_INTEGRATIONS.md) to reflect the new structure.
+
+### 16. Wakashio Original Coordinates Polygon Restored
+- Files updated: [`backend/data/wakashio_benchmark/real_spill_polygon.json`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_spill_polygon.json), [`backend/data/wakashio_benchmark/real_binary_mask_256.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_binary_mask_256.png), [`backend/api.py`](file:///d:/Oil_spill(sos)/backend/api.py).
+- Restored original Wakashio benchmark polygon vertices, bounding box, impacted zone vertices, and centroid `(-20.402098, 57.725183)` with `26.13 km²` area and `26.96 km` perimeter.
+- Restored authentic binary ground truth benchmark mask (`real_binary_mask_256.png`).
+- Preserved historical multi-temporal observation sequence: 14.2 km² (2020-08-07) and 26.13 km² (2020-08-10).
