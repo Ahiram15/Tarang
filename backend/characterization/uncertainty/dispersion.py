@@ -2,7 +2,10 @@ import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 import numpy as np
-from scipy.spatial import ConvexHull
+try:
+    from scipy.spatial import ConvexHull
+except ImportError:
+    ConvexHull = None
 from shapely.geometry import Polygon, mapping
 
 
@@ -65,11 +68,16 @@ class DispersionAnalyzer:
         if len(lons) >= 4:
             points = np.column_stack([lons, lats])
             try:
-                hull = ConvexHull(points)
-                hull_coords = [[round(float(points[idx, 0]), 6), round(float(points[idx, 1]), 6)] for idx in hull.vertices]
-                if hull_coords[0] != hull_coords[-1]:
-                    hull_coords.append(hull_coords[0])
-                poly = Polygon(hull_coords)
+                try:
+                    from scipy.spatial import ConvexHull
+                    hull = ConvexHull(points)
+                    hull_coords = [[round(float(points[idx, 0]), 6), round(float(points[idx, 1]), 6)] for idx in hull.vertices]
+                    if hull_coords[0] != hull_coords[-1]:
+                        hull_coords.append(hull_coords[0])
+                    poly = Polygon(hull_coords)
+                except (ImportError, Exception):
+                    from shapely.geometry import MultiPoint
+                    poly = MultiPoint(points).convex_hull
                 hull_geojson = mapping(poly)
             except Exception:
                 hull_geojson = {}
