@@ -42,7 +42,7 @@ This document serves as the comprehensive architectural specification for the fi
 * **Protocol:** HTTPS POST (Evalscript)
 * **Authentication:** OAuth2 Client Credentials (`https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token`).
 * **Purpose:** Performs on-the-fly cloud cropping, band extraction, orthorectification, and radiometric calibration to download small $512 \times 512$ or $1024 \times 1024$ pixel patches rather than raw 1.5 GB scene archives.
-* **Current Status in TARANG:** **Active** in `cdse_client.py`. Generates calibrated SAR float arrays and Sentinel-2 RGB/NIR matrices.
+* **Current Status in TARANG:** **Active** in `backend/cdse_client.py`. Generates calibrated SAR float arrays and Sentinel-2 RGB/NIR matrices.
 
 ### 1.3 USGS Landsat M2M & AWS Planetary Computer STAC API
 * **Base URL:** `https://planetarycomputer.microsoft.com/api/stac/v1` (Public Mirror)
@@ -71,7 +71,7 @@ This document serves as the comprehensive architectural specification for the fi
   1. `public-global-presence:latest`: Historical vessel presence, gridded track history, and gear/vessel classification.
   2. `public-global-vessel-identity:latest`: Resolves MMSI, IMO number, callsign, vessel flag state, vessel name, deadweight tonnage, and ownership records.
   3. `public-global-sar-presence:latest`: Pre-processed spaceborne SAR radar vessel detections (radar reflections matched against AIS footprints to identify dark vessels).
-* **Current Status in TARANG:** **Active** in `characterization/investigation/gfw_provider.py` with multi-tier candidate categorization (A, B, C) and realistic offline fallback for instant demonstration.
+* **Current Status in TARANG:** **Active** in `backend/characterization/investigation/gfw_provider.py` with multi-tier candidate categorization (A, B, C) and realistic offline fallback for instant demonstration.
 
 ---
 
@@ -157,5 +157,5 @@ All API keys, secrets, and baseline endpoints are configured through `.env` (ref
 To ensure 24/7 high-availability and zero downtime even during third-party API rate limits or outages:
 1. **Satellite Ingest:** If CDSE Process API is temporarily unreachable, the system falls back to cached Sentinel tiles or pre-processed scene arrays for the incident AOI.
 2. **Vessel Intelligence:** If live GFW Gateway or AISStream times out, the built-in deterministic maritime AIS/SAR traffic scenario generator provides valid, realistic vessel candidate records with complete telemetry for uninterrupted analysis.
-3. **MeteoOcean Forcing:** If CMEMS/ERA5 servers are unresponsive, the system seamlessly uses the high-fidelity analytical trade-wind and South Equatorial Current field defined in `characterization/movement/environmental_provider.py`.
-4. **Docket Dispatch:** If Resend is unreachable, the generated PDF with computed SHA-256 checksum is persisted locally in `characterization/investigation/reports/` for manual retrieval and out-of-band transmission.
+3. **MeteoOcean Forcing:** If CMEMS/ERA5 servers are unresponsive, the system seamlessly uses the high-fidelity analytical trade-wind and South Equatorial Current field defined in `backend/characterization/movement/environmental_provider.py`.
+4. **Docket Dispatch:** If Resend is unreachable, the generated PDF with computed SHA-256 checksum is persisted locally in `backend/characterization/investigation/reports/` for manual retrieval and out-of-band transmission.

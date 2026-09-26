@@ -81,8 +81,29 @@
 - Designed structured dark-theme tooltip cards with labeled data rows and red SAR sensor badges.
 
 ### 12. Dynamic Cursor Tracking & Context-Aware Hover Modes
-- Files updated: [`CharacterizationDashboard.tsx`](file:///d:/Project/Tarang/frontend/src/components/CharacterizationDashboard.tsx), [`GlobalSurveillanceMap.tsx`](file:///d:/Project/Tarang/frontend/src/components/GlobalSurveillanceMap.tsx), [`MaritimeInvestigationSuite.tsx`](file:///d:/Project/Tarang/frontend/src/components/MaritimeInvestigationSuite.tsx)
+- Files updated: [`CharacterizationDashboard.tsx`](file:///d:/Project/Tarang/frontend/src/components/CharacterizationDashboard.tsx), [`MaritimeInvestigationSuite.tsx`](file:///d:/Project/Tarang/frontend/src/components/MaritimeInvestigationSuite.tsx)
 - Added `MapMouseTracker` global map mousemove listener throttled at 30ms for smooth 60fps tracking without UI frame drops.
 - Context-Aware Hover Modes:
   - **State A (Outside Spill)**: `📍 Marine Coordinate Inspector` displaying live cursor GPS DMS/Decimal coordinates, live Sea Basin, and nearest coastal proximity.
   - **State B (Inside Spill / Pin)**: `🚨 Observed Spill Slick (+0h)` displaying live cursor GPS, Sea Basin, coastal proximity, PLUS surface area (`~2.805 km²`) and detection timestamp (`05 Feb 2021 03:50 UTC`).
+
+### 13. GIS Layer Decluttering & Satellite Basemap Locking
+- Files updated: [`CharacterizationDashboard.tsx`](file:///d:/Project/Tarang/frontend/src/components/CharacterizationDashboard.tsx), [`MaritimeInvestigationSuite.tsx`](file:///d:/Project/Tarang/frontend/src/components/MaritimeInvestigationSuite.tsx)
+- Locked both Characterization and Maritime Investigation suites exclusively to high-resolution **Esri World Imagery** satellite map.
+- Removed animated wave ripples and clutter lines from Page 3.
+- Restructured Page 4 GIS source layers into two dedicated tabs:
+  - **Tab 1 (Suspect Vessels)**: Probable Origin (1σ/2σ/3σ), AIS Vessels & Tracks, Backward Hindcast Trajectories, Counterfactual Simulated Slick, AIS Transmission Blackouts, SAR Radar Vessel Detections.
+  - **Tab 2 (Infrastructure & Coast)**: Ports & Terminals, Subsea Pipelines, Offshore Platforms, Refineries, Natural Seeps, Threatened Coastal Assets.
+- Heavy visual layers defaulted to off/unchecked so maps open crisp and high-contrast without visual clutter.
+
+### 14. Removal of Obsolete Prototypes & GSD Artifacts
+- Removed deleted `.gsd/` documentation and style configs from repository and added to `.gitignore`.
+- Removed 6 unused early prototype components (`GlobalSurveillanceMap.tsx`, `IncidentsTable.tsx`, `MultiSatelliteViewer.tsx`, `Navbar.tsx`, `SidebarControls.tsx`, `TelemetryDisplay.tsx`) superseded by the 5 main mission suites.
+- Cleaned up one-off scripts (`frontend/download.py`, `characterization/update_authentic_coords.py`) and offline design mockups (`stitch_designs/`).
+
+### 15. Clean Separation of Frontend & Backend Architecture
+- Centralized all Python microservices, models, datasets, and characterization pipelines into **`backend/`**:
+  - `backend/api.py`, `backend/cdse_client.py`, `backend/preprocess.py`, `backend/unet_oilspill.h5`, `backend/model_capabilities.yaml`, `backend/requirements.txt`, `backend/characterization/`, `backend/modules/`, and `backend/data/`.
+- Implemented root backwards-compatibility proxy shim (`api.py`) to support seamless local running (`uvicorn api:app`).
+- Added `tests/conftest.py` ensuring pytest passes all 25 unit and integration tests.
+- Updated [PROJECT_RULES.md](file:///d:/Oil_spill(sos)/PROJECT_RULES.md), [README.md](file:///d:/Oil_spill(sos)/README.md), and [API_INTEGRATIONS.md](file:///d:/Oil_spill(sos)/API_INTEGRATIONS.md) to reflect the new structure.
