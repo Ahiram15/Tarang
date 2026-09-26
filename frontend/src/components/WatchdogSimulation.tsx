@@ -12,10 +12,10 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react';
-import sentinel1Video from '../assets/sentinel-1.mp4';
-import sentinel2Video from '../assets/sentinel-2.mp4';
-import landsatVideo from '../assets/landsat.mp4';
-import eos06Video from '../assets/EOS-06.mp4';
+const sentinel1Video = '/videos/sentinel-1.mp4';
+const sentinel2Video = '/videos/sentinel-2.mp4';
+const landsatVideo = '/videos/landsat.mp4';
+const eos06Video = '/videos/EOS-06.mp4';
 import { IncidentLocation } from '../types';
 
 interface WatchdogSimulationProps {
