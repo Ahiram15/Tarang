@@ -86,11 +86,17 @@ export interface VisualLayers {
   probability_heatmap: string | null;
   binary_mask: string | null;
   red_overlay: string | null;
+  landsat_optical?: string | null;
+  sentinel1_pass2?: string | null;
+  eos06_alternative?: string | null;
 }
 
 export interface SatelliteMetadata {
   sentinel1_radar: Record<string, any>;
   sentinel2_optical: Record<string, any>;
+  sentinel1_pass2?: Record<string, any>;
+  landsat8?: Record<string, any>;
+  eos06_note?: Record<string, any>;
 }
 
 export interface ScanResponse {

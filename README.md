@@ -51,35 +51,35 @@ The system combines:
               Wave Damping Anomaly)               Floating Algae/Oil Index)
                          │                                 │
                          ▼                                 │
-             ┌───────────────────────┐                     │
-             │     preprocess.py     │                     │
-             │ Adaptive SAR Baseline │                     │
-             │      Calibration      │                     │
-             └───────────┬───────────┘                     │
+             ┌─────────────────────────┐                   │
+             │  backend/preprocess.py  │                   │
+             │  Adaptive SAR Baseline  │                   │
+             │       Calibration       │                   │
+             └───────────┬─────────────┘                   │
                          ▼                                 │
-             ┌───────────────────────┐                     │
-             │   unet_oilspill.h5    │                     │
-             │   U-Net Segmentation  │                     │
-             └───────────┬───────────┘                     │
+             ┌─────────────────────────┐                   │
+             │ backend/unet_oilspill.h5│                   │
+             │   U-Net Segmentation    │                   │
+             └───────────┬─────────────┘                   │
                          ▼                                 │
                  Binary Spill Mask                         │
                          │                                 │
                          ▼                                 ▼
              ┌─────────────────────────────────────────────┐
-             │       FastAPI Backend Engine (api.py)       │
+             │    FastAPI Backend (backend/api.py)         │
              └───────────────────────┬─────────────────────┘
                                      │
              ┌───────────────────────┴─────────────────────┐
              ▼                                             ▼
-┌─────────────────────────┐               ┌─────────────────────────────────┐
-│ characterization/       │               │ React + Three.js + Leaflet UI   │
-│ - Geometry Extractor    │               │ - 3D Earth Globe Landing        │
-│ - Movement Drift Vector │ ────────────► │ - 4-Card Satellite Vision Lab   │
-│ - Spreading Rate        │               │ - Fullscreen Polygon Inspector  │
-│ - Severity Estimator    │               │ - Multi-Layer Characterization  │
-│ - Backward Hindcast     │               │   Map & Forecast Timeline       │
-│ - Forward Forecast      │               └─────────────────────────────────┘
-└─────────────────────────┘
+┌─────────────────────────────────┐       ┌─────────────────────────────────┐
+│ backend/characterization/       │       │ frontend/ (React + Vite + TS)   │
+│ - Geometry Extractor            │       │ - Cinematic Mission Landing     │
+│ - Movement Drift Vector         │──────►│ - 3D Earth Globe Surveillance   │
+│ - Spreading Rate (dA/dt)        │       │ - Multi-Satellite Vision Suite  │
+│ - Model Severity Estimator      │       │ - Characterization & Drift Map  │
+│ - Backward Hindcast & Forecast  │       │ - Maritime Investigation & AIS  │
+│ - Origin Zones & Vessel Forensics       └─────────────────────────────────┘
+└─────────────────────────────────┘
 ```
 
 ---
@@ -88,46 +88,73 @@ The system combines:
 
 ```
 Oil_spill(sos)/
-├── api.py                     # FastAPI backend server exposing REST endpoints
-├── cdse_client.py             # Copernicus CDSE API client (Sentinel-1 & Sentinel-2)
-├── preprocess.py              # Radiometric calibration & tensor normalization
-├── unet_oilspill.h5           # Pretrained U-Net Deep Learning model
-├── requirements.txt           # Python backend dependencies
-├── WAKASHIO_AOI.txt           # Mauritius incident coordinates and AOI bbox
 │
-├── characterization/          # Oil Spill Characterization & Particle Drift Engine
-│   ├── config.py              # Wind drift leeway (3%), diffusion Kh, and particle defaults
-│   ├── geometry/
-│   │   └── geometry_extractor.py # GeoJSON polygon extraction, area, perimeter, orientation
-│   ├── movement/
-│   │   ├── environmental_provider.py # Simulation trade-wind & ocean current fields
-│   │   └── drift_vector.py    # Combined velocity vector, speed, cardinal heading
-│   ├── spreading/
-│   │   └── spreading_calculator.py # Multi-temporal spreading rate (dA/dt)
-│   ├── severity/
-│   │   └── thickness_estimator.py # Model-based thickness/severity estimation
-│   ├── drift/
-│   │   ├── particle_model.py  # Lagrangian particle advection & Brownian diffusion
-│   │   ├── hindcast.py        # Backward particle tracking to find Probable Origin (-48h)
-│   │   └── forecast.py        # Forward particle prediction (+6h to +72h)
-│   ├── uncertainty/
-│   │   └── dispersion.py      # Dispersion metrics (σx, σy) & uncertainty cone
-│   └── engine.py              # Master coordinator & in-memory SpillAnalysisStore
+├── backend/                                   # 🐍 Python Microservice & Analytics Engine
+│   ├── api.py                                 # FastAPI application with REST endpoints
+│   ├── cdse_client.py                         # Copernicus CDSE API acquisition client
+│   ├── preprocess.py                          # Radiometric calibration & tensor normalization
+│   ├── unet_oilspill.h5                       # Pretrained U-Net Deep Learning model
+│   ├── model_capabilities.yaml                # Model metadata & sensor specifications
+│   ├── requirements.txt                       # Python backend dependencies
+│   │
+│   ├── characterization/                      # Oil Spill Characterization & Particle Drift Engine
+│   │   ├── config.py                          # Wind drift leeway (3%), diffusion Kh, and particle defaults
+│   │   ├── engine.py                          # Master coordinator & in-memory SpillAnalysisStore
+│   │   ├── geometry/geometry_extractor.py     # GeoJSON polygon boundary, area, perimeter, orientation
+│   │   ├── movement/drift_vector.py           # Combined velocity vector, speed, cardinal heading
+│   │   ├── movement/environmental_provider.py # Trade-wind & ocean current vector fields
+│   │   ├── spreading/spreading_calculator.py  # Multi-temporal spreading rate (dA/dt)
+│   │   ├── severity/thickness_estimator.py    # Model-based thickness/severity estimation
+│   │   ├── drift/particle_model.py            # Lagrangian advection & Brownian diffusion
+│   │   ├── drift/hindcast.py                  # Backward particle tracking to find Probable Origin (-48h)
+│   │   ├── drift/forecast.py                  # Forward particle dispersion (+6h to +72h)
+│   │   ├── uncertainty/dispersion.py          # Dispersion metrics (σx, σy) & uncertainty cone
+│   │   └── investigation/                     # Vessel attribution & coastal warning engine
+│   │       ├── origin_zones.py                # 1σ/2σ/3σ Probable Origin zones & release time window
+│   │       ├── vessel_models.py               # Pydantic schemas for Categories A, B, and C
+│   │       ├── gfw_provider.py                # GFW AIS vessel presence & SAR radar correlates
+│   │       ├── ranking_engine.py              # Multi-factor explainable vessel ranking (0–100)
+│   │       ├── coastal_warning.py             # Coastal drift vector & asset risk alerts
+│   │       ├── report_generator.py            # Automated law enforcement briefing synthesis
+│   │       └── orchestrator.py                # End-to-end investigation pipeline
+│   │
+│   ├── modules/                               # Dedicated Benchmark Modules
+│   │   └── benchmark_emerald.py               # MT Emerald historical benchmark suite
+│   │
+│   └── data/                                  # Ground-Truth Incident Benchmark Datasets
+│       ├── emerald_benchmark/                 # Eastern Mediterranean 2021 SAR/Optical imagery
+│       └── wakashio_benchmark/                # Mauritius 2020 SAR/Optical ground-truth imagery
 │
-├── tests/                     # Automated pytest suite
-│   └── test_characterization.py
+├── frontend/                                  # ⚛️ React + Vite + TypeScript Frontend
+│   ├── package.json                           # Frontend scripts & dependencies
+│   ├── tsconfig.json                          # TypeScript configuration
+│   ├── vite.config.ts                         # Vite build & proxy settings
+│   ├── index.html                             # Single-page application entrypoint
+│   └── src/
+│       ├── App.tsx                            # Root mission control navigation & layout
+│       ├── index.css                          # Modern dark-mode styling tokens
+│       ├── types.ts                           # Comprehensive TypeScript data interfaces
+│       ├── utils/spatialLookup.ts             # Coastal geometry & coordinate conversion helpers
+│       ├── assets/                            # Cinematic video streams & media feeds
+│       └── components/
+│           ├── CinematicLanding.tsx           # Page 0: Cinematic mission control introduction
+│           ├── OceanGlobe.tsx                 # Page 1: Interactive 3D Three.js Earth globe
+│           ├── SatelliteVisionSuite.tsx       # Page 2: 4-Card spaceborne optical & radar lab
+│           ├── CharacterizationDashboard.tsx  # Page 3: Spill geometry, drift physics & forecast timeline
+│           ├── MaritimeInvestigationSuite.tsx # Page 4: Suspect vessel forensics & coastal risk center
+│           ├── SourceHypothesisSuite.tsx      # Infrastructure & multi-source hypothesis inspector
+│           ├── SpillTooltipCard.tsx           # Reusable floating telemetry card
+│           └── WatchdogSimulation.tsx         # Automated watchdog surveillance simulation
 │
-└── frontend/                  # React + Vite + TypeScript Frontend
-    ├── package.json
-    ├── vite.config.ts
-    └── src/
-        ├── App.tsx            # Main router (Globe ⇄ Satellite Lab ⇄ Characterization)
-        ├── types.ts           # TypeScript interfaces and telemetry contracts
-        ├── index.css          # Styling & glassmorphic tokens
-        └── components/
-            ├── OceanGlobe.tsx           # Interactive 3D Three.js Earth globe
-            ├── SatelliteVisionSuite.tsx # 4-Card Satellite deck & Vector Polygon inspector
-            └── CharacterizationDashboard.tsx # Interactive Leaflet map & predictive timeline
+├── tests/                                     # 🧪 Automated Pytest Test Suite
+│   ├── conftest.py                            # Auto sys.path configuration for backend
+│   ├── test_characterization.py               # Spill geometry & drift engine tests
+│   ├── test_investigation.py                  # Origin zones & vessel ranking tests
+│   └── test_benchmark_emerald.py              # MT Emerald benchmark pipeline tests
+│
+├── api.py                                     # 🔄 Root compatibility proxy shim (supports uvicorn api:app)
+├── requirements.txt                           # Root requirements reference
+└── .gitignore                                 # Git ignore rules
 ```
 
 ---
@@ -163,7 +190,7 @@ Oil_spill(sos)/
 
 ### Step 1: Install Python Dependencies
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ### Step 2: Install Frontend Dependencies
@@ -176,7 +203,11 @@ cd ..
 ### Step 3: Run the Development Servers
 In Terminal 1 (FastAPI Backend):
 ```bash
+# Option A: From root using the compatibility proxy shim
 python -m uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+
+# Option B: Directly from backend/
+python -m uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 In Terminal 2 (React Frontend):
@@ -185,31 +216,56 @@ cd frontend
 npm run dev
 ```
 
-Open **`http://localhost:3000`** (or **`http://localhost:5173`**) in your browser.
+Open **`http://localhost:5173`** (or **`http://localhost:3000`**) in your browser.
+
+---
+
+## 🚀 5. Production Deployment
+
+TARANG provides turnkey production deployment via Docker Compose or native Linux hosting.
+
+### One-Command Docker Deployment (Recommended)
+```bash
+# 1. Build and start containers in detached mode
+docker compose up -d --build
+
+# 2. View container status
+docker compose ps
+
+# 3. View live backend logs
+docker compose logs -f backend
+```
+
+Access services:
+* **Web Application**: `http://<your-server-ip>/` (Port 80 via Nginx)
+* **REST API Documentation**: `http://<your-server-ip>:8000/docs`
+
+For comprehensive Cloud PaaS (Render, Vercel, Railway, Fly.io) and Ubuntu VPS Systemd instructions, consult the complete [Production Deployment Guide](file:///d:/Oil_spill(sos)/docs/DEPLOYMENT_GUIDE.md).
 
 ---
 
 ## 🧪 6. Running Automated Tests
 
-Run the full pytest suite:
+Run the full automated pytest suite (25 tests):
 ```bash
-python -m pytest -v
+python -m pytest tests/ -v
 ```
 
-All 13 unit and end-to-end integration tests verify:
-* ✅ Polygon geometry extraction & GeoJSON compliance
-* ✅ Environmental velocity and cardinal heading conversion
-* ✅ Movement drift calculations
+All 25 unit and end-to-end integration tests verify:
+* ✅ Polygon geometry extraction & GeoJSON boundary compliance
+* ✅ Environmental velocity vectors and 16-point cardinal heading conversion
+* ✅ Movement drift calculations and coastal shoreline clamping
 * ✅ Multi-temporal spreading rate calculations & single-observation handling
-* ✅ Model-based severity estimation
+* ✅ Model-based severity & oil thickness estimation
 * ✅ Lagrangian backward hindcast & forward forecast particle integration
-* ✅ End-to-end characterization pipeline
+* ✅ End-to-end characterization pipeline execution
 * ✅ Probable origin zones generation (1σ Core, 2σ Region, 3σ Boundary) & Release Time Window
 * ✅ Global Fishing Watch (GFW) & Sentinel-1 SAR intelligence provider (Categories A, B, and C)
 * ✅ Multi-factor explainable vessel ranking algorithm (0–100 score breakdown & transparent justifications)
 * ✅ Coastal drift impact simulation & Early Warning Alert generation (MPAs, ports, fisheries, beaches)
 * ✅ End-to-end investigation orchestrator & report synthesis
 * ✅ REST API investigation endpoints
+* ✅ MT Emerald historical benchmark pipeline (SAR acquisition, U-Net inference, AIS correlation, PDF docket generation)
 
 ---
 
@@ -230,12 +286,12 @@ git checkout -b feature/your-feature-name
 
 ### Step 3: Install Dependencies
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 cd frontend && npm install && cd ..
 ```
 
 ### Step 4: Make Changes & Verify
-* Ensure all tests pass: `python -m pytest tests/test_characterization.py -v`
+* Ensure all tests pass: `python -m pytest tests/ -v`
 * Verify frontend compilation: `cd frontend && npx tsc --noEmit && cd ..`
 
 ### Step 5: Commit and Push

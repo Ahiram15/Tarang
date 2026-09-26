@@ -37,8 +37,6 @@ import {
   Crosshair,
   Satellite,
   Globe,
-  Sun,
-  Moon,
   Ship,
   Radio,
   MapPin,
@@ -272,9 +270,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   const [viewMode, setViewMode] = useState<'all' | 'hindcast' | 'forecast'>('all');
   const [isMapMaximized, setIsMapMaximized] = useState<boolean>(false);
 
-  // Basemap and Display Toggles
-  const [basemapType, setBasemapType] = useState<'satellite' | 'ocean' | 'positron' | 'dark'>('satellite');
-  const [showWindWaves, setShowWindWaves] = useState<boolean>(true);
+  // Display Toggles
   const [showRadarSweep, setShowRadarSweep] = useState<boolean>(true);
   const [focusTrigger, setFocusTrigger] = useState<number>(0);
   const [cameraTarget, setCameraTarget] = useState<'spill' | 'origin' | 'extent' | null>(null);
@@ -291,7 +287,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
   const activeLayersCount = [
     showSpillPolygon,
     showDriftArrow,
-    showWindWaves,
     showRadarSweep,
     showHindcast,
     showForecast,
@@ -330,77 +325,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
     return shiftCoords(currentPolyPositions);
   }, [activeForecastStep, centroid, currentPolyPositions]);
 
-  // Generate ocean swell wave crests traveling directly along the drift trajectory
-  const trajectoryWaveData = useMemo(() => {
-    // Build full trajectory polyline vertices: T0 -> forecast milestones
-    const points: [number, number][] = [
-      [centroid.lat, centroid.lon],
-      ...forecastSteps.map((s) => [s.centroid.lat, s.centroid.lon] as [number, number]),
-    ];
 
-    if (points.length < 2) return [];
-
-    const waves: { lat: number; lon: number; angleDeg: number; delay: number; scale: number }[] = [];
-    let cumulativeDelay = 0;
-
-    for (let i = 0; i < points.length - 1; i++) {
-      const [lat1, lon1] = points[i];
-      const [lat2, lon2] = points[i + 1];
-
-      const dLat = lat2 - lat1;
-      const dLon = lon2 - lon1;
-      const segDist = Math.sqrt(dLat * dLat + dLon * dLon);
-      if (segDist < 0.0001) continue;
-
-      // Screen angle pointing from (lat1, lon1) to (lat2, lon2)
-      // Screen X: lon, Screen Y: -lat
-      const screenAngleDeg = (Math.atan2(lat1 - lat2, lon2 - lon1) * 180) / Math.PI;
-
-      // Perpendicular unit vector for lateral wave crest spread
-      const perpLat = -dLon / segDist;
-      const perpLon = dLat / segDist;
-
-      // Number of wave pulses along this segment
-      const numSteps = Math.max(2, Math.min(4, Math.round(segDist / 0.006)));
-
-      for (let s = 1; s <= numSteps; s++) {
-        const t = (s - 0.5) / numSteps;
-        const centerLat = lat1 + t * dLat;
-        const centerLon = lon1 + t * dLon;
-
-        // Primary wave right on the center spine of the trajectory
-        waves.push({
-          lat: centerLat,
-          lon: centerLon,
-          angleDeg: screenAngleDeg,
-          delay: cumulativeDelay % 2.2,
-          scale: 1.0,
-        });
-
-        // Flanking wave crest on left flank (~120m)
-        waves.push({
-          lat: centerLat + perpLat * 0.0018,
-          lon: centerLon + perpLon * 0.0018,
-          angleDeg: screenAngleDeg,
-          delay: (cumulativeDelay + 0.3) % 2.2,
-          scale: 0.82,
-        });
-
-        // Flanking wave crest on right flank (~120m)
-        waves.push({
-          lat: centerLat - perpLat * 0.0018,
-          lon: centerLon - perpLon * 0.0018,
-          angleDeg: screenAngleDeg,
-          delay: (cumulativeDelay + 0.3) % 2.2,
-          scale: 0.82,
-        });
-
-        cumulativeDelay += 0.45;
-      }
-    }
-
-    return waves;
-  }, [centroid, forecastSteps]);
 
   // Auto-play forecast animation loop
   useEffect(() => {
@@ -506,38 +431,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
       iconAnchor: [0, 0],
     });
 
-  const createWindWaveIcon = (angleDeg: number, delay: number, scale: number = 1.0) =>
-    L.divIcon({
-      className: 'custom-wind-wave-icon',
-      html: `
-        <div style="
-          width: 44px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform: rotate(${angleDeg}deg) scale(${scale});
-          pointer-events: none;
-        ">
-          <div class="trajectory-wave-crest" style="
-            animation-delay: -${delay.toFixed(2)}s;
-            width: 40px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">
-            <svg viewBox="0 0 40 24" width="40" height="24" fill="none" style="overflow: visible;">
-              <path d="M 4 20 Q 20 2 36 20" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round" fill="none" opacity="0.95" />
-              <path d="M 9 22 Q 20 8 31 22" stroke="#7dd3fc" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.65" />
-              <circle cx="20" cy="11" r="2" fill="#ffffff" opacity="0.9" />
-            </svg>
-          </div>
-        </div>
-      `,
-      iconSize: [44, 28],
-      iconAnchor: [22, 14],
-    });
 
   const createMilestoneIcon = (hours: number, isSelected: boolean) =>
     L.divIcon({
@@ -1054,36 +947,26 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
               pointerEvents: 'auto',
               position: 'relative',
             }}>
-              {/* Basemap Toggle */}
-              <button
-                onClick={() => {
-                  const nextBasemap = 
-                    basemapType === 'satellite' ? 'ocean' :
-                    basemapType === 'ocean' ? 'positron' :
-                    basemapType === 'positron' ? 'dark' : 'satellite';
-                  setBasemapType(nextBasemap);
-                }}
+              {/* Satellite Basemap Indicator */}
+              <div
                 className="map-hud-btn"
-                title="Cycle basemaps"
                 style={{
                   background: 'rgba(6, 10, 20, 0.94)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  color: '#f1f5f9',
+                  border: '1px solid rgba(0, 242, 254, 0.35)',
+                  color: '#00f2fe',
                   padding: '5px 9px',
                   borderRadius: '8px',
                   fontSize: '0.70rem',
+                  fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  cursor: 'pointer',
                   backdropFilter: 'blur(8px)',
                 }}
               >
-                {basemapType === 'satellite' && <><Satellite size={12} /> <span>Satellite</span></>}
-                {basemapType === 'ocean' && <><Waves size={12} /> <span>Ocean</span></>}
-                {basemapType === 'positron' && <><Sun size={12} /> <span>Positron</span></>}
-                {basemapType === 'dark' && <><Moon size={12} /> <span>Dark</span></>}
-              </button>
+                <Satellite size={12} color="#00f2fe" />
+                <span>Satellite</span>
+              </div>
 
               {/* Collapsible Layers Menu Button */}
               <button
@@ -1198,12 +1081,6 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                     </span>
                   </label>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={showWindWaves} onChange={(e) => setShowWindWaves(e.target.checked)} />
-                    <span style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Waves size={12} /> Ocean Waves
-                    </span>
-                  </label>
 
                   <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                     <input type="checkbox" checked={showRadarSweep} onChange={(e) => setShowRadarSweep(e.target.checked)} />
@@ -1276,39 +1153,13 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 isMaximized={isMapMaximized}
               />
 
-              {/* Dynamic Basemap Layer */}
-              {basemapType === 'satellite' && (
-                <TileLayer
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
-              {basemapType === 'ocean' && (
-                <TileLayer
-                  url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, GEBCO, NOAA'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
-              {basemapType === 'positron' && (
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png"
-                  attribution='&copy; <a href="https://carto.com/">CARTO</a>, &copy; OpenStreetMap'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
-              {basemapType === 'dark' && (
-                <TileLayer
-                  url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
+              {/* Satellite Basemap Layer */}
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
+                maxZoom={20}
+                maxNativeZoom={13}
+              />
 
               {/* 📡 Radar Scanning Sweep Overlay around Centroid */}
               {showRadarSweep && (
@@ -1319,35 +1170,7 @@ export const CharacterizationDashboard: React.FC<CharacterizationDashboardProps>
                 />
               )}
 
-              {/* 🌊 Ocean Wind & Swell Waves Flowing Directly Along the Drift Trajectory */}
-              {showWindWaves && (
-                <>
-                  {forecastSteps.length >= 2 && (
-                    <Polyline
-                      positions={[
-                        [centroid.lat, centroid.lon],
-                        ...forecastSteps.map((s) => [s.centroid.lat, s.centroid.lon] as [number, number]),
-                      ]}
-                      pathOptions={{
-                        color: '#38bdf8',
-                        weight: 2,
-                        dashArray: '4, 8',
-                        opacity: 0.5,
-                        className: 'particle-advection-flow',
-                      }}
-                    />
-                  )}
 
-                  {trajectoryWaveData.map((wave, idx) => (
-                    <Marker
-                      key={`traj-wave-${idx}`}
-                      position={[wave.lat, wave.lon]}
-                      icon={createWindWaveIcon(wave.angleDeg, wave.delay, wave.scale)}
-                      interactive={false}
-                    />
-                  ))}
-                </>
-              )}
 
               {/* 1. Current Observed Spill Boundary (T+0h Reference) & Pin Marker */}
               {showSpillPolygon && (

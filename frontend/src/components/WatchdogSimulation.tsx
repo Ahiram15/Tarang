@@ -3,16 +3,19 @@ import {
   Globe2,
   ArrowRight,
   PlayCircle,
-  Pause,
   RotateCcw,
-  Terminal,
   CheckCircle2,
   Radar,
   Network,
-  Radio,
+  Zap,
+  Activity,
   Layers,
   Sparkles,
 } from 'lucide-react';
+import sentinel1Video from '../assets/sentinel-1.mp4';
+import sentinel2Video from '../assets/sentinel-2.mp4';
+import landsatVideo from '../assets/landsat.mp4';
+import eos06Video from '../assets/EOS-06.mp4';
 import { IncidentLocation } from '../types';
 
 interface WatchdogSimulationProps {
@@ -28,14 +31,277 @@ type SensorKey = 'sentinel1' | 'sentinel2' | 'landsat' | 'eos06';
 interface SensorMetadata {
   title: string;
   spec: string;
-  swath: string;
-  res: string;
-  calib: string;
-  desc: string;
+  summary: string;
   clutter: string;
   slick: string;
   contrast: string;
+  channel: string;
+  mechanismTitle: string;
+  physicsFormula: string;
+  metric1Label: string;
+  metric1Value: string;
+  metric2Label: string;
+  metric2Value: string;
+  metric3Label: string;
+  metric3Value: string;
+  orbitGeometry: string;
+  inputMode: string;
+  pipeline: string;
+  clutterLabel: string;
+  slickLabel: string;
+  contrastLabel: string;
+  processingLatency: string;
+  targetConfidence: string;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   AUTHENTIC SATELLITE VIDEO STREAM DECK (REPLACING MOCK DIAGRAMS)
+   ───────────────────────────────────────────────────────────── */
+interface SatelliteVideoFeedProps {
+  sensor: SensorKey;
+}
+
+const SATELLITE_VIDEO_METADATA: Record<SensorKey, {
+  src: string;
+  name: string;
+  agency: string;
+  band: string;
+  badgeColor: string;
+  orbit: string;
+  resolution: string;
+  payload: string;
+}> = {
+  sentinel1: {
+    src: sentinel1Video,
+    name: 'Sentinel-1A/B Constellation',
+    agency: 'ESA • Copernicus Program',
+    band: 'C-SAR Active Radar (5.405 GHz)',
+    badgeColor: '#00f2fe',
+    orbit: 'Polar Sun-Synchronous (693 km LEO)',
+    resolution: '10m GSD Dual-Pol (VV+VH)',
+    payload: 'Synthetic Aperture Radar (SAR) Active Antenna',
+  },
+  sentinel2: {
+    src: sentinel2Video,
+    name: 'Sentinel-2A/B Constellation',
+    agency: 'ESA • Copernicus Program',
+    band: 'MSI Multispectral (13 Spectral Bands)',
+    badgeColor: '#38bdf8',
+    orbit: 'Sun-Synchronous (786 km LEO)',
+    resolution: '10m - 20m VNIR/SWIR & FAI Glint Index',
+    payload: 'Multispectral Instrument (MSI) Telescopic Swath',
+  },
+  landsat: {
+    src: landsatVideo,
+    name: 'Landsat-8/9 Observatory',
+    agency: 'NASA / USGS',
+    band: 'OLI Optical + TIRS Cryogenic Thermal',
+    badgeColor: '#fbbf24',
+    orbit: 'Sun-Synchronous (705 km LEO)',
+    resolution: '15m Pan / 30m Multi / 100m Thermal SST',
+    payload: 'Thermal Infrared Sensor (TIRS-2) Split-Window',
+  },
+  eos06: {
+    src: eos06Video,
+    name: 'ISRO EOS-06 (Oceansat-3)',
+    agency: 'ISRO Earth Observation',
+    band: 'Ku-Band OSCAT Scatterometer (13.515 GHz)',
+    badgeColor: '#c084fc',
+    orbit: 'Sun-Synchronous (720 km Polar LEO)',
+    resolution: '20.5 RPM Conical Scan • 25 km Wind Vectors',
+    payload: 'Rotating Pencil-Beam Scatterometer & Ocean Colour Monitor',
+  },
+};
+
+const SatelliteVideoFeed: React.FC<SatelliteVideoFeedProps> = ({ sensor }) => {
+  const meta = SATELLITE_VIDEO_METADATA[sensor];
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => { });
+      setIsPlaying(true);
+    }
+  }, [sensor]);
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(() => { });
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+      background: '#020612',
+      borderRadius: '6px',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      {/* Authentic High-Definition Satellite Video */}
+      <video
+        ref={videoRef}
+        key={meta.src}
+        src={meta.src}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        }}
+      />
+
+      {/* High-Tech Vignette & Scanline Overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at center, rgba(2, 6, 18, 0.05) 40%, rgba(2, 6, 18, 0.65) 100%)',
+        boxShadow: `inset 0 0 24px ${meta.badgeColor}22`,
+      }} />
+
+      {/* Top Left: Live Orbital Telemetry Stream HUD Badge */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        background: 'rgba(3, 7, 18, 0.85)',
+        backdropFilter: 'blur(10px)',
+        border: `1px solid ${meta.badgeColor}40`,
+        borderRadius: '5px',
+        padding: '3px 8px',
+        boxShadow: `0 0 12px ${meta.badgeColor}25`,
+        pointerEvents: 'none',
+      }}>
+        <span style={{
+          width: '7px',
+          height: '7px',
+          borderRadius: '50%',
+          background: '#ef4444',
+          boxShadow: '0 0 8px #ef4444',
+        }} />
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '10px',
+          fontWeight: 800,
+          color: '#ffffff',
+          letterSpacing: '0.04em',
+        }}>
+          LIVE ORBIT FEED // {meta.name}
+        </span>
+      </div>
+
+      {/* Top Right: Agency & Sensor Spectrum Tag */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        right: '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: '2px',
+        background: 'rgba(3, 7, 18, 0.85)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRadius: '5px',
+        padding: '3px 8px',
+        pointerEvents: 'none',
+      }}>
+        <span style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: '10.5px',
+          fontWeight: 700,
+          color: meta.badgeColor,
+        }}>
+          {meta.agency}
+        </span>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '9px',
+          color: '#94a3b8',
+        }}>
+          {meta.band}
+        </span>
+      </div>
+
+      {/* Bottom Left: Flight Dynamics & Resolution Readout */}
+      <div style={{
+        position: 'absolute',
+        bottom: '10px',
+        left: '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2px',
+        background: 'rgba(3, 7, 18, 0.82)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '5px',
+        padding: '4px 8px',
+        pointerEvents: 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>ORBIT:</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#e2e8f0', fontWeight: 600 }}>{meta.orbit}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>RESOLUTION:</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: meta.badgeColor, fontWeight: 700 }}>{meta.resolution}</span>
+        </div>
+      </div>
+
+      {/* Bottom Right: Play/Pause Controls */}
+      <div style={{
+        position: 'absolute',
+        bottom: '10px',
+        right: '10px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+      }}>
+        <button
+          onClick={togglePlay}
+          style={{
+            background: 'rgba(3, 7, 18, 0.85)',
+            border: `1px solid ${meta.badgeColor}50`,
+            borderRadius: '4px',
+            color: meta.badgeColor,
+            padding: '3px 8px',
+            fontSize: '9.5px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            backdropFilter: 'blur(10px)',
+          }}
+          title={isPlaying ? 'Pause Video' : 'Play Video'}
+        >
+          <span>{isPlaying ? '⏸ PAUSE' : '▶ PLAY'}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   onProceedToGlobe,
@@ -55,48 +321,104 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
 
   const sensorData: Record<SensorKey, SensorMetadata> = {
     sentinel1: {
-      title: 'Active Subsystem: Sentinel-1A C-SAR Payload',
-      spec: 'FREQ: 5.405 GHz // POL: VV+VH',
-      swath: '250 km (IW Mode)',
-      res: '5m x 20m (Native SAR)',
-      calib: 'LUT Applied (dB)',
-      desc: 'Hydrocarbon films form viscoelastic monolayers dampening high-frequency ocean capillary-gravity waves (wavelength 1.5–5 cm). This eliminates Bragg resonance scatter, producing stark low-backscatter radar dark signatures (< -22 dB).',
+      title: 'Sentinel-1A/B C-Band SAR Payload',
+      spec: '5.405 GHz • VV+VH Dual-Pol • 250km Swath',
+      summary: 'Hydrocarbon viscoelastic monolayer dampens high-frequency ocean capillary-gravity ripples, eliminating Bragg scatter to produce dark radar signatures (< -22 dB).',
       clutter: '-14.2 dB',
       slick: '-21.8 dB',
       contrast: '-7.6 dB',
+      channel: 'PRIMARY RADAR',
+      mechanismTitle: 'ACTIVE MICROWAVE BRAGG BACKSCATTER & CAPILLARY DAMPING',
+      physicsFormula: 'λ_Bragg = λ_radar / (2·sin θ) ≈ 4.8 cm | σ₀ Drop: -7.6 dB',
+      metric1Label: 'Bragg Resonance',
+      metric1Value: '4.8 cm (C-Band)',
+      metric2Label: 'Incidence Angle',
+      metric2Value: '20° – 45° (IW)',
+      metric3Label: 'Polarization',
+      metric3Value: 'VV + VH Dual-Pol',
+      orbitGeometry: 'Sun-sync 693 km • 12d repeat',
+      inputMode: 'Active Microwave SAR (5.405 GHz)',
+      pipeline: 'CDSE L1-GRD → 7×7 Gamma-MAP Despeckle → 2-Param CFAR',
+      clutterLabel: 'AMBIENT SEA CLUTTER',
+      slickLabel: 'SLICK SURFACE σ₀',
+      contrastLabel: 'CONTRAST RATIO (Δσ₀)',
+      processingLatency: '18m Acquisition Latency',
+      targetConfidence: '98.6% CFAR CONFIRMED',
     },
     sentinel2: {
-      title: 'Active Subsystem: Sentinel-2A MSI Optical Multi-Spectral',
-      spec: 'BANDS: B2, B3, B4, B8, B11 // SWIR-2',
-      swath: '290 km Swath',
-      res: '10m – 20m VNIR',
-      calib: 'TOA Refl -> BOA (Sen2Cor)',
-      desc: 'Multi-Spectral Instrument identifies sunglint reflectance gradients and hydrocarbon absorption dip at 1.6 µm (SWIR). Cross-validates dark SAR formations against cloud cover and biogenic algal blooms.',
+      title: 'Sentinel-2A/B MSI Optical Multispectral',
+      spec: 'B2, B3, B4, B8, B11 • 13 Spectral Bands • 290km Swath',
+      summary: 'Measures sunglint reflectance gradients and Floating Algae Index (FAI) to cross-validate SAR dark spots against biogenic algae and cloud shadows.',
       clutter: '0.012 FAI',
       slick: '0.084 FAI',
       contrast: '+0.072 FAI',
+      channel: 'OPTICAL MSI',
+      mechanismTitle: 'PASSIVE SOLAR REFLECTANCE & FLOATING ALGAE INDEX (FAI)',
+      physicsFormula: 'FAI = R_842 - [R_665 + (R_1610 - R_665) · (842-665)/(1610-665)]',
+      metric1Label: 'B4 (Red)',
+      metric1Value: '665 nm (10m)',
+      metric2Label: 'B8 (NIR)',
+      metric2Value: '842 nm (10m)',
+      metric3Label: 'B11 (SWIR)',
+      metric3Value: '1610 nm (20m)',
+      orbitGeometry: 'Sun-sync 786 km • 5d repeat',
+      inputMode: 'Passive Solar Reflectance (13 Bands)',
+      pipeline: 'Copernicus L2A BOA → Glint Normalization → FAI Differential Profiler',
+      clutterLabel: 'OPEN WATER BASELINE',
+      slickLabel: 'EMULSIFIED SLICK FAI',
+      contrastLabel: 'SPECTRAL DELTA (ΔFAI)',
+      processingLatency: '24m Acquisition Latency',
+      targetConfidence: '95.2% GLINT VALIDATED',
     },
     landsat: {
-      title: 'Active Subsystem: Landsat-8/9 TIRS Thermal Sensor',
-      spec: 'B10 (10.6–11.19 µm) / B11 (11.5–12.51 µm)',
-      swath: '185 km Swath',
-      res: '100m Resampled to 30m',
-      calib: 'Split-Window Brightness Temp',
-      desc: 'Thermal Infrared Sensor maps surface skin temperature differentials. Thick oil emulsions display significant daytime thermal heating (0.5K–1.8K warmer than ambient sea) indicating high emulsion volume.',
+      title: 'Landsat-8/9 TIRS Thermal Infrared',
+      spec: 'B10 (10.8 µm) & B11 (12.0 µm) • 185km Swath',
+      summary: 'Calibrated surface thermal infrared: Thick crude emulsions absorb solar radiation, appearing 0.5K–1.8K warmer than ambient seawater during daytime passes.',
       clutter: '19.4°C SST',
       slick: '20.6°C Core',
-      contrast: '+1.2 K Delta',
+      contrast: '+1.2 K Δ',
+      channel: 'THERMAL IR',
+      mechanismTitle: 'PASSIVE LONGWAVE THERMAL INFRARED (TIRS) SPLIT-WINDOW',
+      physicsFormula: 'ΔT_surface = T_B10 - T_SST = +1.2 K (Daytime Solar Absorber)',
+      metric1Label: 'TIRS Band 10',
+      metric1Value: '10.60 – 11.19 µm',
+      metric2Label: 'TIRS Band 11',
+      metric2Value: '11.50 – 12.51 µm',
+      metric3Label: 'Cryo Cooling',
+      metric3Value: '43 K QWIP Array',
+      orbitGeometry: 'Sun-sync 705 km • 16d repeat',
+      inputMode: 'Passive Thermal Blackbody Radiation',
+      pipeline: 'USGS L2-ST → Radiative Transfer Calibration → Split-Window ΔT',
+      clutterLabel: 'AMBIENT SST BASELINE',
+      slickLabel: 'CRUDE CORE TEMP',
+      contrastLabel: 'THERMAL ANOMALY (ΔT)',
+      processingLatency: '32m Acquisition Latency',
+      targetConfidence: '93.8% THERMAL ALIGNED',
     },
     eos06: {
-      title: 'Active Subsystem: ISRO EOS-06 (Oceansat-3) Scatterometer',
-      spec: 'FREQ: 13.515 GHz (Ku-Band) // 4 Beams',
-      swath: '1400 km Wide Conical',
-      res: '25 km Wind Vectors',
-      calib: 'Ocean Sigma-0 Geo-calibrated',
-      desc: 'Measures 10m neutral equivalent ocean surface wind vectors. Critical for look-alike gating: winds between 3 m/s and 12 m/s validate SAR oil slicks while winds < 3 m/s trigger calm water biogenic slick rejections.',
+      title: 'ISRO EOS-06 (Oceansat-3) Scatterometer',
+      spec: '13.515 GHz Ku-Band • 1400km Conical Swath',
+      summary: 'Real-time 10m ocean surface wind vectors: Winds between 3–12 m/s confirm valid petroleum damping; calm winds < 3 m/s reject biogenic look-alikes.',
       clutter: '4.8 m/s NW',
       slick: 'Vector Valid',
-      contrast: 'Gating Passed',
+      contrast: 'Wind Verified',
+      channel: 'OCEAN WINDS',
+      mechanismTitle: 'ACTIVE Ku-BAND CONICAL SCATTEROMETRY & WIND VECTOR GATING',
+      physicsFormula: 'σ₀ = f(U₁₀, ϕ, θ) | Valid SAR Oil Gate: 3.0 m/s ≤ U₁₀ ≤ 12.0 m/s',
+      metric1Label: 'Conical Beams',
+      metric1Value: 'Inner HH 49° / Outer VV 57°',
+      metric2Label: 'Rotational Rate',
+      metric2Value: '20.5 RPM (Ku-Band)',
+      metric3Label: 'Wind Gate Status',
+      metric3Value: '4.8 m/s (Optimal 3-12 m/s)',
+      orbitGeometry: 'Sun-sync 720 km • 2d repeat',
+      inputMode: 'Active Ku-Band Conical Radar',
+      pipeline: 'ISRO MOSDAC L2B → 25km Wind Vector Cell (WVC) → MLE Scatter Inversion',
+      clutterLabel: '10M WIND VELOCITY',
+      slickLabel: 'DAMPING REGIME',
+      contrastLabel: 'LOOK-ALIKE FILTER',
+      processingLatency: '14m Acquisition Latency',
+      targetConfidence: '99.1% MET-OCEAN VERIFIED',
     },
   };
 
@@ -107,14 +429,14 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
     color: string;
     message: string;
   }>>([
-    { id: '1', time: '15:00:01Z', tag: 'INFO', color: '#00f2fe', message: 'CDSE STAC Daemon v4.8 initialized. Synchronizing catalog endpoints.' },
-    { id: '2', time: '15:00:14Z', tag: 'POLL', color: '#10b981', message: 'Querying Copernicus STAC API for AOI: Levantine Basin / Indian Ocean...' },
-    { id: '3', time: '15:00:26Z', tag: 'TIER1', color: '#38bdf8', message: 'Ingested 2.1 MB quicklook GeoTIFF (GSD: 100m, BBOX: -20.438°S, 57.745°E).' },
-    { id: '4', time: '15:00:40Z', tag: 'TIER1', color: '#38bdf8', message: '2-param CFAR sea clutter baseline: μ = -14.2 dB, σ = 1.84 dB. Anomaly detected (-16.2 dB dip).' },
-    { id: '5', time: '15:01:05Z', tag: 'TIER2', color: '#a855f7', message: 'Triggering targeted 10m sub-patch extraction via CDSE Process API (4.8 MB payload). 99.3% cloud egress saved.' },
-    { id: '6', time: '15:01:28Z', tag: 'AI-LAB', color: '#10b981', message: 'Applying 7x7 Gamma-MAP speckle filter. Dual-pol U-Net inference initialized (unet_oilspill.h5).' },
-    { id: '7', time: '15:01:42Z', tag: 'DETECTION', color: '#ef4444', message: 'Oil slick confirmed. Area: 42.6 km² | Mean thickness: 180 µm | Confidence: 96.4%.' },
-    { id: '8', time: '15:02:10Z', tag: 'WIND-GATE', color: '#f59e0b', message: 'EOS-06 Scatterometer wind: 4.8 m/s @ 142°. Rejection test passed. Dispatching to 3D Globe Radar.' },
+    { id: '1', time: '15:00:01Z', tag: 'DAEMON', color: '#00f2fe', message: 'Copernicus STAC Daemon v4.8 active. 14 corridor regions synchronized.' },
+    { id: '2', time: '15:00:14Z', tag: 'STAC', color: '#38bdf8', message: 'Querying OpenSearch catalogue: [T-30m → T-0m] ingestion window.' },
+    { id: '3', time: '15:00:26Z', tag: 'TIER-1', color: '#38bdf8', message: 'Screened 2.1 MB quicklook preview. GSHHG shoreline vector mask applied.' },
+    { id: '4', time: '15:00:40Z', tag: 'CFAR', color: '#fbbf24', message: 'Adaptive 2-param CFAR anomaly flagged: -8.4 dB dip below clutter baseline.' },
+    { id: '5', time: '15:01:05Z', tag: 'TIER-2', color: '#a855f7', message: 'CDSE Process API: Targeted 10m sub-patch extracted (4.8 MB payload).' },
+    { id: '6', time: '15:01:28Z', tag: 'AI-UNET', color: '#10b981', message: '7x7 Gamma-MAP despeckled. Dual-pol U-Net segmentation complete (IoU: 0.887).' },
+    { id: '7', time: '15:01:42Z', tag: 'ALERT', color: '#ef4444', message: 'Marine petroleum slick confirmed. Area: 42.6 km² | Confidence: 96.4%.' },
+    { id: '8', time: '15:02:10Z', tag: 'WIND', color: '#38bdf8', message: 'ISRO scatterometer wind: 4.8 m/s @ 312° NW. Look-alike rejection passed.' },
   ]);
 
   // Auto-scroll terminal
@@ -128,14 +450,14 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   useEffect(() => {
     if (!isStreaming) return;
     const pool = [
-      { tag: 'STAC', color: '#00f2fe', message: 'Heartbeat: Copernicus OpenSearch gateway responding within 190ms.' },
-      { tag: 'WIND', color: '#38bdf8', message: 'ISRO EOS-06 Scatterometer swath telemetry: 4.8 m/s @ 312° NW across shipping lane.' },
-      { tag: 'TIER1', color: '#f59e0b', message: '2-parameter CFAR clutter distribution: μ = -14.2 dB, σ = 1.84 dB across 100m grid.' },
-      { tag: 'EGRESS', color: '#10b981', message: 'Storage savings confirmed: 99.3% bandwidth saved (0 unneeded gigabyte downloads).' },
-      { tag: 'TIRS', color: '#f59e0b', message: 'Landsat-8 Band 10 calibrated: Sea skin baseline 19.4°C.' },
-      { tag: 'MSI', color: '#38bdf8', message: 'Sentinel-2 cloud mask verified nominal across target bounding box.' },
-      { tag: 'CDSE', color: '#a855f7', message: 'Process API sub-patch bounding box cache warm and responsive.' },
-      { tag: 'AIS', color: '#00f2fe', message: 'Corridor vessel transponder stream ingested: 18 commercial vessels tracked.' },
+      { tag: 'STAC', color: '#00f2fe', message: 'Heartbeat: Copernicus OpenSearch gateway responsive (190ms latency).' },
+      { tag: 'EOS-06', color: '#38bdf8', message: 'ISRO scatterometer wind vector: 4.8 m/s @ 312° NW across shipping lane.' },
+      { tag: 'CFAR', color: '#fbbf24', message: 'Background clutter recalibrated: μ = -14.2 dB, σ = 1.84 dB.' },
+      { tag: 'SAVINGS', color: '#10b981', message: 'Bandwidth optimization active: 99.3% transfer conserved.' },
+      { tag: 'TIRS', color: '#fbbf24', message: 'Landsat-8 Band 10 thermal calibrated: Sea surface baseline 19.4°C.' },
+      { tag: 'MSI', color: '#38bdf8', message: 'Sentinel-2 optical cloud-screening index nominal across target BBOX.' },
+      { tag: 'CDSE', color: '#a855f7', message: 'Process API sub-patch bounding box cache warm and ready.' },
+      { tag: 'AIS', color: '#00f2fe', message: 'Corridor vessel transponder stream active: 18 commercial vessels tracked.' },
     ];
 
     const timer = setInterval(() => {
@@ -143,7 +465,7 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
       const timeStr = now.toISOString().substring(11, 19) + 'Z';
       const item = pool[Math.floor(Math.random() * pool.length)];
       setLogs((prev) => [
-        ...prev.slice(-40),
+        ...prev.slice(-35),
         {
           id: `log-${Date.now()}-${Math.random()}`,
           time: timeStr,
@@ -152,30 +474,29 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
           message: item.message,
         },
       ]);
-    }, 3200);
+    }, 3000);
 
     return () => clearInterval(timer);
   }, [isStreaming]);
 
   const triggerSimulateSweep = () => {
-    const now = new Date();
-    const timeStr = now.toISOString().substring(11, 19) + 'Z';
+    const now = new Date().toISOString().substring(11, 19) + 'Z';
     setLogs((prev) => [
       ...prev,
-      { id: `swp-${Date.now()}`, time: timeStr, tag: 'SWEEP', color: '#00f2fe', message: 'Manual 30-minute orbit cycle triggered across 4 constellations...' },
+      { id: `swp-${Date.now()}`, time: now, tag: 'SWEEP', color: '#00f2fe', message: 'Manual 30-min orbit cycle triggered across 4 constellations...' },
     ]);
     setTimeout(() => {
       const t1 = new Date().toISOString().substring(11, 19) + 'Z';
       setLogs((prev) => [
         ...prev,
-        { id: `t1-${Date.now()}`, time: t1, tag: 'TIER1', color: '#38bdf8', message: 'GSHHG coastline mask applied. BBOX: -20.438°S, 57.745°E identified candidate dark patch.' },
+        { id: `t1-${Date.now()}`, time: t1, tag: 'TIER-1', color: '#38bdf8', message: 'GSHHG coastline mask applied. BBOX: -20.438°S, 57.745°E identified dark anomaly.' },
       ]);
     }, 450);
     setTimeout(() => {
       const t2 = new Date().toISOString().substring(11, 19) + 'Z';
       setLogs((prev) => [
         ...prev,
-        { id: `t2-${Date.now()}`, time: t2, tag: 'TIER2', color: '#a855f7', message: 'CDSE API retrieved 4.8 MB targeted sub-patch. U-Net score: 96.4% confident.' },
+        { id: `t2-${Date.now()}`, time: t2, tag: 'TIER-2', color: '#a855f7', message: 'CDSE API retrieved 4.8 MB targeted sub-patch. U-Net score: 96.4% confident.' },
       ]);
     }, 900);
   };
@@ -183,8 +504,8 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   const resetConsole = () => {
     const now = new Date().toISOString().substring(11, 19) + 'Z';
     setLogs([
-      { id: `r1-${Date.now()}`, time: now, tag: 'INFO', color: '#00f2fe', message: 'Daemon reset. Telemetry baseline cleared.' },
-      { id: `r2-${Date.now()}`, time: now, tag: 'STAC', color: '#10b981', message: 'Re-established connection to Copernicus OpenSearch Gateway.' },
+      { id: `r1-${Date.now()}`, time: now, tag: 'RESET', color: '#00f2fe', message: 'Daemon telemetry reset. Baseline cleared.' },
+      { id: `r2-${Date.now()}`, time: now, tag: 'STAC', color: '#10b981', message: 'Reconnected to Copernicus OpenSearch Gateway.' },
     ]);
   };
 
@@ -193,17 +514,17 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
     const now = new Date().toISOString().substring(11, 19) + 'Z';
     setLogs((prev) => [
       ...prev,
-      { id: `usr-${Date.now()}`, time: now, tag: 'USER', color: '#00f2fe', message: `Inspector focused on: ${key.toUpperCase()} subsystem metadata.` },
+      { id: `usr-${Date.now()}`, time: now, tag: 'INSPECT', color: '#00f2fe', message: `Telemetry focused on: ${key.toUpperCase()} sensor payload.` },
     ]);
   };
 
   const handleSelectInterval = (index: number) => {
     setActiveCycle(index);
-    const times = ['14:00 UTC', '14:30 UTC', '15:00 UTC'];
+    const times = ['14:00Z', '14:30Z', '15:00Z'];
     const now = new Date().toISOString().substring(11, 19) + 'Z';
     setLogs((prev) => [
       ...prev,
-      { id: `time-${Date.now()}`, time: now, tag: 'TIMELINE', color: '#38bdf8', message: `Stepped playback focus to ${times[index]}. Replaying STAC catalog cache.` },
+      { id: `time-${Date.now()}`, time: now, tag: 'TIMELINE', color: '#38bdf8', message: `Timeline shifted to lookback cycle: ${times[index]}.` },
     ]);
   };
 
@@ -215,61 +536,95 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      background: '#050e20',
-      color: '#d9e2fc',
-      overflow: 'hidden',
+      background: 'radial-gradient(circle at 50% 0%, #08142a 0%, #030712 100%)',
+      color: '#e2e8f0',
+      overflowY: 'auto',
+      overflowX: 'hidden',
       userSelect: 'none',
-      padding: '12px 18px',
-      gap: '8px',
+      padding: '16px 22px',
+      gap: '12px',
       boxSizing: 'border-box',
-      fontFamily: "'Inter', sans-serif",
+      fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* ─────────────────────────────────────────────────────────────
-          SECTION [A]: TACTICAL TOP BAR (Tactical Cobalt & Phosphor Amber)
+          SECTION [A]: TACTICAL TOP BAR
          ───────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '8px 14px',
-        borderRadius: '4px',
-        background: 'rgba(18, 27, 46, 0.75)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(56, 189, 248, 0.18)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+        padding: '10px 18px',
+        borderRadius: '8px',
+        background: 'rgba(9, 19, 37, 0.75)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(0, 242, 254, 0.2)',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
         flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Cyber Hexagon Radar Badge */}
-          <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg style={{ width: '100%', height: '100%', color: '#00f2fe' }} fill="none" viewBox="0 0 36 36">
-              <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" stroke="#00f2fe" strokeWidth="1.5" fill="rgba(14, 27, 51, 0.8)" />
-              <polygon points="18,7 28,12 28,24 18,29 8,24 8,12" stroke="rgba(56, 189, 248, 0.4)" strokeWidth="1" fill="transparent" />
-              <circle cx="18" cy="18" r="2.5" fill="#00f2fe" />
-            </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {/* Glowing Cyber Radar Icon */}
+          <div style={{
+            position: 'relative',
+            width: '38px',
+            height: '38px',
+            borderRadius: '8px',
+            background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(56, 189, 248, 0.05) 100%)',
+            border: '1px solid rgba(0, 242, 254, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 16px rgba(0, 242, 254, 0.25)',
+          }}>
+            <Radar size={20} color="#00f2fe" />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', fontWeight: 600 }}>
-                AUTONOMOUS SATELLITE ENGINE
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                color: '#38bdf8',
+                textTransform: 'uppercase',
+              }}>
+                STAGE 0 // AUTONOMOUS WATCHDOG
               </span>
-              <span style={{ color: '#475569', fontSize: '10px' }}>//</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#38bdf8' }}>
+              <span style={{ color: '#334155' }}>•</span>
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '10px',
+                color: '#94a3b8',
+              }}>
                 EPSG:4326 WGS-84
               </span>
-              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10b981' }} />
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#10b981', fontWeight: 600 }}>
-                ACTIVE DAEMON
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '9px',
+                color: '#10b981',
+                fontWeight: 700,
+              }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+                DAEMON ONLINE
               </span>
             </div>
+
             <h1 style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '16px',
-              fontWeight: 700,
+              fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+              fontSize: '17px',
+              fontWeight: 800,
               textTransform: 'uppercase',
-              letterSpacing: '0.02em',
-              color: '#8ed5ff',
+              letterSpacing: '0.04em',
+              background: 'linear-gradient(180deg, #ffffff 30%, #93c5fd 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
               margin: '2px 0 0 0',
             }}>
               Multi-Constellation Continuous Ocean Watchdog
@@ -277,685 +632,773 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
           </div>
         </div>
 
-        {/* Incident Selector & Global Action Cluster */}
+        {/* Global Action Cluster */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {incidents && onSelectIncident && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '3px',
-              background: 'rgba(6, 11, 25, 0.92)',
-              border: '1px solid rgba(0, 242, 254, 0.35)',
-              borderRadius: '6px',
-              padding: '2px 4px',
-            }}>
-              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 800, padding: '0 4px', fontFamily: "'JetBrains Mono', monospace" }}>SCENARIO:</span>
-              {incidents.map((inc) => {
-                const isSelected = (selectedIncident?.id || 'emerald') === inc.id;
-                const isEm = inc.id === 'emerald';
-                return (
-                  <button
-                    key={inc.id}
-                    onClick={() => onSelectIncident(inc)}
-                    style={{
-                      background: isSelected
-                        ? isEm
-                          ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)'
-                          : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                        : 'transparent',
-                      color: isSelected ? '#030712' : '#94a3b8',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '3px 8px',
-                      fontSize: '10px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                  >
-                    {isEm ? 'MT EMERALD (MED)' : 'MV WAKASHIO (MRI)'}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           <button
             onClick={onProceedToGlobe}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '4px',
-              background: 'rgba(14, 27, 51, 0.9)',
-              color: '#e0f2fe',
-              border: '1px solid rgba(56, 189, 248, 0.18)',
+              gap: '8px',
+              padding: '8px 18px',
+              borderRadius: '6px',
+              background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(56, 189, 248, 0.08) 100%)',
+              color: '#e0fdff',
+              border: '1px solid rgba(0, 242, 254, 0.4)',
+              boxShadow: '0 0 16px rgba(0, 242, 254, 0.15)',
               fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#1a263d';
-              e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(14, 27, 51, 0.9)';
-              e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.18)';
-            }}
-          >
-            <Globe2 size={14} color="#00f2fe" />
-            <span>Open 3D Ocean Globe</span>
-          </button>
-
-          <button
-            onClick={onLaunchDetection}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 16px',
-              borderRadius: '4px',
-              background: '#f59e0b',
-              color: '#030814',
-              boxShadow: '0 0 16px rgba(245, 158, 11, 0.45)',
-              border: '1px solid rgba(245, 158, 11, 0.6)',
-              fontFamily: "'Space Grotesk', sans-serif",
               fontSize: '12px',
               fontWeight: 700,
+              letterSpacing: '0.05em',
               textTransform: 'uppercase',
-              letterSpacing: '0.04em',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
+              transition: 'all 0.2s ease',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.1)')}
-            onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 24px rgba(0, 242, 254, 0.4)';
+              e.currentTarget.style.borderColor = '#00f2fe';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 16px rgba(0, 242, 254, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.4)';
+            }}
           >
-            <span>Launch Satellite Lab ({isEmerald ? 'MT Emerald' : 'MV Wakashio'})</span>
-            <ArrowRight size={14} strokeWidth={2.5} />
+            <Globe2 size={15} color="#00f2fe" />
+            <span>Open 3D Ocean Globe</span>
+            <ArrowRight size={14} color="#00f2fe" />
           </button>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION [B]: SENSOR RIBBON & NRT STEPPER
+          SECTION [B]: SENSOR RIBBON & NRT TIMELINE
          ───────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex',
-        flexWrap: 'nowrap',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '8px',
-        padding: '6px 14px',
-        borderRadius: '4px',
-        background: 'rgba(18, 27, 46, 0.75)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(56, 189, 248, 0.18)',
+        padding: '8px 14px',
+        borderRadius: '8px',
+        background: 'rgba(9, 19, 37, 0.65)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
         flexShrink: 0,
+        gap: '12px',
       }}>
-        {/* Sensor Pills Group */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {/* Sentinel-1A/B */}
-          <button
-            onClick={() => handleSelectSensor('sentinel1')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              background: selectedSensor === 'sentinel1' ? '#0e1b33' : '#0b162c',
-              color: selectedSensor === 'sentinel1' ? '#8ed5ff' : '#94a3b8',
-              border: selectedSensor === 'sentinel1' ? '1px solid rgba(0, 242, 254, 0.5)' : '1px solid transparent',
-              boxShadow: selectedSensor === 'sentinel1' ? '0 0 10px rgba(0, 242, 254, 0.25)' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00f2fe' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.1 }}>
-              <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '11px', fontWeight: 700 }}>Sentinel-1A/B</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#38bdf8' }}>C-SAR 10-20m</span>
-            </div>
-            <span style={{
-              marginLeft: '6px',
-              padding: '1px 5px',
-              borderRadius: '2px',
-              background: '#121b2e',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '9px',
-              color: '#10b981',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              textTransform: 'uppercase',
-              fontWeight: 600,
-            }}>
-              ACTIVE
-            </span>
-          </button>
-
-          {/* Sentinel-2A/B */}
-          <button
-            onClick={() => handleSelectSensor('sentinel2')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              background: selectedSensor === 'sentinel2' ? '#0e1b33' : '#0b162c',
-              color: selectedSensor === 'sentinel2' ? '#8ed5ff' : '#94a3b8',
-              border: selectedSensor === 'sentinel2' ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid transparent',
-              boxShadow: selectedSensor === 'sentinel2' ? '0 0 10px rgba(56, 189, 248, 0.25)' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#38bdf8' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.1 }}>
-              <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '11px', fontWeight: 700 }}>Sentinel-2A/B</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>Optical MSI VNIR</span>
-            </div>
-            <span style={{
-              marginLeft: '6px',
-              padding: '1px 5px',
-              borderRadius: '2px',
-              background: '#121b2e',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '9px',
-              color: '#38bdf8',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              textTransform: 'uppercase',
-              fontWeight: 600,
-            }}>
-              POLLING
-            </span>
-          </button>
-
-          {/* Landsat-8/9 */}
-          <button
-            onClick={() => handleSelectSensor('landsat')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              background: selectedSensor === 'landsat' ? '#0e1b33' : '#0b162c',
-              color: selectedSensor === 'landsat' ? '#8ed5ff' : '#94a3b8',
-              border: selectedSensor === 'landsat' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid transparent',
-              boxShadow: selectedSensor === 'landsat' ? '0 0 10px rgba(245, 158, 11, 0.25)' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.1 }}>
-              <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '11px', fontWeight: 700 }}>Landsat-8/9</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>TIRS Thermal IR</span>
-            </div>
-            <span style={{
-              marginLeft: '6px',
-              padding: '1px 5px',
-              borderRadius: '2px',
-              background: '#121b2e',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '9px',
-              color: '#f59e0b',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              textTransform: 'uppercase',
-              fontWeight: 600,
-            }}>
-              STANDBY
-            </span>
-          </button>
-
-          {/* EOS-06 */}
-          <button
-            onClick={() => handleSelectSensor('eos06')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              background: selectedSensor === 'eos06' ? '#0e1b33' : '#0b162c',
-              color: selectedSensor === 'eos06' ? '#8ed5ff' : '#94a3b8',
-              border: selectedSensor === 'eos06' ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid transparent',
-              boxShadow: selectedSensor === 'eos06' ? '0 0 10px rgba(168, 85, 247, 0.25)' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a855f7' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.1 }}>
-              <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '11px', fontWeight: 700 }}>EOS-06 Oceansat</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>Scatterometer Winds</span>
-            </div>
-            <span style={{
-              marginLeft: '6px',
-              padding: '1px 5px',
-              borderRadius: '2px',
-              background: '#121b2e',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '9px',
-              color: '#a855f7',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
-              textTransform: 'uppercase',
-              fontWeight: 600,
-            }}>
-              INGESTION
-            </span>
-          </button>
+        {/* Sensor Instrument Selector Tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {[
+            { key: 'sentinel1' as SensorKey, name: 'Sentinel-1A/B', band: 'C-SAR Radar', color: '#00f2fe', tag: 'ACTIVE' },
+            { key: 'sentinel2' as SensorKey, name: 'Sentinel-2A/B', band: 'Optical MSI', color: '#38bdf8', tag: 'POLLING' },
+            { key: 'landsat' as SensorKey, name: 'Landsat-8/9', band: 'Thermal TIRS', color: '#fbbf24', tag: 'STANDBY' },
+            { key: 'eos06' as SensorKey, name: 'EOS-06 Oceansat', band: 'Scatterometer', color: '#c084fc', tag: 'WINDS' },
+          ].map((item) => {
+            const isSelected = selectedSensor === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => handleSelectSensor(item.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: isSelected ? 'rgba(14, 30, 58, 0.9)' : 'rgba(255, 255, 255, 0.03)',
+                  border: isSelected ? `1px solid ${item.color}` : '1px solid rgba(255, 255, 255, 0.06)',
+                  boxShadow: isSelected ? `0 0 14px ${item.color}35` : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: item.color,
+                  boxShadow: isSelected ? `0 0 8px ${item.color}` : 'none',
+                }} />
+                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.15 }}>
+                  <span style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: isSelected ? '#ffffff' : '#94a3b8',
+                  }}>
+                    {item.name}
+                  </span>
+                  <span style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '10px',
+                    color: isSelected ? item.color : '#64748b',
+                  }}>
+                    {item.band}
+                  </span>
+                </div>
+                <span style={{
+                  marginLeft: '4px',
+                  padding: '2px 5px',
+                  borderRadius: '3px',
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  color: isSelected ? item.color : '#64748b',
+                  border: `1px solid ${isSelected ? item.color + '40' : 'rgba(255, 255, 255, 0.08)'}`,
+                }}>
+                  {item.tag}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Stepper & Simulation Controls */}
+        {/* 30-Min Lookback Stepper & Sweep Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            background: '#030814',
-            padding: '2px 4px',
-            borderRadius: '4px',
-            border: '1px solid rgba(56, 189, 248, 0.18)',
+            background: 'rgba(3, 7, 18, 0.85)',
+            padding: '3px 5px',
+            borderRadius: '6px',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
           }}>
-            {/* T-60 */}
-            <button
-              onClick={() => handleSelectInterval(0)}
-              style={{
-                padding: '3px 8px',
-                borderRadius: '3px',
-                background: activeCycle === 0 ? '#0e1b33' : 'transparent',
-                border: activeCycle === 0 ? '1px solid rgba(0, 242, 254, 0.5)' : '1px solid transparent',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: activeCycle === 0 ? '#8ed5ff' : '#64748b', fontWeight: 700 }}>14:00Z</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>(0 Candidates)</span>
-            </button>
-
-            {/* T-30 */}
-            <button
-              onClick={() => handleSelectInterval(1)}
-              style={{
-                padding: '3px 8px',
-                borderRadius: '3px',
-                background: activeCycle === 1 ? '#0e1b33' : 'transparent',
-                border: activeCycle === 1 ? '1px solid rgba(0, 242, 254, 0.5)' : '1px solid transparent',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: activeCycle === 1 ? '#8ed5ff' : '#64748b', fontWeight: 700 }}>14:30Z</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b' }}>(Clean Transit)</span>
-            </button>
-
-            {/* T-0 */}
-            <button
-              onClick={() => handleSelectInterval(2)}
-              style={{
-                padding: '3px 8px',
-                borderRadius: '3px',
-                background: activeCycle === 2 ? '#0e1b33' : 'transparent',
-                border: activeCycle === 2 ? '1px solid rgba(0, 242, 254, 0.5)' : '1px solid transparent',
-                boxShadow: activeCycle === 2 ? '0 0 8px rgba(0, 242, 254, 0.3)' : 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, color: '#8ed5ff' }}>15:00Z LATEST</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#ef4444', fontWeight: 600, textTransform: 'uppercase' }}>SAR SPILL VERIFIED</span>
-            </button>
+            {[
+              { cycle: 0, time: '14:00Z', label: '0 Candidates' },
+              { cycle: 1, time: '14:30Z', label: 'Clean Transit' },
+              { cycle: 2, time: '15:00Z', label: 'SAR SPILL DETECTED', isAlert: true },
+            ].map((st) => {
+              const isActive = activeCycle === st.cycle;
+              return (
+                <button
+                  key={st.cycle}
+                  onClick={() => handleSelectInterval(st.cycle)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    background: isActive
+                      ? st.isAlert ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 242, 254, 0.18)'
+                      : 'transparent',
+                    border: isActive
+                      ? st.isAlert ? '1px solid #ef4444' : '1px solid rgba(0, 242, 254, 0.5)'
+                      : '1px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {st.isAlert && isActive && (
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
+                  )}
+                  <span style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: isActive ? (st.isAlert ? '#fca5a5' : '#8ed5ff') : '#64748b',
+                  }}>
+                    {st.time}
+                  </span>
+                  <span style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '9px',
+                    color: isActive ? (st.isAlert ? '#f87171' : '#38bdf8') : '#475569',
+                    fontWeight: 600,
+                  }}>
+                    ({st.label})
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button
-              onClick={triggerSimulateSweep}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                background: '#0e1b33',
-                color: '#7bd0ff',
-                border: '1px solid rgba(56, 189, 248, 0.18)',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '11px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              <PlayCircle size={14} color="#38bdf8" />
-              <span>Simulate 30m Sweep</span>
-            </button>
+          <button
+            onClick={triggerSimulateSweep}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              background: 'rgba(14, 30, 58, 0.9)',
+              color: '#38bdf8',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#1a3668')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(14, 30, 58, 0.9)')}
+          >
+            <PlayCircle size={14} color="#38bdf8" />
+            <span>Simulate Sweep</span>
+          </button>
 
-            <button
-              onClick={resetConsole}
-              style={{
-                padding: '4px 6px',
-                borderRadius: '4px',
-                background: '#0e1b33',
-                color: '#64748b',
-                border: '1px solid rgba(56, 189, 248, 0.18)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title="Reset Simulation"
-            >
-              <RotateCcw size={14} />
-            </button>
-          </div>
+          <button
+            onClick={resetConsole}
+            style={{
+              padding: '6px 8px',
+              borderRadius: '6px',
+              background: 'rgba(14, 30, 58, 0.9)',
+              color: '#64748b',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            title="Reset Simulation"
+          >
+            <RotateCcw size={14} />
+          </button>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          MAIN OPERATIONS DECK (12-COL GRID)
+          MAIN OPERATIONS DECK (ENLARGED DIAGRAM DECK & SLIM CONSOLE)
          ───────────────────────────────────────────────────────────── */}
       <div style={{
         flex: 1,
         minHeight: 0,
         display: 'grid',
-        gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-        gap: '8px',
+        gridTemplateColumns: 'minmax(0, 1fr) 280px',
+        gap: '12px',
       }}>
-        {/* ========== COLUMN LEFT (COLS 1-7): ARCHITECTURE & SENSOR INSPECTION ========== */}
+        {/* ========== COLUMN LEFT: ARCHITECTURE & EXPANDED SENSOR INSPECTOR ========== */}
         <div style={{
-          gridColumn: 'span 7 / span 7',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
+          gap: '10px',
           minHeight: 0,
         }}>
-          {/* TWO-TIER INGESTION CARDS */}
+          {/* Two-Tier Bandwidth Architecture Card */}
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px',
-            padding: '8px 12px',
-            borderRadius: '4px',
-            background: 'rgba(18, 27, 46, 0.75)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(56, 189, 248, 0.18)',
+            gap: '8px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            background: 'rgba(9, 19, 37, 0.7)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(0, 242, 254, 0.18)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            flexShrink: 0,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Network size={16} color="#00f2fe" />
-                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#8ed5ff' }}>
-                  Two-Tier Bandwidth Architecture
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Zap size={15} color="#00f2fe" />
+                <span style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: '#e0fdff',
+                }}>
+                  Two-Tier Ingestion &amp; Bandwidth Architecture
                 </span>
               </div>
+
               <span style={{
-                padding: '2px 6px',
-                borderRadius: '2px',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
                 fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '10px',
-                fontWeight: 600,
-                letterSpacing: '0.06em',
+                fontSize: '10.5px',
+                color: '#10b981',
+                fontWeight: 700,
+                background: 'rgba(16, 185, 129, 0.12)',
+                padding: '2px 8px',
+                borderRadius: '4px',
                 border: '1px solid rgba(16, 185, 129, 0.3)',
               }}>
-                99.3% CLOUD EGRESS SAVED
+                99.3% BANDWIDTH SAVED
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            {/* Tier 1 & Tier 2 Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {/* Tier 1 Quick Screen */}
               <div style={{
                 padding: '8px 10px',
-                borderRadius: '4px',
-                background: 'rgba(14, 27, 51, 0.7)',
-                border: '1px solid rgba(56, 189, 248, 0.18)',
+                borderRadius: '6px',
+                background: 'rgba(13, 26, 49, 0.8)',
+                border: '1px solid rgba(56, 189, 248, 0.2)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                gap: '6px',
               }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{
                       padding: '1px 5px',
-                      borderRadius: '2px',
-                      background: '#1a263d',
+                      borderRadius: '3px',
+                      background: 'rgba(56, 189, 248, 0.15)',
                       color: '#38bdf8',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '10px',
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      border: '1px solid rgba(56, 189, 248, 0.2)',
                     }}>
                       TIER 1: QUICK SCREEN
                     </span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#7bd0ff', fontWeight: 700 }}>
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '11px',
+                      color: '#7bd0ff',
+                      fontWeight: 800,
+                    }}>
                       ~2.1 MB
                     </span>
                   </div>
-                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', color: '#94a3b8', lineHeight: 1.4, margin: '0 0 4px 0' }}>
-                    Copernicus STAC lightweight quicklook ingestion. Applies fast GSHHG high-res shoreline vector masking and two-parameter CFAR statistical background clutter estimation.
+                  <p style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    lineHeight: 1.4,
+                    margin: 0,
+                  }}>
+                    Low-resolution STAC quicklooks across 14 sea corridors screened via adaptive 2-param CFAR clutter baseline.
                   </p>
                 </div>
+
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '4px 6px',
-                  borderRadius: '2px',
-                  background: 'rgba(3, 8, 20, 0.6)',
+                  padding: '3px 6px',
+                  borderRadius: '4px',
+                  background: 'rgba(3, 7, 18, 0.6)',
                   border: '1px solid rgba(56, 189, 248, 0.15)',
                 }}>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b', textTransform: 'uppercase' }}>TRIAGE DECISION</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#10b981', fontWeight: 600 }}>Clean &rarr; Drop / Dark &rarr; BBOX</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase' }}>
+                    DECISION
+                  </span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#10b981', fontWeight: 700 }}>
+                    Clean &rarr; Standby / Dark &rarr; BBOX
+                  </span>
                 </div>
               </div>
 
               {/* Tier 2 Targeted Patch */}
               <div style={{
                 padding: '8px 10px',
-                borderRadius: '4px',
-                background: 'rgba(14, 27, 51, 0.7)',
-                border: '1px solid rgba(56, 189, 248, 0.18)',
+                borderRadius: '6px',
+                background: 'rgba(13, 26, 49, 0.8)',
+                border: '1px solid rgba(168, 85, 247, 0.25)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                gap: '6px',
               }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{
                       padding: '1px 5px',
-                      borderRadius: '2px',
-                      background: '#1a263d',
-                      color: '#a855f7',
+                      borderRadius: '3px',
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      color: '#c084fc',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '10px',
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      border: '1px solid rgba(168, 85, 247, 0.3)',
                     }}>
                       TIER 2: TARGETED PATCH
                     </span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#a855f7', fontWeight: 700 }}>
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '11px',
+                      color: '#c084fc',
+                      fontWeight: 800,
+                    }}>
                       ~4.8 MB
                     </span>
                   </div>
-                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', color: '#94a3b8', lineHeight: 1.4, margin: '0 0 4px 0' }}>
-                    Pulls sub-bounding box via CDSE Process API at native ~10m resolution. Runs 7x7 Gamma-MAP speckle mitigation, dual-pol U-Net segmentation, and scatterometer wind look-alike rejection.
+                  <p style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    lineHeight: 1.4,
+                    margin: 0,
+                  }}>
+                    Pulls native 10m SAR sub-bounding box via CDSE Process API for Gamma-MAP filtering, U-Net AI &amp; wind gating.
                   </p>
                 </div>
+
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '4px 6px',
-                  borderRadius: '2px',
-                  background: 'rgba(3, 8, 20, 0.6)',
-                  border: '1px solid rgba(56, 189, 248, 0.15)',
+                  padding: '3px 6px',
+                  borderRadius: '4px',
+                  background: 'rgba(3, 7, 18, 0.6)',
+                  border: '1px solid rgba(168, 85, 247, 0.2)',
                 }}>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b', textTransform: 'uppercase' }}>NATIVE RESOLUTION</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#00f2fe', fontWeight: 600 }}>10m GSD Dual-Pol VV/VH</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase' }}>
+                    RESOLUTION
+                  </span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#00f2fe', fontWeight: 700 }}>
+                    10m GSD Dual-Pol (VV+VH)
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Bandwidth Economics Comparison Strip */}
+            {/* Bandwidth Comparison Strip */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              background: 'rgba(3, 8, 20, 0.9)',
-              border: '1px solid rgba(56, 189, 248, 0.18)',
+              padding: '5px 10px',
+              borderRadius: '6px',
+              background: 'rgba(3, 7, 18, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#64748b', textDecoration: 'line-through', textTransform: 'uppercase' }}>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '10.5px',
+                  color: '#64748b',
+                  textDecoration: 'line-through',
+                }}>
                   Full Scene: 1,000 MB Egress
                 </span>
-                <span style={{ color: '#64748b', fontSize: '11px' }}>&rarr;</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#10b981', fontWeight: 700 }}>
+                <span style={{ color: '#475569', fontSize: '11px' }}>&rarr;</span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '10.5px',
+                  color: '#10b981',
+                  fontWeight: 700,
+                }}>
                   TARANG Ingestion: 6.9 MB Total
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981' }} />
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#10b981', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '10.5px',
+                  color: '#10b981',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                }}>
                   993.1 MB BANDWIDTH CONSERVED
                 </span>
               </div>
             </div>
           </div>
 
-          {/* SENSOR SUBSYSTEM INSPECTOR (DYNAMIC CARD) */}
+          {/* Sensor Subsystem Inspector & ENLARGED Visual Input Ingestion Card */}
           <div style={{
             flex: 1,
             minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
             padding: '8px 12px',
-            borderRadius: '4px',
-            background: 'rgba(18, 27, 46, 0.75)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(56, 189, 248, 0.18)',
-            position: 'relative',
-            overflow: 'hidden',
+            borderRadius: '8px',
+            background: 'rgba(9, 19, 37, 0.65)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(0, 242, 254, 0.15)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+            justifyContent: 'space-between',
+            gap: '6px',
           }}>
+            {/* Inspector Top Bar */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '4px 8px',
-              marginBottom: '6px',
-              borderRadius: '4px',
-              background: 'rgba(18, 27, 46, 0.5)',
-              border: '1px solid rgba(56, 189, 248, 0.18)',
+              paddingBottom: '5px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              flexShrink: 0,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Radar size={15} color="#00f2fe" />
-                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#8ed5ff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity size={16} color="#00f2fe" />
+                <span style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: '13.5px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                  color: '#e0fdff',
+                }}>
                   {currentInspector.title}
                 </span>
+                <span style={{
+                  padding: '1px 6px',
+                  borderRadius: '3px',
+                  background: 'rgba(0, 242, 254, 0.12)',
+                  border: '1px solid rgba(0, 242, 254, 0.25)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '9.5px',
+                  color: '#00f2fe',
+                  fontWeight: 700,
+                }}>
+                  {currentInspector.inputMode}
+                </span>
               </div>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#00f2fe', textTransform: 'uppercase' }}>
-                {currentInspector.spec}
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '11.5px',
+                color: '#38bdf8',
+                fontWeight: 600,
+              }}>
+                {currentInspector.orbitGeometry}
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '6px' }}>
-              <div style={{ padding: '4px 6px', borderRadius: '4px', background: 'rgba(14, 27, 51, 0.7)', border: '1px solid rgba(56, 189, 248, 0.15)' }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b', textTransform: 'uppercase' }}>Swath / Mode</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#8ed5ff', fontWeight: 600 }}>{currentInspector.swath}</div>
-              </div>
-              <div style={{ padding: '4px 6px', borderRadius: '4px', background: 'rgba(14, 27, 51, 0.7)', border: '1px solid rgba(56, 189, 248, 0.15)' }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#64748b', textTransform: 'uppercase' }}>Ground Resolution</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#8ed5ff', fontWeight: 600 }}>{currentInspector.res}</div>
-              </div>
-              <div style={{ padding: '4px 6px', borderRadius: '4px', background: 'rgba(14, 27, 51, 0.7)', border: '1px solid rgba(56, 189, 248, 0.15)' }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#10b981', fontWeight: 600 }}>{currentInspector.calib}</div>
-              </div>
-            </div>
+            {/* Ingestion Physics & ENLARGED Visual Diagram Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1.3fr 1fr',
+              gap: '16px',
+              alignItems: 'stretch',
+              flex: 1,
+              minHeight: 0,
+            }}>
+              {/* Telemetry, Radiometric Discrimination & Decision Rule Panel */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: '7px',
+                minHeight: '260px',
+                height: '100%',
+              }}>
+                {/* 1. Header: Mechanism Title, Channel & Confidence Badges */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: '#00f2fe',
+                        boxShadow: '0 0 8px #00f2fe',
+                      }} />
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '10.5px',
+                        color: '#00f2fe',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        fontWeight: 700,
+                      }}>
+                        {currentInspector.mechanismTitle}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{
+                        padding: '1px 6px',
+                        borderRadius: '3px',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '9px',
+                        color: '#38bdf8',
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                      }}>
+                        {currentInspector.channel}
+                      </span>
+                      <span style={{
+                        padding: '1px 6px',
+                        borderRadius: '3px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '9px',
+                        color: '#10b981',
+                        fontWeight: 700,
+                      }}>
+                        {currentInspector.targetConfidence}
+                      </span>
+                    </div>
+                  </div>
 
-            <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '8px', alignItems: 'center' }}>
-              {/* Textual Physics Context */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#00f2fe', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>
-                  Hydrodynamic Damping Mechanism
-                </span>
-                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', color: '#94a3b8', lineHeight: 1.4, margin: '0 0 6px 0' }}>
-                  {currentInspector.desc}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px' }}>
+                  {/* Sensor Payload Specification Line */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '9.5px',
+                    color: '#94a3b8',
+                  }}>
+                    <span style={{ color: '#64748b', fontWeight: 700 }}>PAYLOAD:</span>
+                    <span>{currentInspector.spec}</span>
+                  </div>
+
+                  <p style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '11px',
+                    color: '#cbd5e1',
+                    lineHeight: 1.4,
+                    margin: 0,
+                  }}>
+                    {currentInspector.summary}
+                  </p>
+                </div>
+
+                {/* 2. Three-Column Radiometric Discrimination Matrix */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '6px',
+                  padding: '6px 8px',
+                  borderRadius: '5px',
+                  background: 'rgba(3, 7, 18, 0.72)',
+                  border: '1px solid rgba(0, 242, 254, 0.18)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}>
+                  <div style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(15, 23, 42, 0.65)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}>
+                    <div style={{ color: '#94a3b8', fontSize: '8.5px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      {currentInspector.clutterLabel}
+                    </div>
+                    <div style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '11.5px', marginTop: '2px' }}>
+                      {currentInspector.clutter}
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '8px', marginTop: '1px' }}>Baseline Environment</div>
+                  </div>
+
+                  <div style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(15, 23, 42, 0.65)',
+                    border: '1px solid rgba(251, 191, 36, 0.22)',
+                  }}>
+                    <div style={{ color: '#fbbf24', fontSize: '8.5px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      {currentInspector.slickLabel}
+                    </div>
+                    <div style={{ color: '#fef08a', fontWeight: 700, fontSize: '11.5px', marginTop: '2px' }}>
+                      {currentInspector.slick}
+                    </div>
+                    <div style={{ color: '#d97706', fontSize: '8px', marginTop: '1px' }}>Hydrocarbon Target</div>
+                  </div>
+
+                  <div style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(0, 242, 254, 0.08)',
+                    border: '1px solid rgba(0, 242, 254, 0.35)',
+                  }}>
+                    <div style={{ color: '#00f2fe', fontSize: '8.5px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      {currentInspector.contrastLabel}
+                    </div>
+                    <div style={{ color: '#00f2fe', fontWeight: 800, fontSize: '11.5px', marginTop: '2px' }}>
+                      {currentInspector.contrast}
+                    </div>
+                    <div style={{ color: '#38bdf8', fontSize: '8px', marginTop: '1px' }}>Signal Contrast Δ</div>
+                  </div>
+                </div>
+
+                {/* 3. Physics Formula / Decision Rule Tag & Processing Pipeline */}
+                <div style={{
+                  padding: '5px 8px',
+                  borderRadius: '4px',
+                  background: 'rgba(3, 7, 18, 0.75)',
+                  border: '1px solid rgba(0, 242, 254, 0.15)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '9.5px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: '#64748b', fontSize: '8.5px', fontWeight: 700 }}>RULE:</span>
+                    <span style={{ color: '#8ed5ff', wordBreak: 'break-all', fontWeight: 600 }}>
+                      {currentInspector.physicsFormula}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '6px',
+                    fontSize: '8.5px',
+                    color: '#94a3b8',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                    paddingTop: '3px',
+                  }}>
+                    <span style={{ color: '#c4b5fd', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#64748b', fontWeight: 700 }}>PIPE: </span>
+                      {currentInspector.pipeline}
+                    </span>
+                    <span style={{ color: '#38bdf8', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                      {currentInspector.processingLatency}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. 3 Prominent Sensor Telemetry Metrics */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '6px',
+                  padding: '6px 8px',
+                  borderRadius: '5px',
+                  background: 'rgba(3, 7, 18, 0.6)',
+                  border: '1px solid rgba(0, 242, 254, 0.12)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '10px',
+                }}>
                   <div>
-                    <span style={{ color: '#64748b' }}>Sea Clutter (μ):</span>
-                    <span style={{ color: '#8ed5ff', fontWeight: 700, marginLeft: '4px' }}>{currentInspector.clutter}</span>
+                    <div style={{ color: '#64748b', fontSize: '8.5px', textTransform: 'uppercase' }}>{currentInspector.metric1Label}</div>
+                    <div style={{ color: '#8ed5ff', fontWeight: 700, fontSize: '10.5px', marginTop: '2px' }}>{currentInspector.metric1Value}</div>
                   </div>
                   <div>
-                    <span style={{ color: '#64748b' }}>Slick Mean:</span>
-                    <span style={{ color: '#ef4444', fontWeight: 700, marginLeft: '4px' }}>{currentInspector.slick}</span>
+                    <div style={{ color: '#64748b', fontSize: '8.5px', textTransform: 'uppercase' }}>{currentInspector.metric2Label}</div>
+                    <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: '10.5px', marginTop: '2px' }}>{currentInspector.metric2Value}</div>
                   </div>
                   <div>
-                    <span style={{ color: '#64748b' }}>Contrast Δ:</span>
-                    <span style={{ color: '#10b981', fontWeight: 700, marginLeft: '4px' }}>{currentInspector.contrast}</span>
+                    <div style={{ color: '#64748b', fontSize: '8.5px', textTransform: 'uppercase' }}>{currentInspector.metric3Label}</div>
+                    <div style={{ color: '#10b981', fontWeight: 700, fontSize: '10.5px', marginTop: '2px' }}>{currentInspector.metric3Value}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Micro Polar / Waveform Interactive SVG Diagram */}
+              {/* Authentic Satellite Video Stream Deck */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '6px',
-                borderRadius: '4px',
-                background: 'rgba(3, 8, 20, 0.9)',
-                border: '1px solid rgba(56, 189, 248, 0.18)',
-                height: '100%',
+                padding: '2px',
+                borderRadius: '6px',
+                background: 'rgba(2, 6, 18, 0.65)',
+                border: '1px solid rgba(0, 242, 254, 0.22)',
+                height: '280px',
+                minHeight: '260px',
+                maxHeight: '290px',
+                width: '100%',
+                maxWidth: '400px',
+                justifySelf: 'center',
                 position: 'relative',
+                overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.45)',
               }}>
-                <svg style={{ width: '100%', height: '100px' }} fill="none" viewBox="0 0 200 100">
-                  {/* Radar Beam Geometry */}
-                  <path d="M 10 10 L 80 85" stroke="rgba(0, 242, 254, 0.6)" strokeWidth="1.5" strokeDasharray="3 3" />
-                  <path d="M 80 85 L 120 40" stroke="rgba(16, 185, 129, 0.7)" strokeWidth="1.5" />
-                  <path d="M 120 85 L 125 78" stroke="#ef4444" strokeWidth="1.2" />
-                  {/* Ocean Baseline Waves */}
-                  <path d="M 0 85 Q 20 78, 40 85 T 80 85" stroke="#38bdf8" strokeWidth="1.5" fill="none" />
-                  {/* Dampened Slick Surface (Flat / Absorbing) */}
-                  <path d="M 80 85 L 170 85" stroke="#ef4444" strokeWidth="2.5" />
-                  {/* Resumed Waves */}
-                  <path d="M 170 85 Q 185 80, 200 85" stroke="#38bdf8" strokeWidth="1.5" fill="none" />
-                  {/* Annotations */}
-                  <text x="12" y="24" fill="#00f2fe" fontFamily="'JetBrains Mono', monospace" fontSize="8">INCIDENCE θ=34.2°</text>
-                  <text x="92" y="97" fill="#ef4444" fontFamily="'JetBrains Mono', monospace" fontSize="8" fontWeight="bold">OIL SLICK (DAMPED)</text>
-                  <text x="10" y="97" fill="#64748b" fontFamily="'JetBrains Mono', monospace" fontSize="7">ROUGH SEA (BRAGG)</text>
-                </svg>
+                <SatelliteVideoFeed sensor={selectedSensor} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* ========== COLUMN RIGHT (COLS 8-12): REAL-TIME TELEMETRY TERMINAL CONSOLE ========== */}
+        {/* ========== COLUMN RIGHT: REDUCED TELEMETRY TERMINAL (280px) ========== */}
         <div style={{
-          gridColumn: 'span 5 / span 5',
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: '4px',
-          background: 'rgba(18, 27, 46, 0.75)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(56, 189, 248, 0.18)',
+          borderRadius: '8px',
+          background: 'rgba(9, 19, 37, 0.75)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(0, 242, 254, 0.18)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
           minHeight: 0,
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
           overflow: 'hidden',
         }}>
           {/* Terminal Window Bar */}
@@ -963,65 +1406,59 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '6px 10px',
-            background: 'rgba(3, 8, 20, 0.95)',
-            borderBottom: '1px solid rgba(56, 189, 248, 0.18)',
+            padding: '6px 8px',
+            background: 'rgba(3, 7, 18, 0.95)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             flexShrink: 0,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.8)' }} />
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(245, 158, 11, 0.8)' }} />
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.8)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
               </div>
-              <span style={{ marginLeft: '4px', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#64748b', letterSpacing: '0.02em' }}>
-                cdse_daemon@tarang-node-02: ~ / STAC_STREAM
+              <span style={{
+                marginLeft: '3px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '9.5px',
+                color: '#64748b',
+                letterSpacing: '0.04em',
+                fontWeight: 600,
+              }}>
+                LIVE_STAC_STREAM
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '1px 5px',
-                borderRadius: '2px',
-                background: isStreaming ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                border: isStreaming ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-              }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isStreaming ? '#10b981' : '#f59e0b' }} />
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: isStreaming ? '#10b981' : '#f59e0b', textTransform: 'uppercase', fontWeight: 600 }}>
-                  {isStreaming ? 'STREAMING' : 'PAUSED'}
-                </span>
-              </div>
-
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
               <button
                 onClick={() => setIsStreaming(!isStreaming)}
                 style={{
-                  padding: '1px 6px',
-                  borderRadius: '2px',
-                  background: '#0e1b33',
-                  color: '#64748b',
-                  border: '1px solid rgba(56, 189, 248, 0.18)',
+                  padding: '2px 5px',
+                  borderRadius: '3px',
+                  background: 'rgba(14, 30, 58, 0.9)',
+                  color: isStreaming ? '#10b981' : '#f59e0b',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '9px',
+                  fontSize: '8.5px',
+                  fontWeight: 700,
                   textTransform: 'uppercase',
                   cursor: 'pointer',
                 }}
               >
-                {isStreaming ? 'Pause' : 'Resume'}
+                {isStreaming ? 'STREAM' : 'PAUSE'}
               </button>
 
               <button
                 onClick={triggerSimulateSweep}
                 style={{
-                  padding: '1px 6px',
-                  borderRadius: '2px',
-                  background: '#0e1b33',
+                  padding: '2px 5px',
+                  borderRadius: '3px',
+                  background: 'rgba(14, 30, 58, 0.9)',
                   color: '#00f2fe',
-                  border: '1px solid rgba(56, 189, 248, 0.18)',
+                  border: '1px solid rgba(0, 242, 254, 0.3)',
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '9px',
+                  fontSize: '8.5px',
+                  fontWeight: 700,
                   textTransform: 'uppercase',
                   cursor: 'pointer',
                 }}
@@ -1032,13 +1469,13 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
               <button
                 onClick={resetConsole}
                 style={{
-                  padding: '1px 6px',
-                  borderRadius: '2px',
-                  background: '#0e1b33',
+                  padding: '2px 5px',
+                  borderRadius: '3px',
+                  background: 'rgba(14, 30, 58, 0.9)',
                   color: '#64748b',
-                  border: '1px solid rgba(56, 189, 248, 0.18)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '9px',
+                  fontSize: '8.5px',
                   textTransform: 'uppercase',
                   cursor: 'pointer',
                 }}
@@ -1054,12 +1491,12 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             style={{
               flex: 1,
               minHeight: 0,
-              background: 'rgba(3, 8, 20, 0.95)',
-              padding: '8px 10px',
+              background: 'rgba(2, 6, 18, 0.95)',
+              padding: '6px 8px',
               overflowY: 'auto',
               fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '11px',
-              lineHeight: 1.5,
+              fontSize: '10px',
+              lineHeight: 1.45,
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -1067,10 +1504,23 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
               {logs.map((log) => (
-                <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', wordBreak: 'break-word' }}>
-                  <span style={{ color: '#475569', fontSize: '10px', flexShrink: 0 }}>[{log.time}]</span>
-                  <span style={{ color: log.color, fontWeight: 700, fontSize: '10px', flexShrink: 0 }}>[{log.tag}]</span>
-                  <span style={{ color: log.tag === 'DETECTION' ? '#ef4444' : '#cbd5e1', fontWeight: log.tag === 'DETECTION' ? 700 : 400 }}>
+                <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', wordBreak: 'break-word' }}>
+                  <span style={{ color: '#475569', fontSize: '9px', flexShrink: 0 }}>[{log.time}]</span>
+                  <span style={{
+                    color: log.color,
+                    fontWeight: 700,
+                    fontSize: '9px',
+                    flexShrink: 0,
+                    background: `${log.color}15`,
+                    padding: '0 3px',
+                    borderRadius: '2px',
+                  }}>
+                    {log.tag}
+                  </span>
+                  <span style={{
+                    color: log.tag === 'ALERT' ? '#fca5a5' : '#cbd5e1',
+                    fontWeight: log.tag === 'ALERT' ? 700 : 400,
+                  }}>
                     {log.message}
                   </span>
                 </div>
@@ -1081,16 +1531,16 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              marginTop: '8px',
-              paddingTop: '6px',
-              borderTop: '1px solid rgba(56, 189, 248, 0.2)',
+              gap: '5px',
+              marginTop: '5px',
+              paddingTop: '5px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             }}>
-              <span style={{ color: '#00f2fe', fontWeight: 700, fontSize: '11px' }}>● CDSE_DAEMON &gt;</span>
-              <span style={{ color: '#8ed5ff', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px' }}>
-                STANDBY FOR CYCLE 15:30Z TELEMETRY
+              <span style={{ color: '#00f2fe', fontWeight: 700, fontSize: '10px' }}>● CDSE &gt;</span>
+              <span style={{ color: '#8ed5ff', fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px' }}>
+                STANDBY 15:30Z
               </span>
-              <span style={{ display: 'inline-block', width: '6px', height: '12px', background: '#00f2fe', animation: 'pulse 1s infinite' }} />
+              <span style={{ display: 'inline-block', width: '5px', height: '10px', background: '#00f2fe' }} />
             </div>
           </div>
 
@@ -1099,94 +1549,28 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '6px 12px',
-            background: 'rgba(3, 8, 20, 0.95)',
-            borderTop: '1px solid rgba(56, 189, 248, 0.18)',
+            padding: '4px 8px',
+            background: 'rgba(3, 7, 18, 0.95)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             flexShrink: 0,
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '10px',
+            fontSize: '9.5px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div>
                 <span style={{ color: '#64748b' }}>DAEMON: </span>
                 <span style={{ color: '#10b981', fontWeight: 700 }}>ONLINE</span>
               </div>
               <div>
                 <span style={{ color: '#64748b' }}>CADENCE: </span>
-                <span style={{ color: '#00f2fe', fontWeight: 700 }}>30 MIN</span>
-              </div>
-              <div>
-                <span style={{ color: '#64748b' }}>RATE: </span>
-                <span style={{ color: '#8ed5ff', fontWeight: 700 }}>1.2 EVT/S</span>
+                <span style={{ color: '#00f2fe', fontWeight: 700 }}>30m</span>
               </div>
             </div>
             <div>
-              <span style={{ color: '#64748b' }}>BANDWIDTH SAVED: </span>
-              <span style={{ color: '#10b981', fontWeight: 700 }}>99.3%</span>
+              <span style={{ color: '#64748b' }}>RATE: </span>
+              <span style={{ color: '#8ed5ff', fontWeight: 700 }}>1.2 E/S</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION [E]: COMPACT TELEMETRY VERIFICATION FOOTER
-         ───────────────────────────────────────────────────────────── */}
-      <div style={{
-        height: '36px',
-        padding: '0 14px',
-        borderRadius: '4px',
-        background: 'rgba(18, 27, 46, 0.75)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(56, 189, 248, 0.18)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-        flexShrink: 0,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CheckCircle2 size={16} color="#10b981" />
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', color: '#d9e2fc' }}>
-            <strong style={{ color: '#8ed5ff', fontWeight: 600 }}>Autonomous Pipeline Status:</strong> Sentinel-1 SAR anomaly confirmed with ISRO Oceansat-3 wind gating (4.8 m/s). Ready for 3D Globe &amp; Lagrangian drift modeling.
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '2px 8px',
-            borderRadius: '4px',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-          }}>
-            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)' }} />
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#10b981', fontWeight: 700, letterSpacing: '0.06em' }}>
-              CONFIDENCE: 96.4%
-            </span>
-          </div>
-
-          <button
-            onClick={onProceedToGlobe}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              background: 'transparent',
-              border: 'none',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '10px',
-              color: '#00f2fe',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            <span>Proceed to 3D Globe (Act 1)</span>
-            <ArrowRight size={12} />
-          </button>
         </div>
       </div>
     </div>

@@ -81,8 +81,61 @@
 - Designed structured dark-theme tooltip cards with labeled data rows and red SAR sensor badges.
 
 ### 12. Dynamic Cursor Tracking & Context-Aware Hover Modes
-- Files updated: [`CharacterizationDashboard.tsx`](file:///d:/Project/Tarang/frontend/src/components/CharacterizationDashboard.tsx), [`GlobalSurveillanceMap.tsx`](file:///d:/Project/Tarang/frontend/src/components/GlobalSurveillanceMap.tsx), [`MaritimeInvestigationSuite.tsx`](file:///d:/Project/Tarang/frontend/src/components/MaritimeInvestigationSuite.tsx)
+- Files updated: [`CharacterizationDashboard.tsx`](file:///d:/Project/Tarang/frontend/src/components/CharacterizationDashboard.tsx), [`MaritimeInvestigationSuite.tsx`](file:///d:/Project/Tarang/frontend/src/components/MaritimeInvestigationSuite.tsx)
 - Added `MapMouseTracker` global map mousemove listener throttled at 30ms for smooth 60fps tracking without UI frame drops.
 - Context-Aware Hover Modes:
   - **State A (Outside Spill)**: `📍 Marine Coordinate Inspector` displaying live cursor GPS DMS/Decimal coordinates, live Sea Basin, and nearest coastal proximity.
   - **State B (Inside Spill / Pin)**: `🚨 Observed Spill Slick (+0h)` displaying live cursor GPS, Sea Basin, coastal proximity, PLUS surface area (`~2.805 km²`) and detection timestamp (`05 Feb 2021 03:50 UTC`).
+
+### 13. GIS Layer Decluttering & Satellite Basemap Locking
+- Files updated: [`CharacterizationDashboard.tsx`](file:///d:/Project/Tarang/frontend/src/components/CharacterizationDashboard.tsx), [`MaritimeInvestigationSuite.tsx`](file:///d:/Project/Tarang/frontend/src/components/MaritimeInvestigationSuite.tsx)
+- Locked both Characterization and Maritime Investigation suites exclusively to high-resolution **Esri World Imagery** satellite map.
+- Removed animated wave ripples and clutter lines from Page 3.
+- Restructured Page 4 GIS source layers into two dedicated tabs:
+  - **Tab 1 (Suspect Vessels)**: Probable Origin (1σ/2σ/3σ), AIS Vessels & Tracks, Backward Hindcast Trajectories, Counterfactual Simulated Slick, AIS Transmission Blackouts, SAR Radar Vessel Detections.
+  - **Tab 2 (Infrastructure & Coast)**: Ports & Terminals, Subsea Pipelines, Offshore Platforms, Refineries, Natural Seeps, Threatened Coastal Assets.
+- Heavy visual layers defaulted to off/unchecked so maps open crisp and high-contrast without visual clutter.
+
+### 14. Removal of Obsolete Prototypes & GSD Artifacts
+- Removed deleted `.gsd/` documentation and style configs from repository and added to `.gitignore`.
+- Removed 6 unused early prototype components (`GlobalSurveillanceMap.tsx`, `IncidentsTable.tsx`, `MultiSatelliteViewer.tsx`, `Navbar.tsx`, `SidebarControls.tsx`, `TelemetryDisplay.tsx`) superseded by the 5 main mission suites.
+- Cleaned up one-off scripts (`frontend/download.py`, `characterization/update_authentic_coords.py`) and offline design mockups (`stitch_designs/`).
+
+### 15. Clean Separation of Frontend & Backend Architecture
+- Centralized all Python microservices, models, datasets, and characterization pipelines into **`backend/`**:
+  - `backend/api.py`, `backend/cdse_client.py`, `backend/preprocess.py`, `backend/unet_oilspill.h5`, `backend/model_capabilities.yaml`, `backend/requirements.txt`, `backend/characterization/`, `backend/modules/`, and `backend/data/`.
+- Implemented root backwards-compatibility proxy shim (`api.py`) to support seamless local running (`uvicorn api:app`).
+- Added `tests/conftest.py` ensuring pytest passes all 25 unit and integration tests.
+- Updated [PROJECT_RULES.md](file:///d:/Oil_spill(sos)/PROJECT_RULES.md), [README.md](file:///d:/Oil_spill(sos)/README.md), and [API_INTEGRATIONS.md](file:///d:/Oil_spill(sos)/API_INTEGRATIONS.md) to reflect the new structure.
+
+### 16. Wakashio Starting Release Oval Polygon & Satellite Overlay
+- Files updated: [`backend/data/wakashio_benchmark/real_spill_polygon.json`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_spill_polygon.json), [`backend/data/wakashio_benchmark/real_binary_mask_256.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_binary_mask_256.png), [`backend/data/wakashio_benchmark/spill_polygon_overlay.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/spill_polygon_overlay.png), [`backend/data/wakashio_benchmark/spill_zoomed_crop.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/spill_zoomed_crop.png), [`backend/api.py`](file:///d:/Oil_spill(sos)/backend/api.py).
+- Implemented smooth parametric starting oval/ellipse polygon (36 nodes) representing the initial release slick:
+  - Oriented along the lagoon channel (135° NW-SE) emanating from the MV Wakashio wreck origin on the coral reef (`-20.438119, 57.744631`).
+  - Centroid positioned inside open lagoon water: `(-20.433500, 57.739000)`.
+  - Geometric parameters: surface area `2.16 km²`, perimeter `5.63 km`.
+  - 100% water-conformed with zero dry land overlap.
+- Properly marked high-resolution overlay images:
+  - `spill_polygon_overlay.png`: Fixed previous top-left displacement; now renders glowing dual-tone vector perimeter directly over the lagoon oil plume with pin on the wreck.
+  - `spill_zoomed_crop.png`: 4X zoom centered tightly on the starting oval with HUD banner and wreck marker.
+  - `real_binary_mask_256.png`: Ground truth mask regenerated with 4,958 active slick pixels.
+- Backend API updated with `c_lat = -20.4335, c_lon = 57.7390`, `buffer_deg = 0.025`, and historical observations (1.45 km² on 2020-08-07, 2.16 km² on 2020-08-10).
+
+### 17. Production Dockerization & Deployment Infrastructure
+- Files created: [`docker-compose.yml`](file:///d:/Oil_spill(sos)/docker-compose.yml), [`backend/Dockerfile`](file:///d:/Oil_spill(sos)/backend/Dockerfile), [`frontend/Dockerfile`](file:///d:/Oil_spill(sos)/frontend/Dockerfile), [`frontend/nginx.conf`](file:///d:/Oil_spill(sos)/frontend/nginx.conf), [`docs/DEPLOYMENT_GUIDE.md`](file:///d:/Oil_spill(sos)/docs/DEPLOYMENT_GUIDE.md).
+- Files updated: [`README.md`](file:///d:/Oil_spill(sos)/README.md).
+- Provided turnkey multi-container deployment:
+  - **Backend**: Debian-slim container with OpenCV, TensorFlow, ReportLab, and FastAPI Uvicorn ASGI server with automated healthcheck.
+  - **Frontend**: Multi-stage Node.js build served via high-performance Nginx with Gzip compression and `/api/` reverse proxy.
+  - **Docker Compose**: Orchestrates both containers with internal bridge networking (`tarang-net`) and persistent volumes.
+- Authored production deployment guide covering Docker Compose, Cloud PaaS (Render/Railway + Vercel), and Ubuntu VPS with Systemd + Nginx + Let's Encrypt SSL.
+
+### 18. Full-Stack Vercel Monorepo Deployment
+- Files created: [`vercel.json`](file:///d:/Oil_spill(sos)/vercel.json), [`api/index.py`](file:///d:/Oil_spill(sos)/api/index.py), [`api/__init__.py`](file:///d:/Oil_spill(sos)/api/__init__.py), [`api/requirements.txt`](file:///d:/Oil_spill(sos)/api/requirements.txt).
+- Files updated: [`backend/api.py`](file:///d:/Oil_spill(sos)/backend/api.py).
+- Configured single-click Vercel deployment orchestrating both services:
+  - **Frontend**: Built via `cd frontend && npm install && npm run build` and served from `frontend/dist`.
+  - **Backend**: Runs as a Python 3.11 serverless function in `api/index.py` using `@vercel/python`.
+  - **Serverless Optimizations**: Dedicated `api/requirements.txt` using `opencv-python-headless` and lean scientific libraries to stay strictly within Vercel's 250 MB lambda limit; made model loading gracefully resilient if heavy TensorFlow weights are not pre-packaged.
+  - **Unified Routing**: Automatic rewrite mapping `/api/(.*)` directly to `api/index.py` with zero CORS configuration needed.
+

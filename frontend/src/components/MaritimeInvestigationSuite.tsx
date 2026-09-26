@@ -51,7 +51,8 @@ import {
   Sliders,
   TrendingUp,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Satellite
 } from 'lucide-react';
 
 interface CoastalAgencyContact {
@@ -231,22 +232,20 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
     investigationReport.multi_source_comparison?.candidates[0] || null
   );
 
-  // Basemap & Layer toggles
-  const [basemapType, setBasemapType] = useState<'satellite' | 'ocean' | 'voyager' | 'positron' | 'dark'>('satellite');
+  // Layer toggles & tab pagination
+  const [layerTab, setLayerTab] = useState<'main' | 'others'>('main');
   const [showOriginZones, setShowOriginZones] = useState<boolean>(true);
-  const [showDistanceRings, setShowDistanceRings] = useState<boolean>(true);
   const [showVesselTracks, setShowVesselTracks] = useState<boolean>(true);
+  const [showBackwardTracer, setShowBackwardTracer] = useState<boolean>(false);
+  const [showSimulatedSlick, setShowSimulatedSlick] = useState<boolean>(false);
+  const [showAisGaps, setShowAisGaps] = useState<boolean>(false);
+  const [showSarDetections, setShowSarDetections] = useState<boolean>(false);
   const [showPorts, setShowPorts] = useState<boolean>(true);
   const [showPipelines, setShowPipelines] = useState<boolean>(true);
   const [showPlatforms, setShowPlatforms] = useState<boolean>(true);
   const [showIndustrial, setShowIndustrial] = useState<boolean>(true);
   const [showNaturalSeeps, setShowNaturalSeeps] = useState<boolean>(true);
-  const [showBackwardTracer, setShowBackwardTracer] = useState<boolean>(true);
-  const [showSimulatedSlick, setShowSimulatedSlick] = useState<boolean>(true);
-  const [showAisGaps, setShowAisGaps] = useState<boolean>(false);
-  const [showSarDetections, setShowSarDetections] = useState<boolean>(false);
-  const [showCoastalReceptors, setShowCoastalReceptors] = useState<boolean>(false);
-  const [showCoastalDrift, setShowCoastalDrift] = useState<boolean>(false);
+  const [showCoastalReceptors, setShowCoastalReceptors] = useState<boolean>(true);
 
   const originAnalysis = investigationReport.origin_analysis;
   const vesselInv = investigationReport.vessel_investigation;
@@ -797,6 +796,58 @@ export const MaritimeInvestigationSuite: React.FC<MaritimeInvestigationSuiteProp
       iconSize: [32, 32],
       iconAnchor: [16, 16],
       popupAnchor: [0, -16],
+    });
+
+  // Dedicated Threatened Coastal Receptor Marker
+  const createReceptorIcon = (color: string, name: string, isHighRisk: boolean) =>
+    L.divIcon({
+      className: 'receptor-marker-div-icon',
+      html: `
+        <div style="
+          position: relative;
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        ">
+          ${isHighRisk ? `<div style="position: absolute; width: 38px; height: 38px; border-radius: 6px; border: 2px solid ${color}; animation: boatSonarPulse 1.8s infinite;"></div>` : ''}
+          <div style="
+            width: 22px;
+            height: 22px;
+            border-radius: 5px;
+            background: #0f172a;
+            border: 2px solid ${color};
+            box-shadow: 0 0 10px ${color};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div style="
+            position: absolute;
+            bottom: -15px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid ${color};
+            color: #ffffff;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 3px;
+            white-space: nowrap;
+            pointer-events: none;
+          ">
+            ${name.length > 14 ? name.slice(0, 13) + '…' : name}
+          </div>
+        </div>
+      `,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -15],
     });
 
   // Dedicated Probable Origin Reticle Icon
@@ -1359,87 +1410,22 @@ Reference ID: ${investigationReport.report_id}
             backdropFilter: 'blur(8px)',
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)',
           }}>
-            <span style={{ fontSize: '0.66rem', color: '#00f2fe', fontWeight: 800, padding: '0 4px' }}>MAP:</span>
-            <button
-              onClick={() => setBasemapType('satellite')}
-              style={{
-                background: basemapType === 'satellite' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
-                border: basemapType === 'satellite' ? '1px solid #00f2fe' : '1px solid transparent',
-                color: basemapType === 'satellite' ? '#ffffff' : '#94a3b8',
-                borderRadius: '5px',
-                padding: '3px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Satellite
-            </button>
-            <button
-              onClick={() => setBasemapType('ocean')}
-              style={{
-                background: basemapType === 'ocean' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
-                border: basemapType === 'ocean' ? '1px solid #00f2fe' : '1px solid transparent',
-                color: basemapType === 'ocean' ? '#ffffff' : '#94a3b8',
-                borderRadius: '5px',
-                padding: '3px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Ocean Blue
-            </button>
-            <button
-              onClick={() => setBasemapType('voyager')}
-              style={{
-                background: basemapType === 'voyager' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
-                border: basemapType === 'voyager' ? '1px solid #00f2fe' : '1px solid transparent',
-                color: basemapType === 'voyager' ? '#ffffff' : '#94a3b8',
-                borderRadius: '5px',
-                padding: '3px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Color Coastal
-            </button>
-            <button
-              onClick={() => setBasemapType('positron')}
-              style={{
-                background: basemapType === 'positron' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
-                border: basemapType === 'positron' ? '1px solid #00f2fe' : '1px solid transparent',
-                color: basemapType === 'positron' ? '#ffffff' : '#94a3b8',
-                borderRadius: '5px',
-                padding: '3px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Positron Light
-            </button>
-            <button
-              onClick={() => setBasemapType('dark')}
-              style={{
-                background: basemapType === 'dark' ? 'rgba(0, 242, 254, 0.25)' : 'transparent',
-                border: basemapType === 'dark' ? '1px solid #00f2fe' : '1px solid transparent',
-                color: basemapType === 'dark' ? '#ffffff' : '#94a3b8',
-                borderRadius: '5px',
-                padding: '3px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Dark Canvas
-            </button>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '3px 8px',
+              borderRadius: '5px',
+              background: 'rgba(0, 242, 254, 0.12)',
+              border: '1px solid rgba(0, 242, 254, 0.35)',
+              color: '#00f2fe',
+              fontSize: '0.68rem',
+              fontWeight: 800,
+            }}>
+              <Satellite size={12} color="#00f2fe" />
+              <span>SATELLITE BASEMAP</span>
+            </div>
+
 
             {/* Screen Size / Maximize Map Toggle */}
             <button
@@ -1484,84 +1470,144 @@ Reference ID: ${investigationReport.report_id}
             background: 'rgba(6, 10, 20, 0.94)',
             border: '1px solid rgba(0, 242, 254, 0.35)',
             borderRadius: '8px',
-            padding: '8px 12px',
+            padding: '8px 10px',
             display: 'flex',
             flexDirection: 'column',
             gap: '5px',
             fontSize: '0.72rem',
             backdropFilter: 'blur(8px)',
             maxHeight: '85%',
+            minWidth: '225px',
             overflowY: 'auto',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
           }}>
-            <div style={{ fontWeight: 800, color: '#00f2fe', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layers size={13} />
-              <span>GIS SOURCE & ORIGIN LAYERS</span>
+            <div style={{ fontWeight: 800, color: '#00f2fe', marginBottom: '3px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Layers size={13} />
+                <span>GIS SOURCE LAYERS</span>
+              </div>
+              <span style={{ fontSize: '0.62rem', color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>
+                {layerTab === 'main' ? 'PAGE 1/2' : 'PAGE 2/2'}
+              </span>
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showOriginZones} onChange={(e) => setShowOriginZones(e.target.checked)} />
-              <span style={{ color: '#eab308', fontWeight: 600 }}>Probable Origin (1σ/2σ/3σ)</span>
-            </label>
+            {/* Tab navigation buttons */}
+            <div style={{
+              display: 'flex',
+              gap: '4px',
+              background: 'rgba(2, 6, 23, 0.8)',
+              padding: '2px',
+              borderRadius: '6px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              marginBottom: '4px',
+            }}>
+              <button
+                onClick={() => setLayerTab('main')}
+                style={{
+                  flex: 1,
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: layerTab === 'main' ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)' : 'transparent',
+                  color: layerTab === 'main' ? '#030712' : '#94a3b8',
+                  fontSize: '0.68rem',
+                  fontWeight: layerTab === 'main' ? 800 : 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  textAlign: 'center',
+                }}
+              >
+                Suspect Vessels
+              </button>
+              <button
+                onClick={() => setLayerTab('others')}
+                style={{
+                  flex: 1,
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: layerTab === 'others' ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)' : 'transparent',
+                  color: layerTab === 'others' ? '#030712' : '#94a3b8',
+                  fontSize: '0.68rem',
+                  fontWeight: layerTab === 'others' ? 800 : 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  textAlign: 'center',
+                }}
+              >
+                Infrastructure
+              </button>
+            </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showDistanceRings} onChange={(e) => setShowDistanceRings(e.target.checked)} />
-              <span style={{ color: '#38bdf8', fontWeight: 600 }}>Distance Rings (5 / 10 / 25 km)</span>
-            </label>
+            {/* Page 1: Suspect Vessels & Origin Forensics */}
+            {layerTab === 'main' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showOriginZones} onChange={(e) => setShowOriginZones(e.target.checked)} />
+                  <span style={{ color: '#eab308', fontWeight: 600 }}>Probable Origin (1σ/2σ/3σ)</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showVesselTracks} onChange={(e) => setShowVesselTracks(e.target.checked)} />
-              <span style={{ color: '#38bdf8' }}>AIS Vessels & Tracks</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showVesselTracks} onChange={(e) => setShowVesselTracks(e.target.checked)} />
+                  <span style={{ color: '#38bdf8', fontWeight: 600 }}>AIS Vessels &amp; Tracks</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showPorts} onChange={(e) => setShowPorts(e.target.checked)} />
-              <span style={{ color: '#f59e0b' }}>Ports & Marine Terminals</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showBackwardTracer} onChange={(e) => setShowBackwardTracer(e.target.checked)} />
+                  <span style={{ color: '#fbbf24' }}>Backward Hindcast Trajectories</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showPipelines} onChange={(e) => setShowPipelines(e.target.checked)} />
-              <span style={{ color: '#f97316' }}>Subsea Oil Pipelines</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showSimulatedSlick} onChange={(e) => setShowSimulatedSlick(e.target.checked)} />
+                  <span style={{ color: '#00f2fe' }}>Counterfactual Simulated Slick</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showPlatforms} onChange={(e) => setShowPlatforms(e.target.checked)} />
-              <span style={{ color: '#a855f7' }}>Offshore Drilling Platforms</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showAisGaps} onChange={(e) => setShowAisGaps(e.target.checked)} />
+                  <span style={{ color: '#f59e0b' }}>AIS Transmission Blackouts</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showIndustrial} onChange={(e) => setShowIndustrial(e.target.checked)} />
-              <span style={{ color: '#38bdf8' }}>Coastal Refineries & Plants</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showSarDetections} onChange={(e) => setShowSarDetections(e.target.checked)} />
+                  <span style={{ color: '#ef4444' }}>SAR Radar Vessel Detections</span>
+                </label>
+              </div>
+            )}
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showNaturalSeeps} onChange={(e) => setShowNaturalSeeps(e.target.checked)} />
-              <span style={{ color: '#10b981' }}>Natural Hydrocarbon Seeps</span>
-            </label>
+            {/* Page 2: Others (Maritime Infrastructure & Coastal Assets) */}
+            {layerTab === 'others' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showPorts} onChange={(e) => setShowPorts(e.target.checked)} />
+                  <span style={{ color: '#f59e0b' }}>Ports &amp; Marine Terminals</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showBackwardTracer} onChange={(e) => setShowBackwardTracer(e.target.checked)} />
-              <span style={{ color: '#fbbf24' }}>Backward Hindcast Trajectories</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showPipelines} onChange={(e) => setShowPipelines(e.target.checked)} />
+                  <span style={{ color: '#f97316' }}>Subsea Oil Pipelines</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showSimulatedSlick} onChange={(e) => setShowSimulatedSlick(e.target.checked)} />
-              <span style={{ color: '#00f2fe' }}>Counterfactual Simulated Slick</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showPlatforms} onChange={(e) => setShowPlatforms(e.target.checked)} />
+                  <span style={{ color: '#a855f7' }}>Offshore Drilling Platforms</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showAisGaps} onChange={(e) => setShowAisGaps(e.target.checked)} />
-              <span style={{ color: '#f59e0b' }}>AIS Transmission Blackouts</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showIndustrial} onChange={(e) => setShowIndustrial(e.target.checked)} />
+                  <span style={{ color: '#38bdf8' }}>Coastal Refineries &amp; Plants</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showSarDetections} onChange={(e) => setShowSarDetections(e.target.checked)} />
-              <span style={{ color: '#ef4444' }}>SAR Radar Vessel Detections</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showNaturalSeeps} onChange={(e) => setShowNaturalSeeps(e.target.checked)} />
+                  <span style={{ color: '#10b981' }}>Natural Hydrocarbon Seeps</span>
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showCoastalReceptors} onChange={(e) => setShowCoastalReceptors(e.target.checked)} />
-              <span style={{ color: '#ec4899' }}>Threatened Coastal Assets</span>
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '4px' }}>
+                  <input type="checkbox" checked={showCoastalReceptors} onChange={(e) => setShowCoastalReceptors(e.target.checked)} />
+                  <span style={{ color: '#f43f5e', fontWeight: 600 }}>Threatened Coastal Assets</span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Leaflet Map Canvas */}
@@ -1576,76 +1622,16 @@ Reference ID: ${investigationReport.report_id}
             >
               <MapSynchronizer center={[centroid.lat, centroid.lon]} isMaximized={isMapMaximized} />
               <MapMouseTracker onMouseMove={handleMapMouseMove} onMouseLeave={handleMapMouseLeave} />
-              {basemapType === 'satellite' && (
-                <TileLayer
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
-              {basemapType === 'ocean' && (
-                <TileLayer
-                  url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, GEBCO, NOAA'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
-              {basemapType === 'voyager' && (
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                  attribution='&copy; <a href="https://carto.com/">CARTO</a>, &copy; OpenStreetMap'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
-              {basemapType === 'positron' && (
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png"
-                  attribution='&copy; <a href="https://carto.com/">CARTO</a>, &copy; OpenStreetMap'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
-              {basemapType === 'dark' && (
-                <TileLayer
-                  url="https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
-                  maxZoom={20}
-                  maxNativeZoom={13}
-                />
-              )}
+              {/* Satellite Basemap Layer */}
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics'
+                maxZoom={20}
+                maxNativeZoom={13}
+              />
 
-              {/* 1. Distance Rings around Origin (5 km, 10 km, 25 km) */}
-              {showDistanceRings && (
-                <>
-                  <Circle
-                    center={[centroid.lat, centroid.lon]}
-                    radius={5000}
-                    pathOptions={{ color: '#00f2fe', fillColor: 'transparent', weight: 1.5, dashArray: '5, 5', opacity: 0.8 }}
-                  >
-                    <Tooltip sticky={false} permanent={false}>5 km Spatial Proximity Ring</Tooltip>
-                  </Circle>
-                  <Circle
-                    center={[centroid.lat, centroid.lon]}
-                    radius={10000}
-                    pathOptions={{ color: '#eab308', fillColor: 'transparent', weight: 1.5, dashArray: '6, 6', opacity: 0.7 }}
-                  >
-                    <Tooltip sticky={false} permanent={false}>10 km Spatial Proximity Ring</Tooltip>
-                  </Circle>
-                  <Circle
-                    center={[centroid.lat, centroid.lon]}
-                    radius={25000}
-                    pathOptions={{ color: '#a855f7', fillColor: 'transparent', weight: 1.5, dashArray: '8, 8', opacity: 0.6 }}
-                  >
-                    <Tooltip sticky={false} permanent={false}>25 km Outer Influence Boundary</Tooltip>
-                  </Circle>
-                </>
-              )}
-
-              {/* 2. Multi-Tier Probable Origin Zones */}
-              {showOriginZones && (
+              {/* 1. Multi-Tier Probable Origin Zones - Page 1 */}
+              {layerTab === 'main' && showOriginZones && (
                 <>
                   {/* High Probability Zone (1σ Core Boundary) */}
                   {originAnalysis.zones.high?.polygon && (
@@ -1683,32 +1669,41 @@ Reference ID: ${investigationReport.report_id}
                       <Tooltip permanent={false}>Outer Spatial Uncertainty Boundary (3σ): ±{originAnalysis.zones.low.radius_km} km</Tooltip>
                     </Polygon>
                   )}
-
-                  {/* Centroid Reticle Marker */}
-                  <Marker
-                    position={[centroid.lat, centroid.lon]}
-                    icon={createOriginReticleIcon()}
-                    eventHandlers={{
-                      click: () => setActiveTab('sources'),
-                      mouseover: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: true })),
-                      mouseout: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: false })),
-                    }}
-                  >
-                    <Popup>
-                      <b>Probable Origin Centroid</b><br />
-                      Lat: {centroid.lat.toFixed(5)}°N<br />
-                      Lon: {centroid.lon.toFixed(5)}°E<br />
-                      Release Window: {originAnalysis.time_window.window_earliest} – {originAnalysis.time_window.window_latest}<br />
-                      Confidence: {Math.round(originAnalysis.time_window.confidence_level * 100)}%
-                    </Popup>
-                  </Marker>
                 </>
               )}
 
-              {/* 3. Backward Lagrangian Advection Spine & Tracer Trajectories */}
-              {showBackwardTracer && (
+              {/* Centroid Reticle Marker - Persistent Crime Scene Reference */}
+              <Marker
+                position={[centroid.lat, centroid.lon]}
+                icon={createOriginReticleIcon()}
+                eventHandlers={{
+                  click: () => setActiveTab('sources'),
+                  mouseover: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: true })),
+                  mouseout: () => setCursorState((prev) => ({ ...prev, isHoveringSpill: false })),
+                }}
+              >
+                <Popup>
+                  <b>Probable Origin Centroid</b><br />
+                  Lat: {centroid.lat.toFixed(5)}°N<br />
+                  Lon: {centroid.lon.toFixed(5)}°E<br />
+                  Release Window: {originAnalysis.time_window.window_earliest} – {originAnalysis.time_window.window_latest}<br />
+                  Confidence: {Math.round(originAnalysis.time_window.confidence_level * 100)}%
+                </Popup>
+              </Marker>
+
+              {/* 2. Observed Satellite Oil Slick Boundary */}
+              {analysis.geometry?.boundary && (
+                <Polygon
+                  positions={toLeafletPositions(analysis.geometry.boundary)}
+                  pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.35, weight: 2 }}
+                >
+                  <Tooltip permanent={false}>Observed Satellite Oil Slick ({analysis.geometry.area_km2.toFixed(1)} km²)</Tooltip>
+                </Polygon>
+              )}
+
+              {/* Backward Hindcast Trajectories - Page 1 */}
+              {layerTab === 'main' && showBackwardTracer && (
                 <>
-                  {/* Central Advection Spine connecting observed slick to probable origin reticle */}
                   <Polyline
                     positions={[
                       [centroid.lat, centroid.lon],
@@ -1720,7 +1715,7 @@ Reference ID: ${investigationReport.report_id}
                   </Polyline>
 
                   {analysis.hindcast?.trajectories && (
-                    analysis.hindcast.trajectories.map((traj, tIdx) => (
+                    analysis.hindcast.trajectories.map((traj: any, tIdx: number) => (
                       <Polyline
                         key={`hindcast-traj-${tIdx}`}
                         positions={traj.map((pt: any) => (Array.isArray(pt) ? [pt[1], pt[0]] as [number, number] : [pt.lat, pt.lon] as [number, number]))}
@@ -1733,18 +1728,8 @@ Reference ID: ${investigationReport.report_id}
                 </>
               )}
 
-              {/* 4. Observed Slick Boundary vs Counterfactual Forward-Simulated Slick */}
-              {analysis.geometry?.boundary && (
-                <Polygon
-                  positions={toLeafletPositions(analysis.geometry.boundary)}
-                  pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.35, weight: 2 }}
-                >
-                  <Tooltip permanent={false}>Observed Satellite Oil Slick ({analysis.geometry.area_km2.toFixed(1)} km²)</Tooltip>
-                </Polygon>
-              )}
-
-              {/* Counterfactual Simulated Slick Overlay */}
-              {showSimulatedSlick && selectedSourceCandidate?.counterfactual_simulation?.simulated_slick_polygon && (
+              {/* Counterfactual Forward-Simulated Slick Overlay - Page 1 */}
+              {layerTab === 'main' && showSimulatedSlick && selectedSourceCandidate?.counterfactual_simulation?.simulated_slick_polygon && (
                 <Polygon
                   positions={toLeafletPositions(selectedSourceCandidate.counterfactual_simulation.simulated_slick_polygon)}
                   pathOptions={{ color: '#00f2fe', fillColor: '#00f2fe', fillOpacity: 0.38, weight: 2.5, dashArray: '6, 4' }}
@@ -1755,8 +1740,8 @@ Reference ID: ${investigationReport.report_id}
                 </Polygon>
               )}
 
-              {/* 5. Plausible Source Layers (Ports, Pipelines, Platforms, Industrial Facilities, Natural Seeps) */}
-              {multiSourceComp?.candidates.map((src) => {
+              {/* 5. Plausible Source Layers (Ports, Pipelines, Platforms, Industrial Facilities, Natural Seeps) - Page 2 */}
+              {layerTab === 'others' && multiSourceComp?.candidates.map((src) => {
                 const isSelected = selectedSourceCandidate?.source_id === src.source_id;
 
                 // Port & Terminal
@@ -1929,18 +1914,10 @@ Reference ID: ${investigationReport.report_id}
                 return null;
               })}
 
-              {/* 6. Projected Coastal Drift Vector */}
-              {showCoastalDrift && coastalWarning.coastal_drift_vector?.coordinates && (
-                <Polyline
-                  positions={coastalWarning.coastal_drift_vector.coordinates.map((pt: number[]) => [pt[1], pt[0]])}
-                  pathOptions={{ color: '#22c55e', weight: 3, dashArray: '6, 6' }}
-                >
-                  <Tooltip permanent={false}>Projected Coastal Drift Path ({analysis.movement.speed_mps} m/s towards shore)</Tooltip>
-                </Polyline>
-              )}
 
-              {/* 7. Candidate Vessel Trajectories & Waypoints */}
-              {showVesselTracks && filteredCandidates.map((vessel) => {
+
+              {/* 7. Candidate Vessel Trajectories & Waypoints - Page 1 */}
+              {layerTab === 'main' && showVesselTracks && filteredCandidates.map((vessel) => {
                 const isSelected = selectedVessel?.vessel_id === vessel.vessel_id;
                 const trackColor = vessel.category.includes('Category C') 
                   ? '#ef4444' 
@@ -2055,8 +2032,8 @@ Reference ID: ${investigationReport.report_id}
                 );
               })}
 
-              {/* 8. AIS Transmission Gaps */}
-              {showAisGaps && filteredCandidates.map((vessel) =>
+              {/* 8. AIS Transmission Gaps - Page 1 */}
+              {layerTab === 'main' && showAisGaps && filteredCandidates.map((vessel) =>
                 vessel.ais_gaps.map((gap, gIdx) => (
                   <Polyline
                     key={`gap-${vessel.vessel_id}-${gIdx}`}
@@ -2073,8 +2050,8 @@ Reference ID: ${investigationReport.report_id}
                 ))
               )}
 
-              {/* 9. SAR Vessel Detections */}
-              {showSarDetections && filteredCandidates.map((vessel) =>
+              {/* 9. SAR Vessel Detections - Page 1 */}
+              {layerTab === 'main' && showSarDetections && filteredCandidates.map((vessel) =>
                 vessel.sar_detections.map((sar) => {
                   const isUnmatched = !sar.is_ais_matched;
                   const sarColor = isUnmatched ? '#ef4444' : '#c084fc';
@@ -2100,8 +2077,8 @@ Reference ID: ${investigationReport.report_id}
                 })
               )}
 
-              {/* 10. Threatened Coastal Receptors */}
-              {showCoastalReceptors && coastalWarning.receptors.map((rec) => {
+              {/* 10. Threatened Coastal Receptors - Page 2 */}
+              {layerTab === 'others' && showCoastalReceptors && coastalWarning.receptors.map((rec) => {
                 const alert = coastalWarning.alerts.find((a) => a.receptor_id === rec.receptor_id);
                 const isHighRisk = alert?.risk_level === 'HIGH';
                 const recColor = isHighRisk ? '#ef4444' : alert?.risk_level === 'MODERATE' ? '#f59e0b' : '#38bdf8';
@@ -2110,7 +2087,7 @@ Reference ID: ${investigationReport.report_id}
                   <Marker
                     key={rec.receptor_id}
                     position={[rec.lat, rec.lon]}
-                    icon={createIcon(recColor, rec.name, 'square')}
+                    icon={createReceptorIcon(recColor, rec.name, isHighRisk)}
                     eventHandlers={{
                       click: () => {
                         if (alert) setSelectedAlert(alert);
@@ -2119,16 +2096,19 @@ Reference ID: ${investigationReport.report_id}
                     }}
                   >
                     <Popup>
-                      <b>Coastal Receptor: {rec.name}</b><br />
-                      Type: {rec.receptor_type}<br />
-                      Sensitivity: <b>{rec.sensitivity_level}</b><br />
-                      Distance to Slick: {rec.distance_to_slick_km} km<br />
-                      Risk Level: <b style={{ color: recColor }}>{alert?.risk_level || 'MONITORED'}</b><br />
-                      ETA to Landfall: {alert?.eta_label || 'Calculating...'}
+                      <div style={{ color: '#0f172a', fontSize: '11px', lineHeight: 1.4 }}>
+                        <b style={{ color: recColor }}>Threatened Coastal Asset: {rec.name}</b><br />
+                        <b>Type:</b> {rec.receptor_type}<br />
+                        <b>Sensitivity:</b> {rec.sensitivity_level}<br />
+                        <b>Distance to Slick:</b> {rec.distance_to_slick_km} km<br />
+                        <b>Risk Level:</b> <span style={{ color: recColor, fontWeight: 700 }}>{alert?.risk_level || 'MONITORED'}</span><br />
+                        <b>ETA to Landfall:</b> {alert?.eta_label || 'Calculating...'}
+                      </div>
                     </Popup>
                   </Marker>
                 );
               })}
+
             </MapContainer>
 
             {/* Fixed Corner HUD / Telemetry Card Overlay (Bottom-Left Elevated) */}

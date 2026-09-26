@@ -26,6 +26,7 @@ output/
 test_output/
 .streamlit/secrets.toml
 characterization/investigation/reports/
+backend/characterization/investigation/reports/
 *.pdf
 
 # Logs

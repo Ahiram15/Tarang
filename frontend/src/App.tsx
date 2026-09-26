@@ -6,7 +6,7 @@ import { SatelliteVisionSuite } from './components/SatelliteVisionSuite';
 import { CharacterizationDashboard } from './components/CharacterizationDashboard';
 import { MaritimeInvestigationSuite } from './components/MaritimeInvestigationSuite';
 import { ScanResponse, SpillAnalysis, InvestigationPriorityReport, IncidentLocation } from './types';
-import { Satellite, Globe2, Microscope, Waves, Radar, Radio, Sparkles, Ship } from 'lucide-react';
+import { Satellite, Globe2, Microscope, Waves, Radar, Radio, Sparkles } from 'lucide-react';
 
 export const INCIDENTS: IncidentLocation[] = [
   {
@@ -342,50 +342,6 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Center-Right: Dedicated Incident Switcher */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px',
-            background: 'rgba(6, 11, 25, 0.92)',
-            border: '1px solid rgba(0, 242, 254, 0.35)',
-            borderRadius: '8px',
-            padding: '2px 4px',
-          }}>
-            <span style={{ fontSize: '0.64rem', color: '#64748b', fontWeight: 800, padding: '0 4px' }}>INCIDENT:</span>
-            {INCIDENTS.map((inc) => {
-              const isSelected = selectedIncident.id === inc.id;
-              const isEmerald = inc.id === 'emerald';
-              return (
-                <button
-                  key={inc.id}
-                  onClick={() => switchIncident(inc)}
-                  title={`Switch active mission to ${inc.name}`}
-                  style={{
-                    background: isSelected
-                      ? isEmerald
-                        ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)'
-                        : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                      : 'transparent',
-                    color: isSelected ? '#030712' : '#94a3b8',
-                    border: 'none',
-                    borderRadius: '5px',
-                    padding: '3px 8px',
-                    fontSize: '0.68rem',
-                    fontWeight: isSelected ? 800 : 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <Ship size={11} />
-                  <span>{inc.id === 'emerald' ? 'MT EMERALD (MED)' : 'MV WAKASHIO (MRI)'}</span>
-                </button>
-              );
-            })}
-          </div>
 
           {/* Right Status Indicator */}
           <div style={{ fontSize: '0.70rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
