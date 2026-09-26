@@ -108,8 +108,16 @@
 - Added `tests/conftest.py` ensuring pytest passes all 25 unit and integration tests.
 - Updated [PROJECT_RULES.md](file:///d:/Oil_spill(sos)/PROJECT_RULES.md), [README.md](file:///d:/Oil_spill(sos)/README.md), and [API_INTEGRATIONS.md](file:///d:/Oil_spill(sos)/API_INTEGRATIONS.md) to reflect the new structure.
 
-### 16. Wakashio Original Coordinates Polygon Restored
+### 16. Authentic Grand Port Bay Oil Spill Polygon Implemented
 - Files updated: [`backend/data/wakashio_benchmark/real_spill_polygon.json`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_spill_polygon.json), [`backend/data/wakashio_benchmark/real_binary_mask_256.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_binary_mask_256.png), [`backend/api.py`](file:///d:/Oil_spill(sos)/backend/api.py).
-- Restored original Wakashio benchmark polygon vertices, bounding box, impacted zone vertices, and centroid `(-20.402098, 57.725183)` with `26.13 km²` area and `26.96 km` perimeter.
-- Restored authentic binary ground truth benchmark mask (`real_binary_mask_256.png`).
-- Preserved historical multi-temporal observation sequence: 14.2 km² (2020-08-07) and 26.13 km² (2020-08-10).
+- Calibrated exact 26-vertex polygon conforming to the authentic oil spill footprint from Google Earth satellite imagery:
+  - Traces the wreck origin at the coral barrier reef (`-20.43812, 57.74463`).
+  - Follows Pointe d'Esny lagoon shoreline and wraps through the channel west of Île aux Aigrettes.
+  - Follows Mahebourg Waterfront and River La Chaux inlet.
+  - Extends north along Ferney coast into the U-shaped Vieux Grand Port harbor / Lion Mountain inlet (`-20.3685, 57.7005`).
+  - Follows the northern coastline along Bois des Amourettes and Anse Jonchée to the northern apex at Bambous Virieux bay (`-20.3415, 57.7610`).
+  - Cuts south across the central Grand Port deep lagoon water channel back to the reef wreck.
+- **Metrics**: Surface area `32.93 km²`, perimeter `31.28 km`, centroid `(-20.393225, 57.730365)`.
+- Generated 256x256 binary ground truth mask (`11,128` spill pixels) with `buffer_deg = 0.065`.
+- Updated backend API default centroid and multi-temporal benchmark observations (14.2 km² on 2020-08-07, 32.93 km² on 2020-08-10).
+

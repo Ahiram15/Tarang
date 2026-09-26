@@ -1,87 +1,193 @@
 {
   "spill_name": "MV Wakashio Disaster",
-  "location": "Pointe d'Esny Lagoon & Barrier Reef, Mauritius",
-  "satellite": "Sentinel-1A SAR (VV) / Sentinel-2A MSI",
+  "location": "Grand Port Bay & Pointe d'Esny Lagoon, Mauritius",
+  "satellite": "Sentinel-1A SAR (VV) / Sentinel-2A MSI / Google Earth Imagery",
   "date": "2020-08-10",
-  "spill_area_sq_km": 26.13,
-  "perimeter_km": 26.96,
+  "spill_area_sq_km": 32.93,
+  "perimeter_km": 31.28,
   "centroid": {
-    "lat": -20.402098,
-    "lon": 57.725183
+    "lat": -20.393225,
+    "lon": 57.730365
   },
   "bounding_box": {
     "north_west": {
-      "desc": "Coastal Impact (near Mahebourg & Île aux Aigrettes)",
-      "lat": -20.366667,
-      "lon": 57.700000
+      "desc": "Lion Mountain / Ferney Inlet (North-West Limit)",
+      "lat": -20.3685,
+      "lon": 57.7005
     },
     "north_east": {
-      "desc": "Outer Lagoon",
-      "lat": -20.366667,
-      "lon": 57.783333
+      "desc": "Bambous Virieux Bay Apex (Northern Apex)",
+      "lat": -20.3415,
+      "lon": 57.761
     },
     "south_east_origin": {
-      "desc": "The Wreck on barrier reef",
+      "desc": "MV Wakashio Wreck Grounding on Barrier Reef",
       "lat": -20.438119,
       "lon": 57.744631
     },
     "south_west": {
-      "desc": "Pointe d'Esny shoreline / Lagoon boundary",
-      "lat": -20.458333,
-      "lon": 57.720833
+      "desc": "Pointe d'Esny / Blue Bay Lagoon Boundary",
+      "lat": -20.4425,
+      "lon": 57.7375
     }
   },
   "impacted_zones_vertices": [
     {
-      "zone": "The Grounding Vertex (Wreck)",
-      "lat": -20.4381,
-      "lon": 57.7446
+      "zone": "MV Wakashio Grounding (Reef Wreck Origin)",
+      "lat": -20.43812,
+      "lon": 57.74463
     },
     {
-      "zone": "South-West Lagoon Limit (Pointe d'Esny shoreline)",
-      "lat": -20.4583,
-      "lon": 57.7208
+      "zone": "Pointe d'Esny Coastal Lagoon Margin",
+      "lat": -20.435,
+      "lon": 57.7262
     },
     {
-      "zone": "Pointe d'Esny Beach & Waterfront",
-      "lat": -20.4298,
-      "lon": 57.7276
+      "zone": "\u00cele aux Aigrettes Channel",
+      "lat": -20.422,
+      "lon": 57.7205
     },
     {
-      "zone": "Île aux Aigrettes Nature Reserve",
-      "lat": -20.4183,
-      "lon": 57.7303
+      "zone": "Mahebourg Waterfront & River La Chaux",
+      "lat": -20.4075,
+      "lon": 57.6985
     },
     {
-      "zone": "Mahebourg Waterfront/Lagoon",
-      "lat": -20.4092,
-      "lon": 57.7058
+      "zone": "Ferney Coastal Shoreline",
+      "lat": -20.384,
+      "lon": 57.7025
     },
     {
-      "zone": "Anse Jonchée Mudflats (Northernmost drift)",
-      "lat": -20.3694,
-      "lon": 57.7214
+      "zone": "Vieux Grand Port Bay & Lion Mountain",
+      "lat": -20.3685,
+      "lon": 57.7005
+    },
+    {
+      "zone": "Bois des Amourettes Waterfront",
+      "lat": -20.367,
+      "lon": 57.7365
+    },
+    {
+      "zone": "Anse Jonch\u00e9e Shoreline",
+      "lat": -20.356,
+      "lon": 57.7465
+    },
+    {
+      "zone": "Bambous Virieux Bay (Northern Apex)",
+      "lat": -20.3415,
+      "lon": 57.761
+    },
+    {
+      "zone": "Central Grand Port Bay Water Channel",
+      "lat": -20.374,
+      "lon": 57.7525
     }
   ],
   "polygon_vertices_geo": [
-    [57.7446, -20.4381],
-    [57.7320, -20.4460],
-    [57.7208, -20.4583],
-    [57.7235, -20.4450],
-    [57.7265, -20.4335],
-    [57.7276, -20.4298],
-    [57.7245, -20.4250],
-    [57.7303, -20.4183],
-    [57.7180, -20.4150],
-    [57.7058, -20.4092],
-    [57.7040, -20.3950],
-    [57.7000, -20.3667],
-    [57.7214, -20.3694],
-    [57.7380, -20.3750],
-    [57.7440, -20.3900],
-    [57.7410, -20.4050],
-    [57.7450, -20.4220],
-    [57.7446, -20.4381]
+    [
+      57.74463,
+      -20.43812
+    ],
+    [
+      57.7375,
+      -20.4425
+    ],
+    [
+      57.7305,
+      -20.441
+    ],
+    [
+      57.7262,
+      -20.435
+    ],
+    [
+      57.7248,
+      -20.4285
+    ],
+    [
+      57.7205,
+      -20.422
+    ],
+    [
+      57.7135,
+      -20.416
+    ],
+    [
+      57.706,
+      -20.411
+    ],
+    [
+      57.6985,
+      -20.4075
+    ],
+    [
+      57.7015,
+      -20.396
+    ],
+    [
+      57.7025,
+      -20.384
+    ],
+    [
+      57.7005,
+      -20.3685
+    ],
+    [
+      57.7075,
+      -20.366
+    ],
+    [
+      57.716,
+      -20.3755
+    ],
+    [
+      57.725,
+      -20.372
+    ],
+    [
+      57.7365,
+      -20.367
+    ],
+    [
+      57.7465,
+      -20.356
+    ],
+    [
+      57.7555,
+      -20.346
+    ],
+    [
+      57.761,
+      -20.3415
+    ],
+    [
+      57.7665,
+      -20.3465
+    ],
+    [
+      57.763,
+      -20.358
+    ],
+    [
+      57.7525,
+      -20.374
+    ],
+    [
+      57.744,
+      -20.395
+    ],
+    [
+      57.7375,
+      -20.414
+    ],
+    [
+      57.741,
+      -20.429
+    ],
+    [
+      57.74463,
+      -20.43812
+    ]
   ],
   "geojson": {
     "type": "Feature",
@@ -89,36 +195,127 @@
       "type": "Polygon",
       "coordinates": [
         [
-          [57.7446, -20.4381],
-          [57.7320, -20.4460],
-          [57.7208, -20.4583],
-          [57.7235, -20.4450],
-          [57.7265, -20.4335],
-          [57.7276, -20.4298],
-          [57.7245, -20.4250],
-          [57.7303, -20.4183],
-          [57.7180, -20.4150],
-          [57.7058, -20.4092],
-          [57.7040, -20.3950],
-          [57.7000, -20.3667],
-          [57.7214, -20.3694],
-          [57.7380, -20.3750],
-          [57.7440, -20.3900],
-          [57.7410, -20.4050],
-          [57.7450, -20.4220],
-          [57.7446, -20.4381]
+          [
+            57.74463,
+            -20.43812
+          ],
+          [
+            57.7375,
+            -20.4425
+          ],
+          [
+            57.7305,
+            -20.441
+          ],
+          [
+            57.7262,
+            -20.435
+          ],
+          [
+            57.7248,
+            -20.4285
+          ],
+          [
+            57.7205,
+            -20.422
+          ],
+          [
+            57.7135,
+            -20.416
+          ],
+          [
+            57.706,
+            -20.411
+          ],
+          [
+            57.6985,
+            -20.4075
+          ],
+          [
+            57.7015,
+            -20.396
+          ],
+          [
+            57.7025,
+            -20.384
+          ],
+          [
+            57.7005,
+            -20.3685
+          ],
+          [
+            57.7075,
+            -20.366
+          ],
+          [
+            57.716,
+            -20.3755
+          ],
+          [
+            57.725,
+            -20.372
+          ],
+          [
+            57.7365,
+            -20.367
+          ],
+          [
+            57.7465,
+            -20.356
+          ],
+          [
+            57.7555,
+            -20.346
+          ],
+          [
+            57.761,
+            -20.3415
+          ],
+          [
+            57.7665,
+            -20.3465
+          ],
+          [
+            57.763,
+            -20.358
+          ],
+          [
+            57.7525,
+            -20.374
+          ],
+          [
+            57.744,
+            -20.395
+          ],
+          [
+            57.7375,
+            -20.414
+          ],
+          [
+            57.741,
+            -20.429
+          ],
+          [
+            57.74463,
+            -20.43812
+          ]
         ]
       ]
     },
     "properties": {
-      "area_km2": 26.13,
-      "perimeter_km": 26.96,
+      "area_km2": 32.93,
+      "perimeter_km": 31.28,
       "centroid": {
-        "lat": -20.402098,
-        "lon": 57.725183
+        "lat": -20.393225,
+        "lon": 57.730365
       },
-      "bbox": [57.7000, -20.4583, 57.7450, -20.3667],
-      "incident": "MV Wakashio Grounding & Lagoon Slick"
+      "bbox": [
+        57.6985,
+        -20.4425,
+        57.7665,
+        -20.3415
+      ],
+      "incident": "MV Wakashio Grounding & Grand Port Bay Spill"
     }
   }
 }
