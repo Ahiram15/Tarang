@@ -1127,7 +1127,13 @@ def get_spill_investigation_report_pdf(spill_id: str):
     formatted cleanly without any informal emojis.
     """
     report = get_or_create_investigation(spill_id)
-    pdf_bytes = investigation_orchestrator.generate_pdf_report(report)
+    try:
+        pdf_bytes = investigation_orchestrator.generate_pdf_report(report)
+    except ImportError as ie:
+        raise HTTPException(
+            status_code=503,
+            detail=f"PDF generation is not available in this deployment: {ie}"
+        )
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

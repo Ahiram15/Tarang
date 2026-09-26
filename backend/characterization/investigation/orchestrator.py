@@ -161,4 +161,11 @@ class InvestigationOrchestrator:
         return updated_comp
 
     def generate_pdf_report(self, report: InvestigationPriorityReport) -> bytes:
-        return self.report_generator.generate_pdf(report)
+        try:
+            return self.report_generator.generate_pdf(report)
+        except Exception as e:
+            if "reportlab" in str(type(e).__module__).lower() or "_REPORTLAB_AVAILABLE" in str(e):
+                raise ImportError(
+                    "PDF generation requires 'reportlab'. Install it locally with: pip install reportlab"
+                ) from e
+            raise

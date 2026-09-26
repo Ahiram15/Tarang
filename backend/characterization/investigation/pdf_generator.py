@@ -3,20 +3,24 @@ import re
 import html
 from typing import List, Dict, Any
 
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-    KeepTogether,
-    HRFlowable,
-)
-from reportlab.pdfgen import canvas
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle,
+        KeepTogether,
+        HRFlowable,
+    )
+    from reportlab.pdfgen import canvas
+    _REPORTLAB_AVAILABLE = True
+except ImportError:
+    _REPORTLAB_AVAILABLE = False
 
 from .origin_zones import ProbableOriginZones
 from .ranking_engine import RankedInvestigationResult

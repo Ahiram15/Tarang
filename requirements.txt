@@ -9,7 +9,6 @@ httpx>=0.24.0
 
 # Scientific & Geospatial Modeling (Optimized Headless & ABI3 Wheels)
 numpy>=1.26.0
-opencv-python-headless>=4.8.0
 pillow>=9.5.0
 shapely>=2.0.0
 PyYAML>=6.0.0
