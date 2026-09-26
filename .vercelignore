@@ -1,0 +1,11 @@
+# Vercel Ignore Rules
+.git
+.pytest_cache
+tests/
+docs/
+*.mp4
+*.h5
+*.tar
+*.zip
+backend/unet_oilspill.h5
+frontend/node_modules/
