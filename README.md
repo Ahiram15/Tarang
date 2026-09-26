@@ -220,6 +220,30 @@ Open **`http://localhost:5173`** (or **`http://localhost:3000`**) in your browse
 
 ---
 
+## 🚀 5. Production Deployment
+
+TARANG provides turnkey production deployment via Docker Compose or native Linux hosting.
+
+### One-Command Docker Deployment (Recommended)
+```bash
+# 1. Build and start containers in detached mode
+docker compose up -d --build
+
+# 2. View container status
+docker compose ps
+
+# 3. View live backend logs
+docker compose logs -f backend
+```
+
+Access services:
+* **Web Application**: `http://<your-server-ip>/` (Port 80 via Nginx)
+* **REST API Documentation**: `http://<your-server-ip>:8000/docs`
+
+For comprehensive Cloud PaaS (Render, Vercel, Railway, Fly.io) and Ubuntu VPS Systemd instructions, consult the complete [Production Deployment Guide](file:///d:/Oil_spill(sos)/docs/DEPLOYMENT_GUIDE.md).
+
+---
+
 ## 🧪 6. Running Automated Tests
 
 Run the full automated pytest suite (25 tests):

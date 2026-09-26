@@ -121,3 +121,12 @@
   - `real_binary_mask_256.png`: Ground truth mask regenerated with 4,958 active slick pixels.
 - Backend API updated with `c_lat = -20.4335, c_lon = 57.7390`, `buffer_deg = 0.025`, and historical observations (1.45 km² on 2020-08-07, 2.16 km² on 2020-08-10).
 
+### 17. Production Dockerization & Deployment Infrastructure
+- Files created: [`docker-compose.yml`](file:///d:/Oil_spill(sos)/docker-compose.yml), [`backend/Dockerfile`](file:///d:/Oil_spill(sos)/backend/Dockerfile), [`frontend/Dockerfile`](file:///d:/Oil_spill(sos)/frontend/Dockerfile), [`frontend/nginx.conf`](file:///d:/Oil_spill(sos)/frontend/nginx.conf), [`docs/DEPLOYMENT_GUIDE.md`](file:///d:/Oil_spill(sos)/docs/DEPLOYMENT_GUIDE.md).
+- Files updated: [`README.md`](file:///d:/Oil_spill(sos)/README.md).
+- Provided turnkey multi-container deployment:
+  - **Backend**: Debian-slim container with OpenCV, TensorFlow, ReportLab, and FastAPI Uvicorn ASGI server with automated healthcheck.
+  - **Frontend**: Multi-stage Node.js build served via high-performance Nginx with Gzip compression and `/api/` reverse proxy.
+  - **Docker Compose**: Orchestrates both containers with internal bridge networking (`tarang-net`) and persistent volumes.
+- Authored production deployment guide covering Docker Compose, Cloud PaaS (Render/Railway + Vercel), and Ubuntu VPS with Systemd + Nginx + Let's Encrypt SSL.
+
