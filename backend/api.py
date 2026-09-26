@@ -646,9 +646,9 @@ def get_or_create_analysis(spill_id: str) -> Any:
 
     spill_id_lower = spill_id.lower()
     if spill_id == "wakashio" or ("wakashio" in spill_id_lower):
-        c_lat, c_lon = -20.393225, 57.730365
+        c_lat, c_lon = -20.433500, 57.739000
         obs_time = "2020-08-10T14:36:16Z"
-        buffer_deg = 0.065
+        buffer_deg = 0.025
         poly_path = os.path.join(os.path.dirname(__file__), "data", "wakashio_benchmark", "real_spill_polygon.json")
         if os.path.exists(poly_path):
             try:
@@ -663,8 +663,8 @@ def get_or_create_analysis(spill_id: str) -> Any:
             if loaded_mask is not None:
                 default_mask = (loaded_mask > 127).astype(np.uint8)
         historical_obs = [
-            TemporalObservation(timestamp="2020-08-07T06:00:00Z", area_km2=14.2),
-            TemporalObservation(timestamp="2020-08-10T01:37:00Z", area_km2=32.93),
+            TemporalObservation(timestamp="2020-08-07T06:00:00Z", area_km2=1.45),
+            TemporalObservation(timestamp="2020-08-10T01:37:00Z", area_km2=2.16),
         ]
     elif "emerald" in spill_id_lower or "levantine" in spill_id_lower or "med" in spill_id_lower:
         c_lat, c_lon = 33.38, 34.52  # Sentinel-1 SAR observed slick detection location on 2021-02-05

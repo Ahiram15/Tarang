@@ -108,16 +108,16 @@
 - Added `tests/conftest.py` ensuring pytest passes all 25 unit and integration tests.
 - Updated [PROJECT_RULES.md](file:///d:/Oil_spill(sos)/PROJECT_RULES.md), [README.md](file:///d:/Oil_spill(sos)/README.md), and [API_INTEGRATIONS.md](file:///d:/Oil_spill(sos)/API_INTEGRATIONS.md) to reflect the new structure.
 
-### 16. Authentic Grand Port Bay Oil Spill Polygon Implemented
-- Files updated: [`backend/data/wakashio_benchmark/real_spill_polygon.json`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_spill_polygon.json), [`backend/data/wakashio_benchmark/real_binary_mask_256.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_binary_mask_256.png), [`backend/api.py`](file:///d:/Oil_spill(sos)/backend/api.py).
-- Calibrated exact 26-vertex polygon conforming to the authentic oil spill footprint from Google Earth satellite imagery:
-  - Traces the wreck origin at the coral barrier reef (`-20.43812, 57.74463`).
-  - Follows Pointe d'Esny lagoon shoreline and wraps through the channel west of Île aux Aigrettes.
-  - Follows Mahebourg Waterfront and River La Chaux inlet.
-  - Extends north along Ferney coast into the U-shaped Vieux Grand Port harbor / Lion Mountain inlet (`-20.3685, 57.7005`).
-  - Follows the northern coastline along Bois des Amourettes and Anse Jonchée to the northern apex at Bambous Virieux bay (`-20.3415, 57.7610`).
-  - Cuts south across the central Grand Port deep lagoon water channel back to the reef wreck.
-- **Metrics**: Surface area `32.93 km²`, perimeter `31.28 km`, centroid `(-20.393225, 57.730365)`.
-- Generated 256x256 binary ground truth mask (`11,128` spill pixels) with `buffer_deg = 0.065`.
-- Updated backend API default centroid and multi-temporal benchmark observations (14.2 km² on 2020-08-07, 32.93 km² on 2020-08-10).
+### 16. Wakashio Starting Release Oval Polygon & Satellite Overlay
+- Files updated: [`backend/data/wakashio_benchmark/real_spill_polygon.json`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_spill_polygon.json), [`backend/data/wakashio_benchmark/real_binary_mask_256.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/real_binary_mask_256.png), [`backend/data/wakashio_benchmark/spill_polygon_overlay.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/spill_polygon_overlay.png), [`backend/data/wakashio_benchmark/spill_zoomed_crop.png`](file:///d:/Oil_spill(sos)/backend/data/wakashio_benchmark/spill_zoomed_crop.png), [`backend/api.py`](file:///d:/Oil_spill(sos)/backend/api.py).
+- Implemented smooth parametric starting oval/ellipse polygon (36 nodes) representing the initial release slick:
+  - Oriented along the lagoon channel (135° NW-SE) emanating from the MV Wakashio wreck origin on the coral reef (`-20.438119, 57.744631`).
+  - Centroid positioned inside open lagoon water: `(-20.433500, 57.739000)`.
+  - Geometric parameters: surface area `2.16 km²`, perimeter `5.63 km`.
+  - 100% water-conformed with zero dry land overlap.
+- Properly marked high-resolution overlay images:
+  - `spill_polygon_overlay.png`: Fixed previous top-left displacement; now renders glowing dual-tone vector perimeter directly over the lagoon oil plume with pin on the wreck.
+  - `spill_zoomed_crop.png`: 4X zoom centered tightly on the starting oval with HUD banner and wreck marker.
+  - `real_binary_mask_256.png`: Ground truth mask regenerated with 4,958 active slick pixels.
+- Backend API updated with `c_lat = -20.4335, c_lon = 57.7390`, `buffer_deg = 0.025`, and historical observations (1.45 km² on 2020-08-07, 2.16 km² on 2020-08-10).
 
