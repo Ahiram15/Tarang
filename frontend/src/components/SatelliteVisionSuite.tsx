@@ -444,7 +444,7 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
                   </div>
                 </div>
 
-<<<<<<< HEAD
+
                 <div
                   onClick={() => {
                     const isP1 = s1PassView === 'pass1';
@@ -650,55 +650,7 @@ export const SatelliteVisionSuite: React.FC<SatelliteVisionSuiteProps> = ({
               </div>
             </div>
           )}
-=======
-          {/* Zoomed-in Big Polygon Image */}
-          <div 
-            onClick={() => setIsZoomModalOpen(true)}
-            style={{ 
-              width: '100%', 
-              height: '180px', 
-              background: 'radial-gradient(circle at center, rgba(14, 28, 54, 0.7) 0%, rgba(6, 12, 26, 0.95) 100%), url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/6/26/38") center/cover, #06101e', 
-              borderRadius: '6px', 
-              overflow: 'hidden', 
-              border: '1px solid rgba(0, 242, 254, 0.3)', 
-              marginBottom: '10px',
-              cursor: 'zoom-in',
-              position: 'relative'
-            }}
-          >
-            <img src={polygonImg || ''} alt="Zoomed Polygon" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            
-            <div style={{
-              position: 'absolute',
-              bottom: '6px',
-              right: '6px',
-              background: 'rgba(0, 0, 0, 0.8)',
-              border: '1px solid #00f2fe',
-              color: '#00f2fe',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '0.65rem',
-              fontWeight: 800,
-            }}>
-              4X ZOOM FOCUS
-            </div>
-          </div>
 
-          {/* Acquisition & Polygon Telemetry */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.72rem', color: '#94a3b8' }}>
-            <div><b>Perimeter Vertices:</b> <span style={{ color: '#00f2fe', fontWeight: 700 }}>{scanResult.polygon_vector?.vertices_count || 23} Continuous Coordinates</span></div>
-            <div><b>Perimeter:</b> <span style={{ color: '#22c55e', fontWeight: 700 }}>{scanResult.telemetry.perimeter_km || 14.8} km</span></div>
-            <div><b>Slick Area:</b> <span style={{ color: '#f1f5f9', fontWeight: 700 }}>~{scanResult.telemetry.estimated_spill_area_km2} km²</span></div>
-            <div><b>GPS Centroid:</b> <span style={{ color: '#ef4444' }}>-20.4381°S, 57.7446°E</span></div>
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '4px', marginTop: '2px', color: '#64748b' }}>
-              <i>Exact closed vector polygon ready for Lagrangian particle seeding & drift simulation.</i>
-            </div>
-          </div>
-        </div>
-
-      </div>
-      )}
->>>>>>> 5046bed929c2a66b8d6287718d9a1e9e6f734671
 
       {/* Bottom Color Palette Bar */}
       <div style={{

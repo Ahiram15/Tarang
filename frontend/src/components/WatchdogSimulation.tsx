@@ -632,48 +632,8 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
           </div>
         </div>
 
-        {/* Incident Selector & Global Action Cluster */}
+        {/* Global Action Cluster */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {incidents && onSelectIncident && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '3px',
-              background: 'rgba(6, 11, 25, 0.92)',
-              border: '1px solid rgba(0, 242, 254, 0.35)',
-              borderRadius: '6px',
-              padding: '2px 4px',
-            }}>
-              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 800, padding: '0 4px', fontFamily: "'JetBrains Mono', monospace" }}>SCENARIO:</span>
-              {incidents.map((inc) => {
-                const isSelected = (selectedIncident?.id || 'emerald') === inc.id;
-                const isEm = inc.id === 'emerald';
-                return (
-                  <button
-                    key={inc.id}
-                    onClick={() => onSelectIncident(inc)}
-                    style={{
-                      background: isSelected
-                        ? isEm
-                          ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)'
-                          : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                        : 'transparent',
-                      color: isSelected ? '#030712' : '#94a3b8',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '3px 8px',
-                      fontSize: '10px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                  >
-                    {isEm ? 'MT EMERALD (MED)' : 'MV WAKASHIO (MRI)'}
-                  </button>
-                );
-              })}
-            </div>
-          )}
           <button
             onClick={onProceedToGlobe}
             style={{
