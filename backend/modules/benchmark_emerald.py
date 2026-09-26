@@ -24,7 +24,12 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Tuple, Optional
 
 import numpy as np
-import cv2
+try:
+    import cv2
+    _CV2_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    _CV2_AVAILABLE = False
 
 # Optional imports with safe fallbacks
 try:
@@ -33,18 +38,22 @@ try:
 except ImportError:
     HAS_XGBOOST = False
 
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-    HRFlowable,
-)
-from reportlab.pdfgen import canvas
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle,
+        HRFlowable,
+    )
+    from reportlab.pdfgen import canvas
+    _REPORTLAB_AVAILABLE = True
+except ImportError:
+    _REPORTLAB_AVAILABLE = False
 
 
 # ==============================================================================

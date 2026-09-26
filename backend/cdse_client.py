@@ -2,7 +2,12 @@ import os
 import time
 import requests
 import numpy as np
-import cv2
+try:
+    import cv2
+    _CV2_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    _CV2_AVAILABLE = False
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
