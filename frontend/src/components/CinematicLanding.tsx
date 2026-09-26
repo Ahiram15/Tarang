@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Activity, Database, Satellite, ShieldCheck, Clock, Compass, Layers, X } from 'lucide-react';
-import heroVideo from '../assets/ocean.mp4';
+const heroVideo = '/videos/ocean.mp4';
 
 interface CinematicLandingProps {
   onEnterMissionControl: () => void;
