@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { VisualLayers } from '../types';
-import { Eye, Sliders, Maximize2, X } from 'lucide-react';
+import { Eye, Sliders, Maximize2, X, Layers } from 'lucide-react';
 
 interface MultiSatelliteViewerProps {
   layers: VisualLayers;
@@ -104,8 +104,9 @@ export const MultiSatelliteViewer: React.FC<MultiSatelliteViewerProps> = ({
                   </div>
                 </>
               ) : (
-                <div style={{ padding: '16px', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  🛰️ {item.fallbackText || 'Live Ocean Map Coverage'}
+                <div style={{ padding: '16px', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Layers size={14} color="#00f2fe" />
+                  <span>{item.fallbackText || 'Live Ocean Map Coverage'}</span>
                 </div>
               )}
             </div>

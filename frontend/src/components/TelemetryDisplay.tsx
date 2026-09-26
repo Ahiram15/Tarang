@@ -44,7 +44,7 @@ export const TelemetryDisplay: React.FC<TelemetryDisplayProps> = ({ scanResult }
         <div className="alert-banner alert-danger">
           <AlertOctagon size={24} color="#ef4444" />
           <div>
-            <div style={{ fontWeight: 800 }}>🚨 MARINE OIL SPILL ANOMALY CONFIRMED!</div>
+            <div style={{ fontWeight: 800 }}>MARINE OIL SPILL ANOMALY CONFIRMED</div>
             <div style={{ fontSize: '0.825rem', opacity: 0.9 }}>
               Detected surface slick covering {telemetry.spill_coverage_percent}% of footprint ({telemetry.spill_pixels.toLocaleString()} pixels, ~{telemetry.estimated_spill_area_km2} km²). Cross-verification with optical pass recommended.
             </div>
@@ -54,7 +54,7 @@ export const TelemetryDisplay: React.FC<TelemetryDisplayProps> = ({ scanResult }
         <div className="alert-banner alert-safe">
           <CheckCircle2 size={24} color="#22c55e" />
           <div>
-            <div style={{ fontWeight: 800 }}>✅ CLEAR OCEAN SURFACE: NO ANOMALY</div>
+            <div style={{ fontWeight: 800 }}>CLEAR OCEAN SURFACE: NO ANOMALY DETECTED</div>
             <div style={{ fontSize: '0.825rem', opacity: 0.9 }}>
               Calibrated microwave backscatter is consistent with baseline clean water. Zero pixels exceed the {telemetry.threshold_used * 100}% threshold.
             </div>
@@ -101,7 +101,7 @@ export const TelemetryDisplay: React.FC<TelemetryDisplayProps> = ({ scanResult }
         <div className="satellite-card">
           <div className="satellite-card-title" style={{ color: '#00f2fe' }}>
             <Radio size={16} />
-            <span>🛰️ Sentinel-1 C-Band SAR</span>
+            <span>Sentinel-1 C-Band SAR</span>
           </div>
           <div className="satellite-meta-item">
             <b>Acquisition UTC:</b> <code>{satellite_metadata.sentinel1_radar?.acquisition_time_utc || requested_date}</code>
@@ -117,7 +117,7 @@ export const TelemetryDisplay: React.FC<TelemetryDisplayProps> = ({ scanResult }
         <div className="satellite-card optical">
           <div className="satellite-card-title" style={{ color: '#ffaa00' }}>
             <Layers size={16} />
-            <span>📷 Sentinel-2 MSI Optical</span>
+            <span>Sentinel-2 MSI Optical</span>
           </div>
           <div className="satellite-meta-item">
             <b>Acquisition UTC:</b> <code>{satellite_metadata.sentinel2_optical?.acquisition_time_utc || requested_date}</code>

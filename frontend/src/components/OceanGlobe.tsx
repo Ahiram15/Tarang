@@ -31,16 +31,16 @@ const DEFAULT_INCIDENTS: IncidentLocation[] = [
   {
     id: 'emerald',
     name: 'MT Emerald Mystery Spill (Levantine Basin, Mediterranean)',
-    badge: '🇵🇦 MT EMERALD (33.15°N, 34.20°E)',
-    lat: 33.15,
-    lon: 34.20,
+    badge: 'MT EMERALD (33.38°N, 34.52°E)',
+    lat: 33.38,
+    lon: 34.52,
     date: '2021-02-05',
     spillId: 'emerald',
   },
   {
     id: 'wakashio',
     name: 'MV Wakashio Grounding & Bunker Spill (Pointe d\'Esny, Mauritius)',
-    badge: '🇵🇦 MV WAKASHIO (20.44°S, 57.74°E)',
+    badge: 'MV WAKASHIO (20.44°S, 57.74°E)',
     lat: -20.437,
     lon: 57.742,
     date: '2020-08-06',
@@ -734,7 +734,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 600 }}>Data Source Mode:</span>
             <span style={{ fontSize: '0.68rem', color: useLiveSat ? '#f59e0b' : '#00f2fe', fontWeight: 700 }}>
-              {useLiveSat ? '🛰️ ESA LIVE' : '⚡ INSTANT CALIBRATED'}
+              {useLiveSat ? 'ESA LIVE API' : 'FAST CALIBRATED'}
             </span>
           </div>
 
@@ -757,7 +757,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
                 transition: 'all 0.15s',
               }}
             >
-              ⚡ Fast Instant (~1s)
+              Fast Instant (~1s)
             </button>
 
             <button
@@ -778,7 +778,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
                 transition: 'all 0.15s',
               }}
             >
-              🛰️ Live ESA API (~15s)
+              Live ESA API (~15s)
             </button>
           </div>
         </div>
@@ -812,7 +812,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           }}
         >
           <span>
-            🛰️ Inspect Spill Imagery ({currentIncident.lat.toFixed(2)}°, {currentIncident.lon.toFixed(2)}°) →
+            🛰️ Inspect {isEmerald ? 'MT Emerald' : 'MV Wakashio'} Imagery ({currentIncident.lat.toFixed(2)}°, {currentIncident.lon.toFixed(2)}°) →
           </span>
         </button>
 
@@ -868,12 +868,14 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           transition: 'top 0.05s ease-out, left 0.05s ease-out',
         }}>
           <SpillTooltipCard
-            title={`🚨 ${hoveredIncident.id === 'emerald' ? 'MT EMERALD INCIDENT' : 'MV WAKASHIO INCIDENT'}`}
+            title={hoveredIncident.id === 'emerald' ? 'MT EMERALD INCIDENT' : 'MV WAKASHIO INCIDENT'}
             lat={hoveredIncident.lat}
             lon={hoveredIncident.lon}
             areaKm2={hoveredIncident.id === 'emerald' ? 31.42 : 2.805}
             timestamp={`${hoveredIncident.date} UTC`}
             spillId={hoveredIncident.spillId}
+            badge="3D Beacon"
+            customSubtitle="Click beacon dot to inspect incident"
           />
         </div>
       )}

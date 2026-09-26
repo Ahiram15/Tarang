@@ -113,6 +113,11 @@ def test_particle_drift_hindcast_and_forecast(sample_spill_mask):
     assert "lat" in hind.origin and "lon" in hind.origin
     assert hind.uncertainty_radius_km > 0.0
     assert len(hind.trajectories) > 0
+    # Verify all backward particle trajectories converge at the probable origin
+    for traj in hind.trajectories:
+        terminal_lon, terminal_lat = traj[-1][0], traj[-1][1]
+        assert abs(terminal_lat - hind.origin["lat"]) < 0.005
+        assert abs(terminal_lon - hind.origin["lon"]) < 0.005
 
     # Forecast
     forecast_eng = ForecastEngine(model)

@@ -16,10 +16,14 @@ import sentinel1Video from '../assets/sentinel-1.mp4';
 import sentinel2Video from '../assets/sentinel-2.mp4';
 import landsatVideo from '../assets/landsat.mp4';
 import eos06Video from '../assets/EOS-06.mp4';
+import { IncidentLocation } from '../types';
 
 interface WatchdogSimulationProps {
   onProceedToGlobe: () => void;
   onLaunchDetection: () => void;
+  selectedIncident?: IncidentLocation;
+  onSelectIncident?: (inc: IncidentLocation) => void;
+  incidents?: IncidentLocation[];
 }
 
 type SensorKey = 'sentinel1' | 'sentinel2' | 'landsat' | 'eos06';
@@ -302,7 +306,14 @@ const SatelliteVideoFeed: React.FC<SatelliteVideoFeedProps> = ({ sensor }) => {
 export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
   onProceedToGlobe,
   onLaunchDetection,
+  selectedIncident,
+  onSelectIncident,
+  incidents,
 }) => {
+  const isEmerald = selectedIncident?.id === 'emerald' || (selectedIncident?.lat && selectedIncident.lat > 0);
+  const bboxLabel = isEmerald ? '33.380°N, 34.520°E' : '-20.438°S, 57.745°E';
+  const regionLabel = isEmerald ? 'Levantine Basin (Eastern Mediterranean)' : 'Pointe d\'Esny Lagoon (Mauritius)';
+  const incidentArea = isEmerald ? '42.6 km²' : '28.5 km²';
   const [selectedSensor, setSelectedSensor] = useState<SensorKey>('sentinel1');
   const [activeCycle, setActiveCycle] = useState<number>(2); // 0: 14:00Z, 1: 14:30Z, 2: 15:00Z
   const [isStreaming, setIsStreaming] = useState<boolean>(true);
@@ -621,8 +632,48 @@ export const WatchdogSimulation: React.FC<WatchdogSimulationProps> = ({
           </div>
         </div>
 
-        {/* Global Action Cluster */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Incident Selector & Global Action Cluster */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {incidents && onSelectIncident && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+              background: 'rgba(6, 11, 25, 0.92)',
+              border: '1px solid rgba(0, 242, 254, 0.35)',
+              borderRadius: '6px',
+              padding: '2px 4px',
+            }}>
+              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 800, padding: '0 4px', fontFamily: "'JetBrains Mono', monospace" }}>SCENARIO:</span>
+              {incidents.map((inc) => {
+                const isSelected = (selectedIncident?.id || 'emerald') === inc.id;
+                const isEm = inc.id === 'emerald';
+                return (
+                  <button
+                    key={inc.id}
+                    onClick={() => onSelectIncident(inc)}
+                    style={{
+                      background: isSelected
+                        ? isEm
+                          ? 'linear-gradient(135deg, #00f2fe 0%, #0284c7 100%)'
+                          : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                        : 'transparent',
+                      color: isSelected ? '#030712' : '#94a3b8',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '3px 8px',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {isEm ? 'MT EMERALD (MED)' : 'MV WAKASHIO (MRI)'}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <button
             onClick={onProceedToGlobe}
             style={{

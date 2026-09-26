@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { HistoricalIncident, SimulatedHotspot } from '../types';
-import { Search, Globe, Flame, MapPin } from 'lucide-react';
+import { Search, Globe, Flame, MapPin, Database } from 'lucide-react';
 
 interface IncidentsTableProps {
   historicalList: HistoricalIncident[];
@@ -48,8 +48,9 @@ export const IncidentsTable: React.FC<IncidentsTableProps> = ({
   return (
     <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9' }}>
-          📋 Global Incident Registry & Benchmark Database
+        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Database size={16} color="#00f2fe" />
+          <span>Global Incident Registry & Benchmark Database</span>
         </h3>
 
         <div style={{ position: 'relative', width: '220px' }}>

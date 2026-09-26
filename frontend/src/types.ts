@@ -1,3 +1,13 @@
+export interface IncidentLocation {
+  id: string;
+  name: string;
+  badge: string;
+  lat: number;
+  lon: number;
+  date: string;
+  spillId: string;
+}
+
 export interface HistoricalIncident {
   id: string;
   name: string;
@@ -375,6 +385,94 @@ export interface CoastalRiskAnalysis {
   summary: string;
 }
 
+export interface CounterfactualDriftMatch {
+  iou: number;
+  centroid_error_km: number;
+  arrival_error_hours: number;
+  area_difference_pct: number;
+  shape_similarity_pct: number;
+  consistency_score: number;
+  simulated_slick_polygon?: any;
+  notes?: string;
+}
+
+export type PlausibleSourceType = 'vessel' | 'port' | 'pipeline' | 'platform' | 'industrial' | 'natural_seep';
+export type SourceCategoryGroup = 'Vessel-related' | 'Land / Infrastructure' | 'Natural Seep';
+
+export interface PlausibleSourceCandidate {
+  source_id: string;
+  name: string;
+  source_type: PlausibleSourceType;
+  category_group: SourceCategoryGroup;
+  lat: number;
+  lon: number;
+  geometry?: any;
+  buffer_radius_km: number;
+  distance_to_origin_km: number;
+  distance_score: number;
+  origin_overlap: boolean;
+  origin_overlap_score: number;
+  transport_compatibility_score: number;
+  is_upwind_upcurrent: boolean;
+  drift_relative_angle_deg: number;
+  historical_persistence_score: number;
+  recurrence_observations_count?: number;
+  historical_spill_records?: string[];
+  time_compatibility_score?: number;
+  trajectory_compatibility_score?: number;
+  counterfactual_drift_score?: number;
+  behavioural_consistency_score?: number;
+  counterfactual_simulation?: CounterfactualDriftMatch | null;
+  vessel_metadata?: Record<string, any> | null;
+  component_scores: Record<string, number>;
+  raw_evidence_score: number;
+  relative_evidence_pct: number;
+  rank: number;
+  explainability_reasons: string[];
+  scientific_status: 'Observed' | 'Modelled' | 'Hypothesis' | 'Uncertainty';
+  source_specific_details?: Record<string, any>;
+}
+
+export interface EvidenceWeightConfig {
+  vessel_weights: {
+    w1_spatial: number;
+    w2_temporal: number;
+    w3_trajectory: number;
+    w4_counterfactual: number;
+    w5_behavioural: number;
+  };
+  infrastructure_weights: {
+    w1_spatial: number;
+    w2_origin_overlap: number;
+    w3_transport: number;
+    w4_persistence: number;
+  };
+  seep_weights: {
+    w1_spatial: number;
+    w2_origin_overlap: number;
+    w3_transport: number;
+    w4_persistence: number;
+  };
+  distance_thresholds_km: {
+    very_strong: number;
+    strong: number;
+    moderate: number;
+    weak: number;
+  };
+}
+
+export interface MultiSourceEvidenceComparison {
+  candidates: PlausibleSourceCandidate[];
+  total_sources_evaluated: number;
+  category_summary: Record<string, number>;
+  top_candidate: Record<string, any>;
+  scientific_interpretation: string;
+  uncertainty_level: 'HIGH' | 'MODERATE' | 'LOW';
+  competing_hypotheses_flag: boolean;
+  weights_config: EvidenceWeightConfig;
+  summary: string;
+}
+
 export interface InvestigationPriorityReport {
   report_id: string;
   spill_id: string;
@@ -382,6 +480,7 @@ export interface InvestigationPriorityReport {
   origin_analysis: ProbableOriginZones;
   vessel_investigation: RankedVesselInvestigation;
   coastal_warning: CoastalRiskAnalysis;
+  multi_source_comparison?: MultiSourceEvidenceComparison;
   markdown_content: string;
 }
 
