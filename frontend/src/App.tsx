@@ -11,8 +11,8 @@ import { Satellite, Globe2, Microscope, Waves, Radar, Radio, Sparkles } from 'lu
 export const INCIDENTS: IncidentLocation[] = [
   {
     id: 'emerald',
-    name: 'MT Emerald Mystery Spill (Levantine Basin, Mediterranean)',
-    badge: 'MT EMERALD (33.38°N, 34.52°E)',
+    name: 'Levantine Basin Marine Anomaly (Eastern Mediterranean)',
+    badge: 'LEVANTINE BASIN (33.38°N, 34.52°E)',
     lat: 33.38,
     lon: 34.52,
     date: '2021-02-05',
@@ -20,8 +20,8 @@ export const INCIDENTS: IncidentLocation[] = [
   },
   {
     id: 'wakashio',
-    name: 'MV Wakashio Grounding & Bunker Spill (Pointe d\'Esny, Mauritius)',
-    badge: 'MV WAKASHIO (20.44°S, 57.74°E)',
+    name: 'Pointe d\'Esny Lagoon Anomaly (South Indian Ocean, Mauritius)',
+    badge: 'POINTE D\'ESNY (20.44°S, 57.74°E)',
     lat: -20.437,
     lon: 57.742,
     date: '2020-08-06',

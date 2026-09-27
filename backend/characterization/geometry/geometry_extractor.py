@@ -185,6 +185,13 @@ class GeometryExtractor:
         if not shapely_poly.is_valid:
             shapely_poly = shapely_poly.buffer(0)
 
+        # Strictly clamp/clip polygon to marine and lagoon waters (zero land overlap)
+        try:
+            from ..drift.coastal_boundary import CoastalBoundaryService
+            shapely_poly = CoastalBoundaryService.clip_polygon_marine_only(shapely_poly, center_lat, center_lon)
+        except Exception:
+            pass
+
         poly_centroid = shapely_poly.centroid
         centroid_dict = {
             "lat": round(float(poly_centroid.y), 6),
@@ -250,6 +257,14 @@ class GeometryExtractor:
             shapely_poly = shapely_poly.buffer(0)
 
         poly_centroid = shapely_poly.centroid
+        # Strictly clamp/clip polygon to marine and lagoon waters (zero land overlap)
+        try:
+            from ..drift.coastal_boundary import CoastalBoundaryService
+            shapely_poly = CoastalBoundaryService.clip_polygon_marine_only(shapely_poly, poly_centroid.y, poly_centroid.x)
+            poly_centroid = shapely_poly.centroid
+        except Exception:
+            pass
+
         centroid_dict = {
             "lat": round(float(poly_centroid.y), 6),
             "lon": round(float(poly_centroid.x), 6),

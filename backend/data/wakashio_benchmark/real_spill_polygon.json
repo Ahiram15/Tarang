@@ -1,5 +1,5 @@
 {
-  "spill_name": "MV Wakashio Disaster (Starting Release)",
+  "spill_name": "Pointe d'Esny Lagoon Anomaly (Starting Release)",
   "location": "Pointe d'Esny Lagoon & Barrier Reef, Mauritius",
   "satellite": "Sentinel-1A SAR (VV) / Sentinel-2A MSI (Starting State)",
   "date": "2020-08-06",
@@ -21,7 +21,7 @@
       "lon": 57.747798
     },
     "south_east_origin": {
-      "desc": "MV Wakashio Wreck Grounding on Barrier Reef",
+      "desc": "Vessel Grounding on Barrier Reef",
       "lat": -20.438119,
       "lon": 57.744631
     },
@@ -33,7 +33,7 @@
   },
   "impacted_zones_vertices": [
     {
-      "zone": "MV Wakashio Grounding (Barrier Reef Origin)",
+      "zone": "Vessel Grounding (Barrier Reef Origin)",
       "lat": -20.438119,
       "lon": 57.744631
     },

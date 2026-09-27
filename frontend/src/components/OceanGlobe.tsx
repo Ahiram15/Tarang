@@ -30,8 +30,8 @@ interface OceanGlobeProps {
 const DEFAULT_INCIDENTS: IncidentLocation[] = [
   {
     id: 'emerald',
-    name: 'MT Emerald Mystery Spill (Levantine Basin, Mediterranean)',
-    badge: 'MT EMERALD (33.38°N, 34.52°E)',
+    name: 'Levantine Basin Marine Anomaly (Eastern Mediterranean)',
+    badge: 'LEVANTINE BASIN (33.38°N, 34.52°E)',
     lat: 33.38,
     lon: 34.52,
     date: '2021-02-05',
@@ -39,8 +39,8 @@ const DEFAULT_INCIDENTS: IncidentLocation[] = [
   },
   {
     id: 'wakashio',
-    name: 'MV Wakashio Grounding & Bunker Spill (Pointe d\'Esny, Mauritius)',
-    badge: 'MV WAKASHIO (20.44°S, 57.74°E)',
+    name: 'Pointe d\'Esny Lagoon Anomaly (South Indian Ocean, Mauritius)',
+    badge: 'POINTE D\'ESNY (20.44°S, 57.74°E)',
     lat: -20.437,
     lon: 57.742,
     date: '2020-08-06',
@@ -705,7 +705,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 10px #ef4444' }} />
           <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#ef4444', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-            {isEmerald ? 'TANKER MYSTERY DISCHARGE ALERT' : 'CORAL REEF GROUNDING ALERT'}
+            {isEmerald ? 'MARINE DISCHARGE ANOMALY ALERT' : 'BARRIER REEF GROUNDING SPILL ALERT'}
           </span>
         </div>
 
@@ -717,7 +717,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
         <p style={{ margin: '4px 0 10px 0', fontSize: '0.78rem', color: '#94a3b8' }}>
           {isEmerald
             ? 'Copernicus Sentinel-1 SAR & Sentinel-2 Optical detection. Drifting crude oil slick (~42.6 km²), coastal trajectory toward Hadera/Dor HaBonim.'
-            : 'Copernicus Sentinel-1 & 2 MSI detection. Bulk carrier grounded on coral barrier reef (~28.5 km² bunker fuel spill into tidal lagoon).'}
+            : 'Copernicus Sentinel-1 & 2 MSI detection. Vessel grounded on coral barrier reef (~28.5 km² bunker fuel spill into tidal lagoon).'}
         </p>
 
         {/* Data Pipeline Mode Switcher */}
@@ -812,7 +812,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           }}
         >
           <span>
-            🛰️ Inspect {isEmerald ? 'MT Emerald' : 'MV Wakashio'} Imagery ({currentIncident.lat.toFixed(2)}°, {currentIncident.lon.toFixed(2)}°) →
+            🛰️ Inspect {isEmerald ? 'Levantine Basin' : 'Pointe d\'Esny'} Sector Imagery ({currentIncident.lat.toFixed(2)}°, {currentIncident.lon.toFixed(2)}°) →
           </span>
         </button>
 
@@ -868,7 +868,7 @@ export const OceanGlobe: React.FC<OceanGlobeProps> = ({
           transition: 'top 0.05s ease-out, left 0.05s ease-out',
         }}>
           <SpillTooltipCard
-            title={hoveredIncident.id === 'emerald' ? 'MT EMERALD INCIDENT' : 'MV WAKASHIO INCIDENT'}
+            title={hoveredIncident.id === 'emerald' ? 'LEVANTINE BASIN ANOMALY' : 'POINTE D\'ESNY ANOMALY'}
             lat={hoveredIncident.lat}
             lon={hoveredIncident.lon}
             areaKm2={hoveredIncident.id === 'emerald' ? 31.42 : 2.805}
