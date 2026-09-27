@@ -8,10 +8,62 @@ try:
 except ImportError:
     cv2 = None
     _CV2_AVAILABLE = False
+
+from PIL import Image, ImageDraw, ImageFilter
+import io
+from typing import Tuple, Optional
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _decode_image_bytes(image_bytes: bytes) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    """Decode raw image bytes into (rgb_uint8, gray_uint8) using cv2 if available, else PIL."""
+    if _CV2_AVAILABLE and cv2 is not None:
+        try:
+            arr = np.frombuffer(image_bytes, dtype=np.uint8)
+            img_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if img_bgr is not None:
+                img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                return img_rgb, img_gray
+        except Exception:
+            pass
+    try:
+        pil = Image.open(io.BytesIO(image_bytes))
+        img_rgb = np.array(pil.convert("RGB"), dtype=np.uint8)
+        img_gray = np.array(pil.convert("L"), dtype=np.uint8)
+        return img_rgb, img_gray
+    except Exception:
+        return None, None
+
+
+def _load_image_file(path: str, width: Optional[int] = None, height: Optional[int] = None) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    """Load an image file into (rgb_uint8, gray_uint8) using cv2 if available, else PIL."""
+    if not os.path.exists(path):
+        return None, None
+    if _CV2_AVAILABLE and cv2 is not None:
+        try:
+            img_bgr = cv2.imread(path)
+            if img_bgr is not None:
+                if width and height and (img_bgr.shape[1] != width or img_bgr.shape[0] != height):
+                    img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
+                img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                return img_rgb, img_gray
+        except Exception:
+            pass
+    try:
+        pil = Image.open(path)
+        if width and height and (pil.width != width or pil.height != height):
+            pil = pil.resize((width, height), Image.LANCZOS)
+        img_rgb = np.array(pil.convert("RGB"), dtype=np.uint8)
+        img_gray = np.array(pil.convert("L"), dtype=np.uint8)
+        return img_rgb, img_gray
+    except Exception:
+        return None, None
+
 
 class CDSEClient:
     """
@@ -281,11 +333,8 @@ function evaluatePixel(sample) {
                 print(f"[CDSEClient] Querying Sentinel-1 SAR pass for {scene_meta.get('date', time_from[:10])}...")
                 response = requests.post(self.PROCESS_URL, json=payload, headers=headers, timeout=25)
                 if response.status_code == 200:
-                    image_bytes = np.frombuffer(response.content, dtype=np.uint8)
-                    img_bgr = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
-                    if img_bgr is not None:
-                        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                        img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                    img_rgb, img_gray = _decode_image_bytes(response.content)
+                    if img_rgb is not None and img_gray is not None:
                         # Ensure not all-black / nodata empty pass
                         if float(np.mean(img_gray)) > 5.0 and int(np.max(img_gray)) > 20:
                             print(f"[CDSEClient] Successfully acquired non-empty Sentinel-1 SAR Scene: {scene_meta.get('product_name')}")
@@ -400,13 +449,10 @@ function evaluatePixel(sample) {
         response = requests.post(self.PROCESS_URL, json=payload, headers=headers, timeout=30)
         response.raise_for_status()
 
-        image_bytes = np.frombuffer(response.content, dtype=np.uint8)
-        img_bgr = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
-
-        if img_bgr is None:
+        img_rgb, _ = _decode_image_bytes(response.content)
+        if img_rgb is None:
             raise RuntimeError("[CDSEClient] Failed to decode returned Sentinel-2 optical image.")
 
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         print(f"[CDSEClient] Received Sentinel-2 Optical RGB: {img_rgb.shape}")
         return img_rgb, matched_scene
 
@@ -427,13 +473,8 @@ function evaluatePixel(sample) {
             
             for path in benchmark_paths:
                 if os.path.exists(path):
-                    img_bgr = cv2.imread(path)
-                    if img_bgr is not None:
-                        if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
-                            img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
-                        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                        img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-                        
+                    img_rgb, img_gray = _load_image_file(path, width, height)
+                    if img_rgb is not None and img_gray is not None:
                         meta_path = os.path.join(os.path.dirname(__file__), "data", folder, "sentinel1_meta.json")
                         if os.path.exists(meta_path):
                             with open(meta_path, "r") as f:
@@ -460,17 +501,16 @@ function evaluatePixel(sample) {
         base_b = np.full((height, width), 170.0, dtype=np.float32) + speckle_b
 
         if create_simulated_spill:
-            cv2.ellipse(base_r, (128, 140), (45, 20), 25, 0, 360, (20.0,), -1)
-            cv2.ellipse(base_g, (128, 140), (45, 20), 25, 0, 360, (25.0,), -1)
-            cv2.ellipse(base_b, (128, 140), (45, 20), 25, 0, 360, (30.0,), -1)
+            spill_mask = Image.new("L", (width, height), 0)
+            d = ImageDraw.Draw(spill_mask)
+            d.ellipse([128 - 45, 140 - 20, 128 + 45, 140 + 20], fill=255)
+            d.ellipse([95 - 12, 120 - 12, 95 + 12, 120 + 12], fill=255)
+            spill_mask = spill_mask.filter(ImageFilter.GaussianBlur(radius=2.0))
+            sm_arr = np.array(spill_mask, dtype=np.float32) / 255.0
 
-            cv2.circle(base_r, (95, 120), 12, (25.0,), -1)
-            cv2.circle(base_g, (95, 120), 12, (30.0,), -1)
-            cv2.circle(base_b, (95, 120), 12, (35.0,), -1)
-
-            cv2.GaussianBlur(base_r, (7, 7), 2.0, dst=base_r)
-            cv2.GaussianBlur(base_g, (7, 7), 2.0, dst=base_g)
-            cv2.GaussianBlur(base_b, (7, 7), 2.0, dst=base_b)
+            base_r = base_r * (1.0 - sm_arr * 0.78) + 20.0 * (sm_arr * 0.78)
+            base_g = base_g * (1.0 - sm_arr * 0.80) + 25.0 * (sm_arr * 0.80)
+            base_b = base_b * (1.0 - sm_arr * 0.82) + 30.0 * (sm_arr * 0.82)
 
         img_rgb = np.stack([
             np.clip(base_r, 0, 255).astype(np.uint8),
@@ -478,7 +518,8 @@ function evaluatePixel(sample) {
             np.clip(base_b, 0, 255).astype(np.uint8)
         ], axis=-1)
 
-        img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+        pil_rgb = Image.fromarray(img_rgb)
+        img_gray = np.array(pil_rgb.convert("L"), dtype=np.uint8)
 
         mock_scene = {
             "product_name": "Synthetic_Sentinel1_Scene",
@@ -505,12 +546,8 @@ function evaluatePixel(sample) {
 
             for path in benchmark_paths:
                 if os.path.exists(path):
-                    img_bgr = cv2.imread(path)
-                    if img_bgr is not None:
-                        if img_bgr.shape[1] != width or img_bgr.shape[0] != height:
-                            img_bgr = cv2.resize(img_bgr, (width, height), interpolation=cv2.INTER_AREA)
-                        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                        
+                    img_rgb, _ = _load_image_file(path, width, height)
+                    if img_rgb is not None:
                         meta_path = os.path.join(os.path.dirname(__file__), "data", folder, "sentinel2_meta.json")
                         if os.path.exists(meta_path):
                             with open(meta_path, "r") as f:
@@ -533,17 +570,16 @@ function evaluatePixel(sample) {
         ocean_b = np.full((height, width), 130.0, dtype=np.float32) + np.random.normal(0, 8.0, (height, width))
 
         if create_simulated_spill:
-            cv2.ellipse(ocean_r, (128, 140), (45, 20), 25, 0, 360, (75.0,), -1)
-            cv2.ellipse(ocean_g, (128, 140), (45, 20), 25, 0, 360, (68.0,), -1)
-            cv2.ellipse(ocean_b, (128, 140), (45, 20), 25, 0, 360, (55.0,), -1)
+            spill_mask = Image.new("L", (width, height), 0)
+            d = ImageDraw.Draw(spill_mask)
+            d.ellipse([128 - 45, 140 - 20, 128 + 45, 140 + 20], fill=255)
+            d.ellipse([95 - 12, 120 - 12, 95 + 12, 120 + 12], fill=255)
+            spill_mask = spill_mask.filter(ImageFilter.GaussianBlur(radius=1.5))
+            sm_arr = np.array(spill_mask, dtype=np.float32) / 255.0
 
-            cv2.circle(ocean_r, (95, 120), 12, (70.0,), -1)
-            cv2.circle(ocean_g, (95, 120), 12, (64.0,), -1)
-            cv2.circle(ocean_b, (95, 120), 12, (52.0,), -1)
-
-            cv2.GaussianBlur(ocean_r, (5, 5), 1.5, dst=ocean_r)
-            cv2.GaussianBlur(ocean_g, (5, 5), 1.5, dst=ocean_g)
-            cv2.GaussianBlur(ocean_b, (5, 5), 1.5, dst=ocean_b)
+            ocean_r = ocean_r * (1.0 - sm_arr) + 75.0 * sm_arr
+            ocean_g = ocean_g * (1.0 - sm_arr) + 68.0 * sm_arr
+            ocean_b = ocean_b * (1.0 - sm_arr) + 55.0 * sm_arr
 
         img_rgb = np.stack([
             np.clip(ocean_r, 0, 255).astype(np.uint8),

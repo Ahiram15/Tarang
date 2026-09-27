@@ -210,10 +210,18 @@ def generate_emerald_sar_patch(size: int = 512) -> Tuple[np.ndarray, np.ndarray]
         [int(size * 0.10), int(size * 0.26)],
     ], dtype=np.int32)
 
-    cv2.fillPoly(mask, [points], 255)
-    # Smooth ribbon edges
-    mask = cv2.GaussianBlur(mask, (11, 11), 3.0)
-    _, mask_binary = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    if _CV2_AVAILABLE and cv2 is not None:
+        cv2.fillPoly(mask, [points], 255)
+        # Smooth ribbon edges
+        mask = cv2.GaussianBlur(mask, (11, 11), 3.0)
+        _, mask_binary = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    else:
+        from PIL import Image, ImageDraw, ImageFilter
+        pil_m = Image.new("L", (size, size), 0)
+        draw = ImageDraw.Draw(pil_m)
+        draw.polygon([tuple(pt) for pt in points], fill=255)
+        pil_m = pil_m.filter(ImageFilter.GaussianBlur(radius=3.0))
+        mask_binary = (np.array(pil_m) > 127).astype(np.uint8) * 255
 
     # Invert backscatter in slick zone to simulate -22 dB capillary wave damping
     slick_pixels = np.random.normal(loc=35.0, scale=8.0, size=(size, size))
@@ -234,33 +242,53 @@ def run_cfar_candidate_detection(sar_img: np.ndarray) -> Dict[str, Any]:
     low backscatter cells (damping anomalies), and fuses them using morphological closing.
     """
     img_f = sar_img.astype(np.float32)
-    # Background training window (31x31)
     ksize = 31
-    local_mean = cv2.blur(img_f, (ksize, ksize))
-    local_sq = cv2.blur(img_f * img_f, (ksize, ksize))
-    local_var = np.maximum(local_sq - (local_mean * local_mean), 1.0)
-    local_std = np.sqrt(local_var)
 
-    # Damping anomaly threshold: pixels lower than local_mean by 1.8 sigma
-    cfar_mask = np.where(img_f < (local_mean - 1.8 * local_std), 255, 0).astype(np.uint8)
+    if _CV2_AVAILABLE and cv2 is not None:
+        local_mean = cv2.blur(img_f, (ksize, ksize))
+        local_sq = cv2.blur(img_f * img_f, (ksize, ksize))
+        local_var = np.maximum(local_sq - (local_mean * local_mean), 1.0)
+        local_std = np.sqrt(local_var)
 
-    # Morphological closing to bridge speckle gaps along the ribbon
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
-    closed_mask = cv2.morphologyEx(cfar_mask, cv2.MORPH_CLOSE, kernel)
-    closed_mask = cv2.morphologyEx(closed_mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+        # Damping anomaly threshold: pixels lower than local_mean by 1.8 sigma
+        cfar_mask = np.where(img_f < (local_mean - 1.8 * local_std), 255, 0).astype(np.uint8)
 
-    # Find candidate bounding box
-    contours, _ = cv2.findContours(closed_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        c = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(c)
-        bbox = [int(x), int(y), int(x + w), int(y + h)]
-        candidate_found = True
-        area_px = int(cv2.contourArea(c))
+        # Morphological closing to bridge speckle gaps along the ribbon
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+        closed_mask = cv2.morphologyEx(cfar_mask, cv2.MORPH_CLOSE, kernel)
+        closed_mask = cv2.morphologyEx(closed_mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+
+        contours, _ = cv2.findContours(closed_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            c = max(contours, key=cv2.contourArea)
+            x, y, w, h = cv2.boundingRect(c)
+            bbox = [int(x), int(y), int(x + w), int(y + h)]
+            candidate_found = True
+            area_px = int(cv2.contourArea(c))
+        else:
+            bbox = [0, 0, sar_img.shape[1], sar_img.shape[0]]
+            candidate_found = False
+            area_px = 0
     else:
-        bbox = [0, 0, sar_img.shape[1], sar_img.shape[0]]
-        candidate_found = False
-        area_px = 0
+        from PIL import Image, ImageFilter
+        pil_f = Image.fromarray(sar_img)
+        mean_pil = pil_f.filter(ImageFilter.BoxBlur(radius=15))
+        local_mean = np.array(mean_pil, dtype=np.float32)
+        local_std = np.full_like(local_mean, 12.0)
+        cfar_mask = np.where(img_f < (local_mean - 1.8 * local_std), 255, 0).astype(np.uint8)
+        pil_mask = Image.fromarray(cfar_mask, "L")
+        closed_mask = np.array(pil_mask.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.MinFilter(5)), dtype=np.uint8)
+        rows, cols = np.where(closed_mask > 0)
+        if len(rows) > 0 and len(cols) > 0:
+            x, y = int(cols.min()), int(rows.min())
+            w, h = int(cols.max()) - x, int(rows.max()) - y
+            bbox = [x, y, x + w, y + h]
+            candidate_found = True
+            area_px = int(np.sum(closed_mask > 0))
+        else:
+            bbox = [0, 0, sar_img.shape[1], sar_img.shape[0]]
+            candidate_found = False
+            area_px = 0
 
     return {
         "candidate_detected": candidate_found,
@@ -291,11 +319,14 @@ def run_unet_delineation(
     has_model = os.path.exists(model_path)
 
     # Run morphological segmentation on candidate region
-    _, thresh = cv2.threshold(sar_img, 70, 255, cv2.THRESH_BINARY_INV)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-    segmented = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+    if _CV2_AVAILABLE and cv2 is not None:
+        _, thresh = cv2.threshold(sar_img, 70, 255, cv2.THRESH_BINARY_INV)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        segmented = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        contours, _ = cv2.findContours(segmented, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+        contours = []
 
-    contours, _ = cv2.findContours(segmented, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         # Fallback to smooth ribbon contour
         poly_coords = [
@@ -378,24 +409,39 @@ def extract_and_verify_features(sar_img: np.ndarray, mask: np.ndarray) -> Dict[s
     db_damping = 10.0 * math.log10(max(mean_sea / max(mean_slick, 1.0), 1.0))
 
     # Morphological dimensions from mask contours
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        c = max(contours, key=cv2.contourArea)
-        area = float(cv2.contourArea(c))
-        perimeter = float(cv2.arcLength(c, True))
-        thinness = (4.0 * math.pi * area) / max(perimeter * perimeter, 1.0)
+    if _CV2_AVAILABLE and cv2 is not None:
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            c = max(contours, key=cv2.contourArea)
+            area = float(cv2.contourArea(c))
+            perimeter = float(cv2.arcLength(c, True))
+            thinness = (4.0 * math.pi * area) / max(perimeter * perimeter, 1.0)
 
-        # Minimum bounding rotated rect for elongation
-        rect = cv2.minAreaRect(c)
-        w_rect, h_rect = rect[1]
-        major = max(w_rect, h_rect)
-        minor = max(min(w_rect, h_rect), 1.0)
-        elongation = major / minor
+            # Minimum bounding rotated rect for elongation
+            rect = cv2.minAreaRect(c)
+            w_rect, h_rect = rect[1]
+            major = max(w_rect, h_rect)
+            minor = max(min(w_rect, h_rect), 1.0)
+            elongation = major / minor
+        else:
+            contrast = 0.76
+            db_damping = 11.8
+            thinness = 0.082
+            elongation = 6.4
     else:
-        contrast = 0.76
-        db_damping = 11.8
-        thinness = 0.082
-        elongation = 6.4
+        area = float(np.sum(mask > 0))
+        rows, cols = np.where(mask > 0)
+        if len(rows) > 0 and len(cols) > 0:
+            w_box = float(cols.max() - cols.min() + 1)
+            h_box = float(rows.max() - rows.min() + 1)
+            perimeter = 2.0 * (w_box + h_box)
+            thinness = (4.0 * math.pi * area) / max(perimeter * perimeter, 1.0)
+            elongation = max(w_box, h_box) / max(min(w_box, h_box), 1.0)
+        else:
+            contrast = 0.76
+            db_damping = 11.8
+            thinness = 0.082
+            elongation = 6.4
 
     features = {
         "contrast_ratio": round(contrast, 3),

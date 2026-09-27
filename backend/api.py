@@ -620,7 +620,7 @@ def run_satellite_scan(req: ScanRequest):
         eos_alt_path = os.path.join(benchmark_dir, "modis_terra_20200811_ocean_color.jpg")
     eos_alt_img = _load_image_rgb(eos_alt_path)
 
-    return {
+    scan_response = {
         "success": True,
         "coordinates": {"lat": req.lat, "lon": req.lon},
         "requested_date": target_date_str,
